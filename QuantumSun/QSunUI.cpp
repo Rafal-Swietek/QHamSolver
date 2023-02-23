@@ -23,6 +23,7 @@ void ui::make_sim(){
     std::cout << this->set_info({"M"}) << std::endl;
     std::cout << this->set_info({"J", "alfa"}) << std::endl;
     std::cout << this->set_info({"L", "alfa"}) << std::endl;
+    
     return;
     
 	clk::time_point start = std::chrono::system_clock::now();
