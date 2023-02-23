@@ -1,0 +1,31 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "clang++ - Build and debug active file",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/QSun.o",
+            "args": [
+				"-std=c++2b", "-stdlib=libc++",
+				"-Xpreprocessor", "-fopenmp",
+				"${workspaceFolder}/*.cpp",
+				"-o",
+				"${workspaceFolder}/QSun.o",
+				"-larmadillo", "-lsuperlu",
+				"-lpthread", "-lm",
+				"-fomit-frame-pointer", "-O3",
+				"-fdiagnostics-color=always", "-lomp",
+				"-DMY_MAC"],
+            "stopAtEntry": false,
+            "cwd": "${fileDirname}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "lldb",
+            "preLaunchTask": "C/C++: clang++ build active file"
+        }
+    ]
+}

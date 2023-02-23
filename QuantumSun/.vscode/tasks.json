@@ -1,0 +1,33 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"type": "cppbuild",
+			"label": "C/C++: clang++ build active file",
+			"command": "/usr/bin/clang++",
+			"args": [
+				"-std=c++2b", "-stdlib=libc++",
+				"-Xpreprocessor", "-fopenmp",
+				"${workspaceFolder}/*.cpp",
+				"-o",
+				"${workspaceFolder}/QSun.o",
+				"-larmadillo", "-lsuperlu",
+				"-lpthread", "-lm",
+				"-fomit-frame-pointer", "-O3",
+				"-fdiagnostics-color=always", "-lomp",
+				"-DMY_MAC"
+			],
+			"options": {
+				"cwd": "${fileDirname}"
+			},
+			"problemMatcher": [
+				"$gcc"
+			],
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			},
+			"detail": "compiler: /usr/bin/clang++"
+		}
+	]
+}

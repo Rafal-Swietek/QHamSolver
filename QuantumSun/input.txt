@@ -1,0 +1,1 @@
+-L 8 -Ln 1 -Ls 2 -J 1.0 -Js 0.5 -Jn 4 -zeta 0.2 -alfa 0.75 -h 1.0 -hs 0.2 -hn 1 -w 0.5 -wn 1 -ws 0.05 -th 1 -r 500 -fun 1 -num_of_points 5000 -jobid 0 -ini_ave 0
