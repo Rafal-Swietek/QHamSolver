@@ -3,8 +3,7 @@
 #ifndef UI
 #define UI
 
-#define EXTRA_DEBUG
-#define SPIN 0.5
+#include "includes/config.h"
 #include "../../include/user_interface.hpp"
 #include "QuantumSun.hpp"
 // ----------------------------------------------------------------------------- UI QUANTUM SUN -----------------------------------------------------------------------------

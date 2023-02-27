@@ -1,4 +1,5 @@
 
+#include "includes/config.h"
 #include "../include/QHamSolver.h"
 #include "includes/QuantumSun.hpp"
 
@@ -19,6 +20,8 @@
 QuantumSun::QuantumSun(int L, double J, double alfa, 
             double w, double hz, const u64 seed, int M, double zeta, bool initiate_avalanche)
 { 
+    CONSTRUCTOR_CALL;
+
     this->system_size = L; 
     this->grain_size = M;
     this->_J = J;
@@ -62,6 +65,8 @@ void QuantumSun::set_hamiltonian_elements(u64 k, double value, u64 new_idx)
 /// @brief Method to create hamiltonian within the class
 void QuantumSun::create_hamiltonian()
 {
+    this->_seed = std::abs(2 * (long)this->_seed - 10000) % ULONG_MAX;
+    disorder_generator = disorder<double>(this->_seed);
     this->H = sparse_matrix(this->dim, this->dim);
     this->_disorder = disorder_generator.uniform(system_size, this->_hz, this->_hz + this->_w); 
     
@@ -90,12 +95,13 @@ void QuantumSun::create_hamiltonian()
             double u_j = 1 + disorder_generator.random_uni<double>(-this->_zeta, this->_zeta);
             this->_long_range_couplings(this->grain_size) = this->_initiate_avalanche? 1.0 : std::pow(this->_alfa, u_j);
             for (int j = this->grain_size + 1; j < this->system_size; j++){
-                int pos = j - this->grain_size;
+                int pos = j - this->grain_size + 1;
                 double u_j = pos + disorder_generator.random_uni<double>(-this->_zeta, this->_zeta);
                 this->_long_range_couplings(j) = std::pow(this->_alfa, u_j);
             }
         } else {
             this->_long_range_couplings = arma::vec(this->system_size, arma::fill::ones);
+            this->_disorder = arma::sort(this->_disorder, "ascend");
         }
     }
     #ifdef EXTRA_DEBUG

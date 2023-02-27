@@ -46,8 +46,8 @@
 
 //! --------------------------------------------------------- EXTRA DEBUG SETUP
 #if defined(EXTRA_DEBUG)
-	#define DESTRUCTOR_CALL std::cout << FUN_SIGNATURE << "->\tdestructor called" << std::endl;
-	#define CONSTRUCTOR_CALL std::cout << FUN_SIGNATURE << "->\tconstructor called" << std::endl;
+	#define DESTRUCTOR_CALL std::cout << FUN_SIGNATURE << "->\tdestructor called" << std::endl << std::endl;
+	#define CONSTRUCTOR_CALL std::cout << FUN_SIGNATURE << "->\tconstructor called" << std::endl << std::endl;
 #else 
 	#define DESTRUCTOR_CALL 
 	#define CONSTRUCTOR_CALL

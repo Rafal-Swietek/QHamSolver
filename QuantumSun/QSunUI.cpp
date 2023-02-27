@@ -19,13 +19,6 @@ void ui::make_sim(){
                                                                     this->initiate_avalanche    //<!  initiate avalanche with first coupling=1
                                                                 ); 
 
-    std::cout << this->set_info() << std::endl;
-    std::cout << this->set_info({"M"}) << std::endl;
-    std::cout << this->set_info({"J", "alfa"}) << std::endl;
-    std::cout << this->set_info({"L", "alfa"}) << std::endl;
-    
-    return;
-    
 	clk::time_point start = std::chrono::system_clock::now();
     switch (this->fun)
 	{
@@ -36,6 +29,42 @@ void ui::make_sim(){
 		spectral_form_factor();
 		break;
 	default:
+		#define generate_scaling_array(name) arma::linspace(this->name, this->name + this->name##s * (this->name##n - 1), this->name##n);
+		auto L_list = generate_scaling_array(L);
+		auto J_list = generate_scaling_array(J);
+		auto alfa_list = generate_scaling_array(alfa);
+		auto h_list = generate_scaling_array(h);
+		auto w_list = generate_scaling_array(w);
+
+		for (auto& system_size : L_list){
+			this->ptr_to_model = std::make_shared<QHamSolver<QuantumSun>>(  this->L,                    //<! system size
+                                                                    this->J,                    //<! coupling of grain to spins
+                                                                    this->alfa,                 //<! coupling decay parameter
+                                                                    this->w,                    //<! disorder on spins (bandwidth control)
+                                                                    this->h,                    //<! uniform field on spins
+                                                                    this->seed,                 //<! random seed
+                                                                    this->grain_size,           //<! size of ergodic grain
+                                                                    this->zeta,                 //<! randomness on positions for decaying coupling
+                                                                    this->initiate_avalanche    //<!  initiate avalanche with first coupling=1
+                                                                );
+			for (auto& alfax : alfa_list){
+				for (auto& hx : h_list){
+					for(auto& Jx : J_list){
+						for(auto& wx : w_list){
+							this->L = system_size;
+							this->alfa = alfax;
+							this->h = hx;
+							this->J = Jx;
+							this->w = wx;
+							this->site = this->L / 2.;
+
+							const auto start_loop = std::chrono::system_clock::now();
+							std::cout << " - - START NEW ITERATION:\t\t par = "; // simulation end
+							printSeparated(std::cout, "\t", 16, true, this->L, this->J, this->alfa, this->h, this->w);
+
+							average_sff();
+							std::cout << "\t\t - - - - - - FINISHED ITERATION IN : " << tim_s(start_loop) << " seconds\n\t\t\t Total time : " << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
+						}}}}}
         std::cout << "Add default function" << std::endl;
 	}
 	std::cout << " - - - - - - FINISHED CALCULATIONS IN : " << tim_s(start) << " seconds - - - - - - " << std::endl; // simulation end
@@ -164,6 +193,9 @@ void ui::printAllOptions() const{
 		  << "h  = " << this->h << std::endl
 		  << "hs = " << this->hs << std::endl
 		  << "hn = " << this->hn << std::endl
+		  << "w  = " << this->h << std::endl
+		  << "ws = " << this->hs << std::endl
+		  << "wn = " << this->hn << std::endl
 		  << "alfa  = " << this->alfa << std::endl
 		  << "alfas = " << this->alfas << std::endl
 		  << "alfan = " << this->alfan << std::endl

@@ -110,6 +110,7 @@ public:
 	auto get_eigenvalues(std::string _suffix = "");
 	virtual void diagonalize();
 	virtual void spectral_form_factor();
+	virtual void average_sff();
 };
 
 // MOVE TO USER_INTERFACE_IMPL.HPP
@@ -246,6 +247,7 @@ void user_interface<Hamiltonian>::set_default(){
 
 	this->seed = static_cast<long unsigned int>(87178291199L);
 	this->jobid = 0;
+	this->num_of_points = 5000;
 }
 
 /// @brief Prints all general UI option values
@@ -253,7 +255,7 @@ void user_interface<Hamiltonian>::set_default(){
 template <class Hamiltonian>
 void user_interface<Hamiltonian>::printAllOptions() const {
 
-	std::cout << "Chosen spin species is S = " << S << std::endl << std::endl;
+	std::cout << "Chosen spin species is S = " << _Spin << std::endl << std::endl;
 	std::cout << "------------------------------CHOSEN OPTIONS:" << std::endl;
 	std::string opName = "";//std::get<0>(IsingModel_disorder::opName(this->op, this->site));
 	std::cout << "DIR = " << this->saving_dir << std::endl
@@ -476,9 +478,10 @@ void user_interface<Hamiltonian>::spectral_form_factor(){
 	for(int realis = 0; realis < this->realisations; realis++)
 	{
 		std::string suffix = "_real=" + std::to_string(realis + this->jobid);
+		if(realis > 0)
+			ptr_to_model->generate_hamiltonian();
 		arma::vec eigenvalues = this->get_eigenvalues(suffix);
-		std::cout << eigenvalues.t() << std::endl;
-
+		
 		if(this->fun == 1) std::cout << "\t\t	--> finished loading eigenvalues for " << info + suffix << " - in time : " << tim_s(start) << "s" << std::endl;
 		if(eigenvalues.empty()) continue;
 		dim = eigenvalues.size();
@@ -576,4 +579,110 @@ void user_interface<Hamiltonian>::spectral_form_factor(){
 	}
 	save_to_file(dir + info + ".dat", 			 times, 	 sff, 	   1.0 / wH_mean, thouless_time, 		   r1, r2, dim, 1.0 / wH_typ);
 	save_to_file(dir + "folded" + info + ".dat", times_fold, sff_fold, 1.0 / wH_mean, thouless_time / wH_mean, r1, r2, dim, 1.0 / wH_typ);
+}
+
+/// @brief Average sff over realisations
+/// @tparam Hamiltonian template parameter for current used model
+template <class Hamiltonian>
+void user_interface<Hamiltonian>::average_sff(){
+
+	std::string dir = this->saving_dir + "SpectralFormFactor" + kPSep;
+	std::string info = this->set_info();
+	arma::vec times, times_fold; // are always the same
+	arma::vec sff(this->num_of_points, arma::fill::zeros);
+	arma::vec sff_fold(this->num_of_points, arma::fill::zeros);
+	double Z = 0.0;
+	double Z_folded = 0.0;
+	double r1 = 0.0;
+	double r2 = 0.0;
+	double tH = 0.;
+	double tH_typ = 0.;
+	size_t dim = ptr_to_model->get_hilbert_size();
+	int counter_realis = 0;
+	
+	outer_threads = this->thread_number;
+	omp_set_num_threads(1);
+	std::cout << "THREAD COUNT:\t\t" << outer_threads << "\t\t" << omp_get_num_threads() << std::endl;
+#pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
+	for(int realis = 0; realis < this->realisations; realis++)
+	{
+		std::string dir_re  = this->saving_dir + "SpectralFormFactor" + kPSep + "realisation=" + std::to_string(this->jobid + realis) + kPSep;
+		std::ifstream file;
+		
+		auto data = readFromFile(file, dir_re + info + ".dat");
+		if(data.empty()) continue;
+		if(data[0].size() != sff.size()) {
+			std::cout << "Incompatible data dimensions" << std::endl;
+			continue;
+		}
+		file.close();
+		#pragma omp critical
+		{
+			times = data[0];
+			sff += data[1];
+			Z += data[2](0);
+			r1 += data[3](0);
+			r2 += data[4](0);
+			tH += data[5](0);
+			tH_typ += data[6](0);
+			counter_realis++;
+		}
+
+		data = readFromFile(file, dir_re + "folded" + info + ".dat");
+		if(data.empty()) continue;
+		if(data[0].size() != sff_fold.size()) {
+			std::cout << "Incompatible data dimensions" << std::endl;
+			continue;
+		}
+		file.close();
+		#pragma omp critical
+		{
+			times_fold = data[0];
+			sff_fold += data[1];
+			Z_folded += data[2](0);
+		}
+	}
+
+	if(sff.is_empty()) return;
+	if(sff.is_zero()) return;
+
+	double norm = counter_realis;
+	r1 /= norm;
+	r2 /= norm;
+	sff = sff / Z;
+	sff_fold = sff_fold / Z_folded;
+	tH /= norm;
+	tH_typ /= norm;
+
+	// ---------- find Thouless time
+	double eps = 5e-2;
+	auto K_GOE = [](double t){
+		return t < 1? 2 * t - t * log(1+2*t) : 2 - t * log( (2*t+1) / (2*t-1) );
+	};
+
+	double thouless_time = 0;
+	double delta_min = 1e6;
+	for(int i = 0; i < sff.size(); i++){
+		double delta = abs(log10( sff(i) / K_GOE(times(i)) )) - eps;
+		delta *= delta;
+		if(delta < delta_min){
+			delta_min = delta;
+			thouless_time = times(i); 
+		}
+		if(times(i) >= 2.5) break;
+	}
+
+	double thouless_time_fold = 0;
+	delta_min = 1e6;
+	for(int i = 0; i < sff_fold.size(); i++){
+		double delta = abs(log10( sff_fold(i) / K_GOE(times_fold(i)) )) - eps;
+		delta *= delta;
+		if(delta < delta_min){
+			delta_min = delta;
+			thouless_time_fold = times_fold(i); 
+		}
+		if(times_fold(i) >= 2.5 * tH) break;
+	}
+	save_to_file(dir + info + ".dat", 			 times, 	 sff, 	   tH, thouless_time, 	   r1, r2, dim, tH_typ);
+	save_to_file(dir + "folded" + info + ".dat", times_fold, sff_fold, tH, thouless_time_fold, r1, r2, dim, tH_typ);
 }
