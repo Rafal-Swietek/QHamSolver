@@ -13,14 +13,14 @@ public:
     using element_type =_ty ;
 
 protected:
-    hilbert _hilbert_space;
-    typedef arma::SpMat<_ty> sparse_matrix;
-    typedef arma::Mat<_ty> matrix;
-    sparse_matrix H;
+    hilbert _hilbert_space;                     // hilbert space for given model
+    typedef arma::SpMat<_ty> sparse_matrix;     // template typedef for sparse matrix
+    typedef arma::Mat<_ty> matrix;              // template typedef for dense matrix
+    sparse_matrix H;                            // sparse matrix for hamiltonian
 
-    int _boundary_condition;
-    u64 dim;
-    int system_size;
+    int _boundary_condition;                    // boundary conditions
+    u64 dim;                                    // hilbert space dimension
+    int system_size;                            // system size, i.e. number of sites (for 1D length of chain)
     //other important params?
     virtual void init() = 0;
 

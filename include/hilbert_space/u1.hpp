@@ -1,53 +1,8 @@
 #pragma once
 
-#define NOT_ALLOWED_SYM_SECTOR "ERROR 1: Chosen symmetry sector not allowed, exceeds min/max values;"
-#define OUT_OF_MAP "ERROR 2: Given index is not included in hilbert space"
-
-
-/// @brief Base class for hilbert space construction
-/// @tparam ...constraints 
-template <typename... constraints>
-class hilbert_space_base {
-    
-    protected:
-        variadic_struct<constraints...> sectors;
-
-        std::vector<u64> mapping;
-        int system_size;
-        u64 dim;
-        virtual void init() = 0;
-    public:
-        virtual ~hilbert_space_base() = 0;
-        auto get_hilbert_space_size() const { return this->dim; }
-        auto get_mapping() const { return this->mapping; }
-        virtual void create_basis() = 0;
-        
-        _nodiscard virtual u64 operator()(u64 idx)  = 0;
-        _nodiscard virtual u64 find(u64 idx)        = 0;
-};
-template <typename... constraints>
-hilbert_space_base<constraints...>::~hilbert_space_base(){}
-
-/// @brief Hilbert space with no symmetries
-class full_hilbert_space : public hilbert_space_base<>{
-    
-    //<! Someday might need to add stuff..
-    virtual void init() override 
-        {};
-    public:
-        full_hilbert_space() = default;
-        full_hilbert_space(int L)
-        { 
-            this->system_size = L; 
-            this->dim = ULLPOW(L);
-            this->init();
-        }
-        _nodiscard virtual u64 operator()(u64 idx) override { return idx; };
-        _nodiscard virtual u64 find(u64 idx)       override { return idx; };
-        virtual void create_basis() override 
-            { std::cout << "AIN'T DO NOTHING! Hilbert space is created as full." << std::endl; }
-};
-
+#ifndef _HILBERT_BASE
+    #include "_base.hpp"
+#endif
 
 //<! Enum for possible U(1) symmetries: for now charge and spin
 enum class U1 {spin, charge};
@@ -56,7 +11,7 @@ enum class U1 {spin, charge};
 /// @tparam boolean value: spinless fermions?  (valid if chosen U1 == charge)
 /// @tparam U1_sym choose U(1) symmetry: spin, charge, ...
 template <U1 U1_sym = U1::spin, bool spinless = true>
-class U1_hilbert_space : public hilbert_space_base<int>
+class U1_hilbert_space : public hilbert_space_base
 {
     float U1_sector;
     float max_sector;
@@ -77,8 +32,7 @@ class U1_hilbert_space : public hilbert_space_base<int>
         bool allowed_sector = (this->U1_sector < this->max_sector && this->U1_sector > this->min_sector);
         if(allowed_sector == false)
             std::cout << this->U1_sector << "\t\t" << this->min_sector << "\t\t" << this->max_sector << "\t\t" << std::endl;
-        _assert_( (allowed_sector == false), NOT_ALLOWED_SYM_SECTOR);
-        this->sectors = {U1_sector};
+        _assert_( (allowed_sector == false), NOT_ALLOWED_SYMETRY_SECTOR);
         this->create_basis();
     }
     

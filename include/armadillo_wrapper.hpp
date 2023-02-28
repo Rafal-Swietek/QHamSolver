@@ -21,6 +21,14 @@ template <typename matrix>
 matrix commutator(const matrix& A, const matrix& B)
 	{ return A * B - B * A; }
 
+/// @brief Calculate Hilbert-Schmidt norm for input matrix
+/// @tparam _ty element type of input matrix
+/// @param A input matrix
+/// @return returns HS norm
+template <typename _ty>
+double HS_norm(const arma::Mat<_ty>& A)
+	{ return arma::trace(A * A) / (double)A.n_cols;}
+
 //! -------------------------------------------------------- cast non-cpx to cpx types
 template <typename _ty>
 arma::Col<std::complex<_ty>> cpx_real_vec(const arma::Col<_ty>& input){ 

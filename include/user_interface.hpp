@@ -29,9 +29,9 @@ class user_interface {
 	static_check((std::is_base_of_v<_hamiltonian, Hamiltonian>), 
                     "\n" BAD_INHERITANCE "\n\t base class is: hamiltonian_base<element_type, hilbert_space>");
 protected:
-	unsigned int thread_number = 1;															// number of threads
-	int boundary_conditions = 1;															// boundary conditions - 0 - PBC, 1 - OBC, 2 - ABC,...
-	std::string saving_dir = "";															// directory for files to be saved onto
+	unsigned int thread_number = 1;									// number of threads
+	int boundary_conditions = 1;									// boundary conditions - 0 - PBC, 1 - OBC, 2 - ABC,...
+	std::string saving_dir = "";									// directory for files to be saved onto
 
 	// ----------------------------------- FUNCTIONS FOR READING THE INPUT
 
@@ -366,7 +366,6 @@ void user_interface<Hamiltonian>::parse_cmd_options(int argc, std::vector<std::s
 	std::cout << " - - - - - - MAKING ISING INTERFACE AND USING INNER THREADS : "
 			  << thread_number << " - - - - - - " << endl; // setting the number of threads to be used with omp
 
-	omp_set_num_threads(this->thread_number);
 }
 
 // -------------------------------------------------------------------------------------------------------------------------------
@@ -388,12 +387,15 @@ void user_interface<Hamiltonian>::diagonalize(){
 		std::string info = this->set_info({});
 		std::cout << "\n\t\t--> finished creating model for " << info + _suffix << " - in time : " << tim_s(start) << "s" << std::endl;
 		
-		ptr_to_model->generate_hamiltonian();
+		if(realis > 0)
+			ptr_to_model->generate_hamiltonian();
 		ptr_to_model->diagonalization();
 		arma::vec eigenvalues = ptr_to_model->get_eigenvalues();
 		
 		std::cout << "\t\t	--> finished diagonalizing for " << info + _suffix << " - in time : " << tim_s(start) << "s" << std::endl;
 		
+		std::cout << eigenvalues.t() << std::endl;
+
 		std::string name = dir + info + _suffix + ".hdf5";
 		eigenvalues.save(arma::hdf5_name(name, "eigenvalues/", arma::hdf5_opts::append));
 		std::cout << "\t\t	--> finished saving eigenvalues for " << info + _suffix << " - in time : " << tim_s(start) << "s" << std::endl;

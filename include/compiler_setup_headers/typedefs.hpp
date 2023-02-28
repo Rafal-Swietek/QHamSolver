@@ -70,7 +70,7 @@ constexpr cpx im = cpx(0.0, 1.0);					// imaginary unit
 
 //! -------------------------------------------------------------------------------------------------------------- USER MAKRO FUNCTIONS
 #if !defined(ULLPOW)
-	#define ULLPOW(k) (1ULL << k)
+	#define ULLPOW(k) ( 1ULL << (k) )
 #endif
 
 // ----------------------------------------------------------------------------- lookup table to store the reverse of each index of the table -----------------------------------------------------------------------------

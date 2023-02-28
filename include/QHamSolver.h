@@ -37,7 +37,11 @@
 #include "I_O_streaming/stream_wrapper_base.hpp"
 #include "headers_to_split.h"
 
-#include "hilbert_space/hilbert_space_base.hpp"
+#include "gcem/include/gcem.hpp"        //<! constexpr library for math functinos
+
+#include "operators/operator_base.h"
+#include "hilbert_space/_base.hpp"
+
 #include "SpinOperators.hpp"
 #include "Hamiltonian/_base.hpp"
 #include "QhamSolver_aux.hpp"

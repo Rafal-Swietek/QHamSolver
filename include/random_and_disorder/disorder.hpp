@@ -111,7 +111,7 @@ public:
 				matrix(n, m) = dist(engine);
 
         // add proper normalization
-		return 0.15 * (matrix + matrix.t());
+		return (matrix + matrix.t()) / std::sqrt(2);
     }
 };
 

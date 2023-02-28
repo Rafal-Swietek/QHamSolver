@@ -135,7 +135,7 @@ inline u64 reverseBits(u64 n, int L) {
 		(lookup[(n >> 8) & 0xffULL] << 48) |				// consider the next 8 bits
 		(lookup[(n >> 16) & 0xffULL] << 40) |				// consider the next 8 bits
 		(lookup[(n >> 24) & 0xffULL] << 32) |				// consider the next 8 bits
-		(lookup[(n >> 32) & 0xffULL] << 24) |				// consider the next 8 bits
+		(lookup[(n >> 32) & 0xffULL] <<  24) |				// consider the next 8 bits
 		(lookup[(n >> 40) & 0xffULL] << 16) |				// consider the next 8 bits
 		(lookup[(n >> 48) & 0xffULL] << 8) |				// consider the next 8 bits
 		(lookup[(n >> 54) & 0xffULL]);						// consider last 8 bits
