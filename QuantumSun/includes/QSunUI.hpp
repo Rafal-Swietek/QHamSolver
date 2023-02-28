@@ -3,7 +3,7 @@
 #ifndef UI
 #define UI
 
-#include "includes/config.h"
+#include "config.hpp"
 #include "../../include/user_interface.hpp"
 #include "QuantumSun.hpp"
 // ----------------------------------------------------------------------------- UI QUANTUM SUN -----------------------------------------------------------------------------

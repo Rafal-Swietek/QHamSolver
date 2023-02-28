@@ -1,5 +1,5 @@
 
-#include "includes/config.h"
+#include "includes/config.hpp"
 #include "../include/QHamSolver.h"
 #include "includes/QuantumSun.hpp"
 
@@ -17,8 +17,9 @@
 /// @param M size of ergodic grain
 /// @param zeta random positions for coupling
 /// @param initiate_avalanche boolean value if initiate avalanche by hand (put fisrt coupling without decay)
-QuantumSun::QuantumSun(int L, double J, double alfa, 
-            double w, double hz, const u64 seed, int M, double zeta, bool initiate_avalanche)
+/// @param normalize_grain normalize grain to unit hilbert-schmidt norm?
+QuantumSun::QuantumSun(int L, double J, double alfa, double gamma,
+            double w, double hz, const u64 seed, int M, double zeta, bool initiate_avalanche, bool normalize_grain )
 { 
     CONSTRUCTOR_CALL;
 
@@ -27,6 +28,7 @@ QuantumSun::QuantumSun(int L, double J, double alfa,
     this->_J = J;
     this->_alfa = alfa;
     this->_zeta = zeta;
+    this->_gamma = gamma;
     
     this->_hz = hz;
     //<! disorder terms
@@ -34,6 +36,7 @@ QuantumSun::QuantumSun(int L, double J, double alfa,
     this->_seed = seed;
 
     this->_initiate_avalanche = initiate_avalanche;
+    this->_norm_grain = normalize_grain;
     init(); 
 }
 
@@ -44,7 +47,6 @@ QuantumSun::QuantumSun(std::istream& os)
 
 //<! ------------------------------------------------------------------------------ HAMILTONIAN BUILDERS
 /// @brief Set hamiltonian matrix element given with value and new index
-/// @tparam U1_sector U(1) symmetry sector as teamplate input 
 /// @param k current basis state
 /// @param value value of matrix element
 /// @param new_idx new index to be found in hilbert space
@@ -85,9 +87,11 @@ void QuantumSun::create_hamiltonian()
 
 	/* Create GOE Matrix */
 	auto grain = ENSEMBLE(this->disorder_generator.get_seed());
-	arma::mat H_grain = grain.generate_matrix(dim_erg);
-
+	arma::mat H_grain = this->_gamma * grain.generate_matrix(dim_erg);
     
+    if(this->_norm_grain)
+        H_grain /= std::sqrt(ULLPOW(this->grain_size) + 1);
+
     /* Create random couplings */
     this->_long_range_couplings = arma::vec(this->system_size, arma::fill::zeros);
     if(this->_alfa > 0){
@@ -161,14 +165,14 @@ std::ostream& QuantumSun::write(std::ostream& os) const
     printSeparated(os, "\t", 16, true, "Hamiltonian:", "H = R + J\u03A3_i \u03B1^{u_j} S^x_i S^x_i+1 + \u03A3_i h_i S^z_i\t\t u_j in [j - \u03B6, j + \u03B6]");
     printSeparated(os, "\t", 16, true, "----------------------------------------------------------------------------------------------------");
     printSeparated(os, "\t", 16, true, "Parameters:");
-    printSeparated(os, "\t", 16, true, "    L", this->system_size);
-    printSeparated(os, "\t", 16, true, "    grain size", this->grain_size);
+    printSeparated(os, "\t", 16, true, "L", this->system_size);
+    printSeparated(os, "\t", 16, true, "grain size", this->grain_size);
 
-    printSeparated(os, "\t", 16, true, "    J", this->_J);
-    printSeparated(os, "\t", 16, true, "    \u03B1", this->_alfa);
-    printSeparated(os, "\t", 16, true, "    w", this->_w);
-    printSeparated(os, "\t", 16, true, "    hz", this->_hz);
-    printSeparated(os, "\t", 16, true, "    \u03B6", this->_zeta);
+    printSeparated(os, "\t", 16, true, "J", this->_J);
+    printSeparated(os, "\t", 16, true, "\u03B1", this->_alfa);
+    printSeparated(os, "\t", 16, true, "w", this->_w);
+    printSeparated(os, "\t", 16, true, "hz", this->_hz);
+    printSeparated(os, "\t", 16, true, "\u03B6", this->_zeta);
     //printSeparated(os, "\t", 16, true, "disorder", this->_disorder.t());
 
     printSeparated(os, "\t", 16, true, "    seed", this->_seed);

@@ -22,10 +22,13 @@ private:
     double _hz = 1.0;                       // longitudinal uniform field
     double _alfa = 0.75;                    // coupling base -- controls long-range interaction
     double _zeta = 0.2;                     // randomness in long range coupling (random distance between localised spins abd grain)
+
+    double _gamma = 1.0;                    // prefactor to ergodic grain (controls ergodicity)
     u64 _seed = std::random_device{}();     // seed for random generator
     
     int grain_size = 3;                     // ergodic grain size
     bool _initiate_avalanche = 1;           // start first coupling with =1.0 . (i.e. exponent u_0 = 0)
+    bool _norm_grain = 0;                   // normalize grain to unit hilbert-schmidt norm?
     
     //<! ----------------------------------------------------- INITIALIZE MODEL
     virtual void init() override
@@ -45,9 +48,9 @@ public:
     //<! ----------------------------------------------------- CONSTRUCTORS
     QuantumSun() = default;
     QuantumSun(std::istream& os);
-    QuantumSun(int L, double J, double alfa, 
+    QuantumSun(int L, double J, double alfa, double gamma,
             double w, double hz, const u64 seed = std::random_device{}(), 
-            int M = 3, double zeta = 0.2, bool initiate_avalanche = false);
+            int M = 3, double zeta = 0.2, bool initiate_avalanche = false, bool normalize_grain = false);
 
     //<! ----------------------------------------------------- HAMILTONIAN BUILDERS
     virtual void create_hamiltonian() override;

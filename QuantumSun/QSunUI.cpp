@@ -7,7 +7,27 @@ namespace QSunUI{
 
 void ui::make_sim(){
     printAllOptions();
-    
+    bool normalize_grain = 1;
+
+	for(int M = 3; M < 6; M++){
+		auto grain = GOE();
+		printSeparated(std::cout, "\t", 16, true, "M = " + std::to_string(M), "realis", "not-normalized", "norm", "normalized");
+		double norm_ = 0;
+		for(int r = 0; r < 100; r++){
+			arma::mat R = grain.generate_matrix(ULLPOW(M));
+			double norm = (ULLPOW(M) + 1);
+			arma::mat R2 = R / std::sqrt(norm);
+
+			std::cout << "\t";
+			printSeparated(std::cout, "\t", 16, true, r, HS_norm(R), norm, HS_norm(R2) );
+			norm_ += HS_norm(R2);
+		}
+		std::cout << "------------------------------------------------------------ Average = " << norm_ / 100 << std::endl << std::endl;
+	}
+
+
+
+	return;
     this->ptr_to_model = std::make_shared<QHamSolver<QuantumSun>>(  this->L,                    //<! system size
                                                                     this->J,                    //<! coupling of grain to spins
                                                                     this->alfa,                 //<! coupling decay parameter
@@ -16,9 +36,10 @@ void ui::make_sim(){
                                                                     this->seed,                 //<! random seed
                                                                     this->grain_size,           //<! size of ergodic grain
                                                                     this->zeta,                 //<! randomness on positions for decaying coupling
-                                                                    this->initiate_avalanche    //<!  initiate avalanche with first coupling=1
+                                                                    this->initiate_avalanche,   //<!  initiate avalanche with first coupling=1
+																	normalize_grain				//<!  keep grain with unit HS norm
                                                                 ); 
-
+	return;
 	clk::time_point start = std::chrono::system_clock::now();
     switch (this->fun)
 	{
@@ -37,7 +58,7 @@ void ui::make_sim(){
 		auto w_list = generate_scaling_array(w);
 
 		for (auto& system_size : L_list){
-			this->ptr_to_model = std::make_shared<QHamSolver<QuantumSun>>(  this->L,                    //<! system size
+			this->ptr_to_model = std::make_shared<QHamSolver<QuantumSun>>(  this->L,            //<! system size
                                                                     this->J,                    //<! coupling of grain to spins
                                                                     this->alfa,                 //<! coupling decay parameter
                                                                     this->w,                    //<! disorder on spins (bandwidth control)
@@ -151,6 +172,7 @@ void ui::set_default(){
 	this->alfas = 0.02;
 	this->alfan = 1;
 
+	this->grain_size = 1;
     this->initiate_avalanche = 0;
 }
 
@@ -193,9 +215,9 @@ void ui::printAllOptions() const{
 		  << "h  = " << this->h << std::endl
 		  << "hs = " << this->hs << std::endl
 		  << "hn = " << this->hn << std::endl
-		  << "w  = " << this->h << std::endl
-		  << "ws = " << this->hs << std::endl
-		  << "wn = " << this->hn << std::endl
+		  << "w  = " << this->w << std::endl
+		  << "ws = " << this->ws << std::endl
+		  << "wn = " << this->wn << std::endl
 		  << "alfa  = " << this->alfa << std::endl
 		  << "alfas = " << this->alfas << std::endl
 		  << "alfan = " << this->alfan << std::endl
