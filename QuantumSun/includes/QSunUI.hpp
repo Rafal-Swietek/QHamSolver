@@ -12,7 +12,7 @@ namespace QSunUI{
     class ui : public user_interface<QuantumSun>{
     protected:
         double J, Js;
-        double alfa, alfas;
+        double alfa, alfas, gamma;
         double h, hs;
         double w, ws;
         double zeta;

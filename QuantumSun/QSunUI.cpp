@@ -9,28 +9,10 @@ void ui::make_sim(){
     printAllOptions();
     bool normalize_grain = 1;
 
-	for(int M = 3; M < 6; M++){
-		auto grain = GOE();
-		printSeparated(std::cout, "\t", 16, true, "M = " + std::to_string(M), "realis", "not-normalized", "norm", "normalized");
-		double norm_ = 0;
-		for(int r = 0; r < 100; r++){
-			arma::mat R = grain.generate_matrix(ULLPOW(M));
-			double norm = (ULLPOW(M) + 1);
-			arma::mat R2 = R / std::sqrt(norm);
-
-			std::cout << "\t";
-			printSeparated(std::cout, "\t", 16, true, r, HS_norm(R), norm, HS_norm(R2) );
-			norm_ += HS_norm(R2);
-		}
-		std::cout << "------------------------------------------------------------ Average = " << norm_ / 100 << std::endl << std::endl;
-	}
-
-
-
-	return;
     this->ptr_to_model = std::make_shared<QHamSolver<QuantumSun>>(  this->L,                    //<! system size
                                                                     this->J,                    //<! coupling of grain to spins
                                                                     this->alfa,                 //<! coupling decay parameter
+                                                                    this->gamma,                //<! strength of ergodic bubble
                                                                     this->w,                    //<! disorder on spins (bandwidth control)
                                                                     this->h,                    //<! uniform field on spins
                                                                     this->seed,                 //<! random seed
@@ -39,7 +21,7 @@ void ui::make_sim(){
                                                                     this->initiate_avalanche,   //<!  initiate avalanche with first coupling=1
 																	normalize_grain				//<!  keep grain with unit HS norm
                                                                 ); 
-	return;
+	
 	clk::time_point start = std::chrono::system_clock::now();
     switch (this->fun)
 	{
@@ -138,6 +120,9 @@ void ui::parse_cmd_options(int argc, std::vector<std::string> argv)
     set_param(h);
     set_param(w);
 
+    choosen_option = "-gamma";
+    this->set_option(this->gamma, argv, choosen_option);
+
     choosen_option = "-zeta";
     this->set_option(this->zeta, argv, choosen_option);
     
@@ -159,6 +144,7 @@ void ui::set_default(){
 	this->Jn = 1;
 
 	this->zeta = 0.2;
+	this->gamma = 1.0;
 
 	this->h = 0.0;
 	this->hs = 0.1;
@@ -184,15 +170,20 @@ void ui::print_help() const {
     printSeparated(std::cout, "\t", 20, true, "-J", "(double)", "coupling strength");
     printSeparated(std::cout, "\t", 20, true, "-Js", "(double)", "step in coupling strength sweep");
     printSeparated(std::cout, "\t", 20, true, "-Jn", "(int)", "number of couplings in the sweep");
+    printSeparated(std::cout, "\t", 20, true, "-gamma", "(double)", "strength of ergodic bubble");
+
     printSeparated(std::cout, "\t", 20, true, "-alfa", "(double)", "decay control of coupling with distance");
     printSeparated(std::cout, "\t", 20, true, "-alfas", "(double)", "step in decay strength sweep");
     printSeparated(std::cout, "\t", 20, true, "-alfan", "(int)", "number of values in the sweep");
+
     printSeparated(std::cout, "\t", 20, true, "-h", "(double)", "uniform field on spins");
     printSeparated(std::cout, "\t", 20, true, "-hs", "(double)", "step in field strength sweep");
     printSeparated(std::cout, "\t", 20, true, "-hn", "(int)", "number of field values in the sweep");
+
     printSeparated(std::cout, "\t", 20, true, "-w", "(double)", "disorder bandwidth on localized spins");
     printSeparated(std::cout, "\t", 20, true, "-ws", "(double)", "step in disorder strength sweep");
     printSeparated(std::cout, "\t", 20, true, "-wn", "(int)", "number of disorder in the sweep");
+
     printSeparated(std::cout, "\t", 20, true, "-zeta", "(double)", "randomness in position for coupling to grain");
     printSeparated(std::cout, "\t", 20, true, "-M", "(int)", "size of random grain (number of spins inside grain)");
     printSeparated(std::cout, "\t", 20, true, "-ini_ave", "(boolean)", "initiate avalanche by hand");
@@ -202,7 +193,7 @@ void ui::print_help() const {
 /// @brief 
 void ui::printAllOptions() const{
     user_interface<QuantumSun>::printAllOptions();
-    std::cout << "QUANTUM SUN:\n\t\t" << "H = R + J \u03A3_i \u03B1^{u_i} S^x_i S^x_i+1 + \u03A3_i h_i S^z_i" << std::endl << std::endl;
+    std::cout << "QUANTUM SUN:\n\t\t" << "H = \u03B3R + J \u03A3_i \u03B1^{u_i} S^x_i S^x_i+1 + \u03A3_i h_i S^z_i" << std::endl << std::endl;
 	std::cout << "u_i \u03B5 [j - \u03B6, j + \u03B6]"  << std::endl;
 	std::cout << "h_i \u03B5 [h - w, h + w]" << std::endl;
 
@@ -212,16 +203,17 @@ void ui::printAllOptions() const{
 		  << "J  = " << this->J << std::endl
 		  << "Jn = " << this->Jn << std::endl
 		  << "Js = " << this->Js << std::endl
+		  << "\u03B3 = " << this->gamma << std::endl
 		  << "h  = " << this->h << std::endl
 		  << "hs = " << this->hs << std::endl
 		  << "hn = " << this->hn << std::endl
 		  << "w  = " << this->w << std::endl
 		  << "ws = " << this->ws << std::endl
 		  << "wn = " << this->wn << std::endl
-		  << "alfa  = " << this->alfa << std::endl
-		  << "alfas = " << this->alfas << std::endl
-		  << "alfan = " << this->alfan << std::endl
-		  << "zeta = " << this->zeta << std::endl
+		  << "\u03B1  = " << this->alfa << std::endl
+		  << "\u03B1s = " << this->alfas << std::endl
+		  << "\u03B1n = " << this->alfan << std::endl
+		  << "\u03B6 = " << this->zeta << std::endl
 		  << "initialize avelanche = " << this->initiate_avalanche << std::endl;
 }   
 
@@ -234,6 +226,7 @@ std::string ui::set_info(std::vector<std::string> skip, std::string sep) const
         std::string name = "L=" + std::to_string(this->L) + \
             ",M=" + std::to_string(this->grain_size) + \
             ",J=" + to_string_prec(this->J) + \
+            ",g=" + to_string_prec(this->gamma) + \
             ",zeta=" + to_string_prec(this->zeta) + \
             ",alfa=" + to_string_prec(this->alfa) + \
             ",h=" + to_string_prec(this->h) + \

@@ -170,6 +170,7 @@ std::ostream& QuantumSun::write(std::ostream& os) const
 
     printSeparated(os, "\t", 16, true, "J", this->_J);
     printSeparated(os, "\t", 16, true, "\u03B1", this->_alfa);
+    printSeparated(os, "\t", 16, true, "\u03B3", this->_gamma);
     printSeparated(os, "\t", 16, true, "w", this->_w);
     printSeparated(os, "\t", 16, true, "hz", this->_hz);
     printSeparated(os, "\t", 16, true, "\u03B6", this->_zeta);
