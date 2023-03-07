@@ -71,11 +71,16 @@ _ty my_abs(_ty value)
 template <typename T>
 inline
 int order_of_magnitude(const T a_value) {
-	if(a_value < 1.0 && a_value != 0){
-		T m = std::abs(std::log10(my_abs(a_value)));
-		return int(std::max(std::ceil(m) + 1., 2.));
+	if(a_value != 0){
+		std::string num_str = std::to_string(a_value - int(a_value) );
+		int len = num_str.find_last_of('.');
+		num_str.erase(0,len+1);
+		
+		len = num_str.length();
+		//std::cout << a_value << "\t\t" << std::log10(std::abs(a_value)) << "\t\t" << m << "\t\t" << std::ceil(m) + 1. << std::endl;
+		return int(std::min(len, 3));
 	}
-	else return 2;
+	else return 0;
 }
 
 /// @brief Print value of any type to custom precision

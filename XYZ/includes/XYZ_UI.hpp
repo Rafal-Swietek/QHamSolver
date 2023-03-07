@@ -8,10 +8,16 @@
 #include "XYZ.hpp"
 #include "XYZ_sym.hpp"
 
+#ifdef USE_SYMMETRIES
+    #define XYZUIparent user_interface<XYZsym>
+#else
+    #define XYZUIparent user_interface<XYZ>
+#endif
 // ----------------------------------------------------------------------------- UI QUANTUM SUN -----------------------------------------------------------------------------
 
 namespace XYZ_UI{
-    class ui : public user_interface<XYZ>{
+    class ui : public XYZUIparent{
+        
     protected:
         double J1, J1s;
         double J2, J2s;
@@ -22,7 +28,17 @@ namespace XYZ_UI{
         double w, ws;
         int J1n, J2n, delta1n, delta2n, hxn, hzn, wn;
         
+        struct {
+            int k_sym;
+            int p_sym;
+            int zx_sym;
+            int zz_sym;
+        } syms;
+
         bool add_parity_breaking;
+        
+        typedef typename XYZUIparent::model_pointer model_pointer;
+        
     public:
 		// ----------------------------------- CONSTRUCTORS
 		ui() = default;
@@ -40,10 +56,45 @@ namespace XYZ_UI{
 
 		// ----------------------------------- SIMULATION
 		void make_sim() override;														// make default simulation
+        virtual model_pointer create_new_model_pointer() override;
+	    virtual void reset_model_pointer() override;
 
         // ----------------------------------- MODEL DEPENDENT FUNCTIONS
         virtual std::string set_info(std::vector<std::string> skip = {}, 
 										std::string sep = "_") const override;
+        void compare_energies();
+        void compare_hamiltonian();
+        void check_symmetry_generators();
+
+        template <
+			typename callable, 
+			typename... _types
+			> 
+			void loopSymmetrySectors(
+			callable& lambda, //!< callable function
+			_types... args										   //!< arguments passed to callable interface lambda
+		) {
+            
+			const int k_end = (this->boundary_conditions) ? 1 : this->L;
+			v_1d<int> zxsec = (this->hz == 0                                       )? v_1d<int>({-1, 1}) : v_1d<int>({1});
+			v_1d<int> zzsec = (this->hx == 0 && (this->L % 2 == 0 || this->hz != 0))? v_1d<int>({-1, 1}) : v_1d<int>({1});
+		#pragma omp parallel for num_threads(outer_threads)// schedule(dynamic)
+			for (int ks = 0; ks < k_end; ks++) {
+				v_1d<int> psec = (ks == 0 || ks == this->L / 2.)? v_1d<int>({-1, 1}) : v_1d<int>({1});
+                std::cout << psec << std::endl;
+                for(auto& ps : psec){
+                    for(auto& zxs : zxsec){
+                        for(auto& zzs : zzsec){
+                            //<! create local lambda for multithreading enivorontment
+							auto dummy_lambda = [&lambda](int k, int p, int zx, int zz, auto... args){
+								lambda(k, p, zx, zz, args...);
+							};
+							dummy_lambda(ks, ps, zxs, zzs, args...);
+                        }
+                    }
+                }
+			}
+		}
     };
 }
 

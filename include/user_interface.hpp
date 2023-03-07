@@ -387,6 +387,10 @@ void user_interface<Hamiltonian>::diagonalize(){
 	{
 		int real = realis + this->jobid;
 		std::string _suffix = "_real=" + std::to_string(real);
+		#ifdef USE_SYMMETRIES
+			//<! no suffix for symmetric model
+			_suffix = "";
+		#endif
 		std::string info = this->set_info({});
 		std::cout << "\n\t\t--> finished creating model for " << info + _suffix << " - in time : " << tim_s(start) << "s" << std::endl;
 		
@@ -397,7 +401,7 @@ void user_interface<Hamiltonian>::diagonalize(){
 		
 		std::cout << "\t\t	--> finished diagonalizing for " << info + _suffix << " - in time : " << tim_s(start) << "s" << std::endl;
 		
-		std::cout << eigenvalues.t() << std::endl;
+		//std::cout << eigenvalues.t() << std::endl;
 
 		std::string name = dir + info + _suffix + ".hdf5";
 		eigenvalues.save(arma::hdf5_name(name, "eigenvalues/", arma::hdf5_opts::append));

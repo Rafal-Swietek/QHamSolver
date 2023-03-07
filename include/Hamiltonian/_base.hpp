@@ -20,7 +20,7 @@ protected:
 
     int _boundary_condition;                    // boundary conditions
     u64 dim;                                    // hilbert space dimension
-    int system_size;                            // system size, i.e. number of sites (for 1D length of chain)
+    unsigned int system_size;                   // system size, i.e. number of sites (for 1D length of chain)
     //other important params?
     virtual void init() = 0;
 
@@ -29,8 +29,10 @@ public:
 
     //<! GETTERS TO PRIVATE MEMBERS
     auto get_hilbert_space_size()   const { return this->dim; }                             // get dimension of hilbert space
-    auto& get_hamiltonian()	        const { return this->H; }			                    // get the const reference to a Hamiltonian
     auto get_mapping()              const { return this->_hilbert_space.get_mapping(); }    // get mapping to reduced basis
+    auto& get_hilbert_space()       const { return this->_hilbert_space; }                  // return reference to hilbert space
+
+    auto& get_hamiltonian()	        const { return this->H; }			                    // get the const reference to a Hamiltonian
     matrix get_dense_hamiltonian()  const { return matrix(this->H); }                       // return the model hamiltonian as dense matrix
 
     //<! HAMILTONIAN BUILDERS

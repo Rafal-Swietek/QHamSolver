@@ -22,10 +22,12 @@ class QHamSolver{
         //<! ----------------------------------------------- GETTERS
 	    auto get_hilbert_size()	     const { return this->dim; }					    // get the Hilbert space size
 	    auto get_mapping()		     const { return this->H.get_mapping(); }		    // constant reference to the mapping
-	    auto get_hamiltonian()	     const { return this->H.get_hamiltonian(); }	    // get the const reference to a Hamiltonian
 	    auto& get_eigenvectors()     const { return this->eigenvectors; }			    // get the const reference to the eigenvectors
 	    auto get_eigenvalues()	     const { return this->eigenvalues; }			    // get the const reference to eigenvalues
+	    auto get_hamiltonian()	     const { return this->H.get_hamiltonian(); }	    // get the const reference to a Hamiltonian
 	    auto get_dense_hamiltonian() const { return this->H.get_dense_hamiltonian(); }	// get the const reference to a Hamiltonian
+
+        auto& get_model()            const { return this->H; }
 
         //<! ----------------------------------------------- ROUTINES
         void generate_hamiltonian();

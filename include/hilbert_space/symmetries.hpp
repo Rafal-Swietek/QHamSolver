@@ -19,14 +19,11 @@ class point_symmetric : public hilbert_space_base{
 	bool _real_k_sector = 1;	//<! is the k_sector real or complex?, i.e. k = 0, pi
 	
 	void generate_symmetry_goup(const v_1d<op::genOp>& sym_gen);
-	auto find_SEC_representative(u64 base_idx) const -> op::return_type;
 	auto get_symmetry_normalization(u64 base_idx) const -> cpx;
 
 	/// @brief 
-	virtual void init() override {
-
-        this->create_basis();
-    }
+	virtual void init() override 
+		{ this->create_basis(); }
 public:
     point_symmetric() = default;
 	point_symmetric(unsigned int L, const v_1d<op::genOp>& sym_gen, int _BC = 1, int k_sector = 0, int pos_of_parity = -1);
@@ -36,8 +33,14 @@ public:
 	virtual u64 operator()(u64 idx) override;
 	virtual u64 find(u64 element) override;
 
+	op::return_type find_SEC_representative(u64 base_idx) const;
+
 	auto get_symmetry_group() const { return this-> _symmetry_group; }
+	auto get_normalisation()  const { return this-> _normalisation; }
+	auto get_norm(u64 idx)	  const { return this-> _normalisation[idx]; }
 	auto get_sectors() 		  const { return this-> _sectors; }
+
+	arma::sp_cx_mat symmetry_rotation() const;
 };
 
 
@@ -57,19 +60,22 @@ point_symmetric::point_symmetric(unsigned int L, const v_1d<op::genOp>& sym_gen,
 	this->_boundary_cond = _BC;
 	if(this->_boundary_cond == 0){ // if PBC
 		this->k_sector = k_sec;
-		this->_real_k_sector = (this->k_sector == 0) || (this->k_sector == this->system_size / 2);
+		this->_real_k_sector = (this->k_sector == 0) || (this->k_sector  == this->system_size / 2.);
 	}
 	
+	// set position of parity symmetry in list of generators
 	this->_pos_of_parity = pos_of_parity;
 
 	this->generate_symmetry_goup(sym_gen);
 	this->init();
 }
 
+//<! ------------------------------------------------------------------------------------------ SYMMETRY GROUP
 /// @brief Generate symmetry group with all combinations of symmetry generators
 /// @param sym_gen list of symmetry generators (shall not include translation! )
 inline
-void point_symmetric::generate_symmetry_goup(const v_1d<op::genOp>& sym_gen_in)
+void 
+point_symmetric::generate_symmetry_goup(const v_1d<op::genOp>& sym_gen_in)
 {
 	this->_symmetry_group = v_1d<op::genOp>();
 	v_1d<op::genOp> sym_gen = sym_gen_in;
@@ -126,7 +132,8 @@ void point_symmetric::generate_symmetry_goup(const v_1d<op::genOp>& sym_gen_in)
 /// @param base_idx find SEC for given input state
 /// @return SEC
 inline
-op::return_type point_symmetric::find_SEC_representative(u64 base_idx) const 
+op::return_type 
+point_symmetric::find_SEC_representative(u64 base_idx) const 
 {
 	u64 SEC = INT64_MAX;
 	cpx return_val = 1.0;
@@ -144,7 +151,8 @@ op::return_type point_symmetric::find_SEC_representative(u64 base_idx) const
 /// @param base_idx input state
 /// @return normalisation
 inline
-cpx point_symmetric::get_symmetry_normalization(u64 base_idx) const 
+cpx 
+point_symmetric::get_symmetry_normalization(u64 base_idx) const 
 {
 	cpx normalisation = cpx(0.0, 0.0);
 	//for (unsigned int L = 0; l < this->_symmetry_group.size(); l++) {
@@ -156,6 +164,27 @@ cpx point_symmetric::get_symmetry_normalization(u64 base_idx) const
 	return std::sqrt(normalisation);
 }
 
+/// @brief Generate Unitary transformation to full hilbert space from reduced basis
+/// @return unitary transformation U
+inline
+arma::sp_cx_mat
+point_symmetric::symmetry_rotation() const
+{
+	const u64 dim_tot = ULLPOW(this->system_size);
+	arma::sp_cx_mat U(dim_tot, this->dim);
+#pragma omp parallel for
+	for (long int k = 0; k < this->dim; k++) {
+		for (auto& G : this->_symmetry_group) {
+			auto [idx, sym_eig] = G(this->mapping[k]);
+			if(idx < dim_tot) // only if exists in sector
+				U(idx, k) += std::conj(sym_eig / (this->_normalisation[k] * sqrt(this->_symmetry_group.size())));
+			// CONJUNGATE YOU MORON CAUSE YOU RETURN TO FULL STATE, I.E. INVERSE MAPPING!!!!!! 
+		}
+	}
+	return U;
+}
+
+//<! ------------------------------------------------------------------------------------------ BASIS CONSTRUCTION
 /// @brief Creates hilbert space basis with given point symmetries
 inline
 void point_symmetric::create_basis()
@@ -204,11 +233,14 @@ void point_symmetric::create_basis()
 	this->dim = this->mapping.size();
 }
 
+
+//<! ------------------------------------------------------------------------------------------ ACCESS TOOLS
 /// @brief Overloaded operator to access elements in hilbert space
 /// @param idx Index of element in hilbert space
 /// @return Element of hilbert space at position 'index'
 inline
-u64 point_symmetric::operator()(u64 idx)
+u64 
+point_symmetric::operator()(u64 idx)
 { 
 	_assert_((idx < this->dim), OUT_OF_MAP);
     return this->mapping[idx]; 
@@ -219,7 +251,8 @@ u64 point_symmetric::operator()(u64 idx)
 /// @param element element to find its index
 /// @return index of element 'element'
 inline
-u64 point_symmetric::find(u64 element)
+u64 
+point_symmetric::find(u64 element)
 	{ return binary_search(this->mapping, 0, this->dim - 1, element); }
 
 

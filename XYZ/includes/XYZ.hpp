@@ -51,7 +51,7 @@ public:
     //<! ----------------------------------------------------- CONSTRUCTORS
     XYZ() = default;
     XYZ(std::istream& os);
-    XYZ(int _BC, int L, double J1, double J2, double delta1, double delta2, double eta1, double eta2,
+    XYZ(int _BC, unsigned int L, double J1, double J2, double delta1, double delta2, double eta1, double eta2,
             double hx, double hz, bool add_parity_breaking = false, double w = 0, const u64 seed = std::random_device{}());
 
     //<! ----------------------------------------------------- HAMILTONIAN BUILDERS
