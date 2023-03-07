@@ -147,6 +147,20 @@ void apply_permutation(
 
 //-------------------------------------------------------------------------------------------------------------- ADDITIONAL TOOLS
 
+inline
+std::complex<double> pow_im(unsigned int power){
+	const int num = power % 4;
+	switch(num){
+		case 0: return std::complex<double>(1.0, 0.0);		//  1
+		case 1: return std::complex<double>(0.0, 1.0);		//  i
+		case 2: return std::complex<double>(-1.0, 0.0);		// -1
+		case 3: return std::complex<double>(0.0, -1.0);		// -i
+	default:
+		_assert_(false, "Only integer positive powers. You fucked uo mate!");
+		return 0.0;
+	}
+}
+
 /// @brief Gets the sign of input value
 /// @tparam T template parameter
 /// @param val input value
@@ -169,8 +183,8 @@ std::ostream& operator<<(
 	const std::vector<_type>& vec	//<! vector to print
 ) {
 	if (vec.size() != 0) {
-		std::copy(vec.begin(), vec.end() - 1, std::ostream_iterator<_type>(os, " "));
-		os << vec.back() << ' ';
+		std::copy(vec.begin(), vec.end() - 1, std::ostream_iterator<_type>(os, "\n"));
+		os << vec.back() << '\n';
 	}
 	else
 		os << "Empty container!" << std::endl;

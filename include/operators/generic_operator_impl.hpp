@@ -22,11 +22,13 @@ namespace op {
 			CONSTRUCTOR_CALL;
 			#if defined(EXTRA_DEBUG)
 				std::cout << FUN_SIGNATURE << "::\n\toperator initialized with: "
-					<< var_name_value(this->L, 0) << "\t" << var_name_value(this->opVal, 0) << std::endl;
+					<< var_name_value(this->L, 0) 				 << "\t" 
+					<< var_name_value(std::real(this->opVal), 0) << "\t" 
+					<< var_name_value(std::imag(this->opVal), 0) << std::endl;
 			#endif
 		}
 	public:
-		int L = 0;										// length of state in given basis (Kondo has octal basis)
+		unsigned int L = 0;										// length of state in given basis (Kondo has octal basis)
 
 		//friend class operator_sum;
 		//! -------------------------------------------------------------------------- CONSTRUCTORS
@@ -36,14 +38,18 @@ namespace op {
 		generic_operator(int _L)
 			: L(_L)
 		{ init(); };
+		
+		generic_operator(int _L, cpx _opVal)
+			: L(_L), opVal(_opVal)
+		{ init(); };
 
-		explicit generic_operator(int _L, kernel_type&& new_kernel, cpx opVal = 1.0)
-			: L(_L), _kernel(std::move(new_kernel)), opVal(opVal)
+		explicit generic_operator(int _L, kernel_type&& new_kernel, cpx _opVal = 1.0)
+			: L(_L), _kernel(std::move(new_kernel)), opVal(_opVal)
 		{ init(); };
 
 		template <callable_type F>
-		explicit generic_operator(int _L, F&& new_kernel, cpx opVal = 1.0)
-			: L(_L), _kernel(std::forward<F>(new_kernel)), opVal(opVal)
+		explicit generic_operator(int _L, F&& new_kernel, cpx _opVal = 1.0)
+			: L(_L), _kernel(std::forward<F>(new_kernel)), opVal(_opVal)
 		{ init(); };
 
 		// copy and move
@@ -70,28 +76,23 @@ namespace op {
 
 		//! -------------------------------------------------------------------------- GETTERS & SETTERS
 		//! ---------------------- operator value
-		_nodiscard
 		const
 		auto get_operator_value()
 			const { return this->opVal; };
 
-		_noreturn
-		auto set_operator_value(cpx opVal) 
+		void set_operator_value(cpx opVal) 
 			{ this->opVal = opVal; };
 
 		//! ---------------------- operator kernel
-		_nodiscard
 		const
 		auto get_operator_kernel()
 			const { return this->_kernel; };
 
-		_noreturn
-		auto set_operator_kernel(kernel_type&& new_kernel)
+		void set_operator_kernel(kernel_type&& new_kernel)
 			{ this->_kernel = std::move(new_kernel); };
 
 		template <callable_type F>
-		_noreturn
-		auto set_operator_kernel(F&& new_kernel)
+		void set_operator_kernel(F&& new_kernel)
 			{ this->_kernel = std::forward<F>(new_kernel); };
 
 		//! ---------------------- assigning of new kernel
@@ -99,14 +100,17 @@ namespace op {
 		//auto operator=(F&& new_kernel)
 		//{ this->_kernel = std::forward<F>(new_kernel); };
 
-		_noreturn
-		auto operator=(kernel_type&& new_kernel)
+		void operator=(kernel_type&& new_kernel)
 			{ this->_kernel = std::move(new_kernel); };
 
 		//! -------------------------------------------------------------------------- OPERATOR ACTING ON INPUT STATE AND VIA ACCESS
 		
 		// accessing return state via input
-		_nodiscard
+
+		/// @brief 
+		/// @param num 
+		/// @param ...args 
+		/// @return 
 		auto operator()(u64 num, _ty... args) const
 		{
 			auto [state, returnVal] = this->_kernel(num, std::forward<_ty>(args)...);
@@ -114,19 +118,18 @@ namespace op {
 		}
 
 		
-		_nodiscard
+		/// @brief 
+		/// @param args 
+		/// @return 
 		auto operator()(std::tuple<u64, _ty...>&& args) const
 		{
 			auto [state, returnVal] = std::apply(this->_kernel, args);
 			return std::make_pair(state, opVal * returnVal);
 		}
 
-		//_nodiscard auto operator[](std::tuple<u64, _ty...>args)->u64;
-
 		//! -------------------------------------------------------------------------- ALGEBRA OF GENERIC OPERATORS
 		//! ----------------------------------------------- overloaded multiplication
 		//! -------------------- with other objects
-		_nodiscard
 		friend 
 		auto operator*(cpx arg, const generic_operator<_ty...>& _operator)
 			-> generic_operator<_ty...>
@@ -136,32 +139,32 @@ namespace op {
 			return std::move(new_operator); 
 		}
 		
-		_nodiscard
 		friend 
 		auto operator*(const generic_operator<_ty...>& _operator, cpx arg)
 			-> generic_operator<_ty...>
 		{ return arg * _operator;}
 
-		_noreturn
-		auto operator*=(cpx arg)
+		void operator*=(cpx arg)
 		{ this->opVal *= arg; }
 
 		//! -------------------- with another class instance
 		template <typename..._ty2>
-		_nodiscard
 		auto operator*(const generic_operator<_ty2...>& op)
 			const -> generic_operator<_ty..., _ty2...>;
+		
+		template <typename..._ty2>
+		auto operator*=(const generic_operator<_ty2...>& op)
+			{_assert_((false), 
+				"Not possible operatotion, since cannot expand variadic template on (*this) at run-time. See operator%= for possible solution!");}
 
 		//! -------------------- with another function/lambda:
 		//! --	 X = generic_operator<...> * fun<...> implementation
 		template <typename..._ty2>
-		_nodiscard
 		auto operator*(const std::function<return_type(u64, _ty2...)>& opFun)
 			const -> generic_operator<_ty..., _ty2...>;
 
 		//! --	 X = fun<...> * generic_operator<...> implementation
 		template <typename..._ty2>
-		_nodiscard
 		friend 
 		auto operator*(const kernel_type& fun,
 			const generic_operator<_ty2...>& _operator)
@@ -173,21 +176,17 @@ namespace op {
 
 		//! ----------------------------------------------- overloaded multiplication with no template expansion (of the same type)
 		//! -------------------- with another class instance
-		_nodiscard
 		auto operator%(const generic_operator& op)
 			const -> generic_operator;
 
-		_noreturn
-		auto operator%=(const generic_operator& op);
+		void operator%=(const generic_operator& op);
 
 		//! -------------------- with another function/lambda:
 		//! --	 X = generic_operator<...> * fun<...> implementation
-		_nodiscard
 		auto operator%(const kernel_type& opFun)
-			const -> generic_operator<_ty...>;
+			const -> generic_operator;
 
 		//! --	 X = fun<...> * generic_operator<...> implementation
-		_nodiscard
 		friend
 		auto operator%(const kernel_type& fun,
 				const generic_operator& _operator)
@@ -204,14 +203,19 @@ namespace op {
 
 
 		//! --------------------------------------------------- GETTERS OF RETURN VALUES
-		// for constant return values
-		_nodiscard
+
+		/// @brief Calculate operator representative value (i.e. e^(-ik) for transaltion)
+		/// @param op input operator
+		/// @return operator representative value (complex)
 		friend
 		cpx chi(const generic_operator& op)
 			{ return op.opVal; };
 
-		// for calculated return values
-		_nodiscard
+		/// @brief Calculate operator return value after acting on state num
+		/// @param op input operator
+		/// @param num input state to act on
+		/// @param ...args additional arguments for operator (i.e. site acting on)
+		/// @return complex value
 		friend
 		cpx chi(const generic_operator& op, u64 num, _ty... args)
 		{

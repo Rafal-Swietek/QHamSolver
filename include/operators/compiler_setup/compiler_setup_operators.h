@@ -33,8 +33,11 @@ const v_1d<u64> powers =  []{ 	v_1d<u64> a(64 / block_size);
 #define CHOOSE_MACRO(_1,_2,NAME,...) NAME
 #define check_hilbert_space_this(op_rhs)			(( this->L == op_rhs.L))
 #define check_hilbert_space_input(op_lhs, op_rhs)	((op_lhs.L == op_rhs.L))
+#define print_hilbert_space_this(op_rhs)			((std::cout <<  this->L << "\t\t" << op_rhs.L << std::endl))
+#define print_hilbert_space_input(op_lhs, op_rhs)	((std::cout << op_lhs.L << "\t\t" << op_rhs.L << std::endl))
 
 #define check_hilbert_space(...) CHOOSE_MACRO(__VA_ARGS__, check_hilbert_space_input, check_hilbert_space_this)(__VA_ARGS__)
+#define print_hilbert_space(...) CHOOSE_MACRO(__VA_ARGS__, print_hilbert_space_input, print_hilbert_space_this)(__VA_ARGS__)
 
 //! --- sth
 
@@ -44,7 +47,7 @@ const v_1d<u64> powers =  []{ 	v_1d<u64> a(64 / block_size);
 #if defined(DISABLE_DEBUG)
 	#define assert_hilbert_space(...) __PRAGMA message( "Debug disabled. No bounds check on operator Hilbert spaces. Check dimensionality yourself!")
 #else
-	#define assert_hilbert_space(...) assert(check_hilbert_space(__VA_ARGS__) && INCOMPATIBLE_DIMENSION)
+	#define assert_hilbert_space(...) _assert_(check_hilbert_space(__VA_ARGS__), INCOMPATIBLE_DIMENSION)
 #endif
 
 

@@ -27,7 +27,7 @@ namespace _builtins{
     /// @param n 
     /// @param L 
     /// @return 
-    inline u64 translation(u64 n, int L) 
+    inline u64 translation(u64 n, unsigned int L) 
         {
             u64 maxPower = BinaryPowers[L - int32_t(1)];
 	        return (n >= maxPower) ? (((int64_t)n - (int64_t)maxPower) * 2 + 1) : n * 2;    
@@ -37,14 +37,14 @@ namespace _builtins{
     /// @param n 
     /// @param L 
     /// @return 
-    inline u64 spin_flip_x(u64 n, int L) 
+    inline u64 spin_flip_x(u64 n, unsigned int L) 
         { return BinaryPowers[L] - n - 1; }
 
     /// @brief 
     /// @param n 
     /// @param L 
     /// @return 
-    inline u64 unit(u64 n, int L) 
+    inline u64 unit(u64 n, unsigned int L) 
         { return n; }
 
 
@@ -52,7 +52,7 @@ namespace _builtins{
     /// @param n 
     /// @param L 
     /// @return 
-    inline u64 parity(u64 n, int L) 
+    inline u64 parity(u64 n, unsigned int L) 
         { 
             u64 rev = (lookup[n & 0xffULL] << 56) |					// consider the first 8 bits
             (lookup[(n >> 8) & 0xffULL] << 48) |				// consider the next 8 bits

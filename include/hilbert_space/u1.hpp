@@ -50,7 +50,7 @@ class U1_hilbert_space : public hilbert_space_base
     }
 public:
     U1_hilbert_space() = default;
-    U1_hilbert_space(int L, float sector = 0)
+    U1_hilbert_space(unsigned int L, float sector = 0)
     { 
         this->system_size = L; 
         this->U1_sector = sector; 
@@ -97,7 +97,6 @@ public:
     /// @brief Overloaded operator to access elements in hilbert space
     /// @param idx Index of element in hilbert space
     /// @return Element of hilbert space at position 'index'
-    _nodiscard
     virtual
     u64 operator()(u64 idx) override
         { _assert_((idx < this->dim), OUT_OF_MAP);
@@ -107,7 +106,6 @@ public:
     /// @brief Find index of element in hilbert space
     /// @param element element to find its index
     /// @return index of element 'element'
-    _nodiscard
     virtual 
     u64 find(u64 element) override
         { return binary_search(this->mapping, 0, this->dim - 1, element); }
