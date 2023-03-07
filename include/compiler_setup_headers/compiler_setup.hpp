@@ -54,22 +54,24 @@
 #endif
 
 #ifndef _assert_
+	#define stringize(x) #x
 	#include <iostream>
 	//<! DEFINE USER ASSERT
 	#ifndef NDEBUG
 		#define _assert_(Expr, Msg) \
-			__M_Assert(#Expr, Expr, __FILE__, __LINE__, Msg)
+			__M_Assert(stringize(Expr), Expr, __FILE__, __LINE__, FUN_SIGNATURE, Msg)
 	#else
 		#define _assert_(Expr, Msg) ;
 	#endif
 
-	inline void __M_Assert(const char* expr_str, bool expr, const char* file, int line, const char* msg)
+	inline void __M_Assert(const char* expr_str, bool expr, const char* file, int line, const char* _func_sign, const char* msg)
 	{
 		if (!expr)
 		{
 			std::cerr << "Assert failed:\t" << msg << "\n"
 				<< "Expected:\t" << expr_str << "\n"
-				<< "Source:\t\t" << file << ", line " << line << "\n";
+				<< "Source:\t\t" << file << ", line " << line << "\n"
+				<< "Function:\t\t" << _func_sign << "\n";
 			abort();
 		}
 	}

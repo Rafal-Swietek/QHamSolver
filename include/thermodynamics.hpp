@@ -13,7 +13,7 @@ namespace thermodynamics{
         int system_size = 0             //<! system size, if set to 0 do division is performed (assumed user does it)
         ) -> triple_dbl 
     {
-        int L = system_size == 0? 1.0 : system_size;
+        unsigned int L = system_size == 0? 1.0 : system_size;
         const size_t N = eigenvalues.size();
     	double Z = 0;
     	double E_av = 0, E_av2 = 0;

@@ -23,7 +23,7 @@ typedef std::vector<int> iVec;
 typedef std::vector<short int> kernel_arr;
 typedef std::vector<cpx> _cx_vec;
 
-using op_type = std::function<std::pair<cpx, u64>(u64, int, std::vector<int>)>;
+using op_type = std::function<std::pair<cpx, u64>(u64, unsigned int, std::vector<int>)>;
 typedef std::chrono::system_clock clk;
 const std::string kPSep = std::string(kPathSeparator);
 
@@ -31,11 +31,13 @@ template<class T> using v_3d = std::vector<std::vector<std::vector<T>>>;		// 3d 
 template<class T> using v_2d = std::vector<std::vector<T>>;						// 2d type T vector
 template<class T> using v_1d = std::vector<T>;									// 1d type T vector
 //<! -------------------------------------------------------------------------------------------------------------- ATTRIBUTES
-#define _noreturn			[[noreturn]]
-#define _maybe_unused		[[maybe_unused]]
-#define _nodiscard			[[nodiscard, gnu::warn_unused_result]]
-#define _no_break			[[fallthrough]]
-#define _no_unique_address	[[no_unique_address]]
+
+//<! SOME PRODUCE ERROR! LEARN FIRST THEY USAGE NIGGAH
+//#define _noreturn			[[noreturn]]
+//#define _maybe_unused		[[maybe_unused]]
+//#define _nodiscard			[[nodiscard, gnu::warn_unused_result]]
+//#define _no_break			[[fallthrough]]
+//#define _no_unique_address	[[no_unique_address]]
 
 
 //<! -------------------------------------------------------------------------------------------------------------- MACROs

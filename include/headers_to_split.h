@@ -88,7 +88,7 @@ inline u64 binary_search(const std::vector<double>& arr, u64 l_point, u64 r_poin
 /// <param name="n"> number to rotate </param>
 /// <param name="maxPower"> maximal power of 2 </param>
 /// <returns> rotated number </returns>
-inline u64 rotate_left(u64 n, int L) {
+inline u64 rotate_left(u64 n, unsigned int L) {
 	NO_OVERFLOW(u64 maxPower = BinaryPowers[L - int32_t(1)];);
 	return (n >= maxPower) ? (((int64_t)n - (int64_t)maxPower) * 2 + 1) : n * 2;
 }
@@ -109,7 +109,7 @@ inline bool checkBit(u64 n, int k) {
 /// <param name="n">number to be flipped</param>
 /// <param name="maxBinaryNum">maximal power of 2 for given bit number(maximal length is 64 for ULL)</param>
 /// <returns>flipped number</returns>
-inline u64 flip(u64 n, int L) {
+inline u64 flip(u64 n, unsigned int L) {
 	return BinaryPowers[L] - n - 1;
 }
 
@@ -130,7 +130,7 @@ inline u64 flip(u64 n, u64 kthPower, int k) {
 /// </summary>
 /// <param name="L">We need to know how many bits does the number really take because the function can take up to 64</param>
 /// <returns>number with reversed bits moved to be maximally of size L again</returns>
-inline u64 reverseBits(u64 n, int L) {
+inline u64 reverseBits(u64 n, unsigned int L) {
 	u64 rev = (lookup[n & 0xffULL] << 56) |					// consider the first 8 bits
 		(lookup[(n >> 8) & 0xffULL] << 48) |				// consider the next 8 bits
 		(lookup[(n >> 16) & 0xffULL] << 40) |				// consider the next 8 bits
@@ -143,7 +143,7 @@ inline u64 reverseBits(u64 n, int L) {
 }
 
 inline std::function<u64(u64, int)> multiply_operators(const std::function<u64(u64, int)>& A, const std::function<u64(u64, int)>& B) {
-	std::function<u64(u64, int)> result = [A, B](u64 n, int L) { return A(B(n, L), L); };
+	std::function<u64(u64, int)> result = [A, B](u64 n, unsigned int L) { return A(B(n, L), L); };
 	return result;
 }
 
@@ -160,7 +160,7 @@ inline u64 binomial(int n, int k) {
 /// <param name="L">chain length</param>
 /// <param name="corr_len">correlation length</param>
 /// <returns>vector of correlation places</returns>
-inline std::vector<int> get_neigh_vector(int _BC, int L, int corr_len) {
+inline std::vector<int> get_neigh_vector(int _BC, unsigned int L, int corr_len) {
 	v_1d<int> neis(L, -1);
 	if (_BC == 0) {
 		iota(neis.begin(), neis.end(), 0);

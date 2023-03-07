@@ -10,7 +10,7 @@ namespace operators{
     
     inline
     std::pair<cpx, u64> 
-    sigma_x(u64 base_vec, int L, std::vector<int> sites) {
+    sigma_x(u64 base_vec, unsigned int L, std::vector<int> sites) {
 		for (auto& site : sites) 
 			base_vec = flip(base_vec, BinaryPowers[L - 1 - site], L - 1 - site);
 		return std::make_pair(_Spin, base_vec);
@@ -18,7 +18,7 @@ namespace operators{
 
     inline
 	std::pair<cpx, u64> 
-    sigma_y(u64 base_vec, int L, std::vector<int> sites) {
+    sigma_y(u64 base_vec, unsigned int L, std::vector<int> sites) {
 		auto tmp = base_vec;
 		cpx val = 1.0;
 		for (auto& site : sites) {
@@ -30,7 +30,7 @@ namespace operators{
 	
     inline
     std::pair<cpx, u64> 
-    sigma_z(u64 base_vec, int L, std::vector<int> sites) {
+    sigma_z(u64 base_vec, unsigned int L, std::vector<int> sites) {
 		auto tmp = base_vec;
 		double val = 1.0;
 		for (auto& site : sites) 

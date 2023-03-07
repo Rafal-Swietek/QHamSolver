@@ -7,7 +7,7 @@ namespace adiabatics{
 	gauge_potential(
     	const arma::Mat<_ty>& mat_elem,
     	const arma::vec& eigenvalues,
-    	int L
+    	unsigned int L
     ) -> std::tuple<double, double, double, arma::vec> 
 	{
         const size_t N = eigenvalues.size();
