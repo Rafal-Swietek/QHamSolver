@@ -100,7 +100,7 @@ void XYZsym::set_symmetry_generators()
 void XYZsym::set_hamiltonian_elements(u64 k, elem_ty value, u64 new_idx)
 {   
     u64 state, idx;
-    cpx sym_eig;
+    elem_ty sym_eig;
 
     try {
         //<! Look for index in reduced basis (maybe its the SEC already)
@@ -110,8 +110,11 @@ void XYZsym::set_hamiltonian_elements(u64 k, elem_ty value, u64 new_idx)
         //<! find SEC for input state
         auto [min, sym_eig] = this->_hilbert_space.find_SEC_representative(new_idx);
         idx = this->_hilbert_space.find(min);
-        if (idx < dim)	std::tie(state, sym_eig) = std::make_pair(idx, this->_hilbert_space.get_norm(idx) / this->_hilbert_space.get_norm(k) * std::conj(sym_eig));
-        else			std::tie(state, sym_eig) = std::make_pair(0, 0);
+        #ifndef USE_REAL_SECTORS
+            sym_eig = std::conj(sym_eig);
+        #endif
+        if (idx < dim)	std::tie(state, sym_eig) = std::make_pair(idx, this->_hilbert_space.get_norm(idx) / this->_hilbert_space.get_norm(k) * sym_eig);
+        else			std::tie(state, sym_eig) = std::make_pair(0, 0.0);
         
         #ifdef USE_REAL_SECTORS
             H(state, k) += std::real(value * sym_eig);

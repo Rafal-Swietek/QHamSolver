@@ -39,6 +39,8 @@ protected:
 
 	// ----------------------------------- TEMPLATES
 	typedef std::unique_ptr<QHamSolver<Hamiltonian>> model_pointer;
+    typedef typename Hamiltonian::element_type element_type;
+	
 	template <typename _ty>
 	void set_option(_ty& value, const v_1d<std::string>& argv, 
                         std::string choosen_option, bool geq_0 = false);					        // set an option
@@ -114,6 +116,7 @@ public:
 	virtual void diagonalize();
 	virtual void spectral_form_factor();
 	virtual void average_sff();
+	virtual void eigenstate_entanglement() = 0;
 };
 
 // MOVE TO USER_INTERFACE_IMPL.HPP
@@ -404,15 +407,15 @@ void user_interface<Hamiltonian>::diagonalize(){
 		//std::cout << eigenvalues.t() << std::endl;
 
 		std::string name = dir + info + _suffix + ".hdf5";
-		eigenvalues.save(arma::hdf5_name(name, "eigenvalues/", arma::hdf5_opts::append));
+		eigenvalues.save(arma::hdf5_name(name, "eigenvalues", arma::hdf5_opts::append));
 		std::cout << "\t\t	--> finished saving eigenvalues for " << info + _suffix << " - in time : " << tim_s(start) << "s" << std::endl;
 		if(this->ch){
 			auto H = ptr_to_model->get_dense_hamiltonian();
-			H.save(arma::hdf5_name(name, "hamiltonian/" + _suffix, arma::hdf5_opts::append));
+			H.save(arma::hdf5_name(name, "hamiltonian", arma::hdf5_opts::append));
 			std::cout << "\t\t	--> finished saving Hamiltonian for " << info << " - in time : " << tim_s(start) << "s" << std::endl;
 
 			auto V = ptr_to_model->get_eigenvectors();
-			V.save(arma::hdf5_name(name, "eigenvectors/" + _suffix, arma::hdf5_opts::append));
+			V.save(arma::hdf5_name(name, "eigenvectors", arma::hdf5_opts::append));
 			std::cout << "\t\t	--> finished saving eigenvectors for " << info << " - in time : " << tim_s(start) << "s" << std::endl;
 		}
 	};

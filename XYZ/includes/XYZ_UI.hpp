@@ -34,10 +34,24 @@ namespace XYZ_UI{
             int zx_sym;
             int zz_sym;
         } syms;
+        
+        /// @brief 
+        /// @param ks 
+        /// @return 
+        bool k_real_sec(int ks) const { return (ks == 0 || ks == this->L / 2.) || (this->boundary_conditions == 1); };
+        
+        /// @brief 
+        /// @return 
+        bool use_flip_X() const { return ( this->hz == 0 ); }
+
+        /// @brief 
+        /// @return 
+        bool use_flip_Z() const { return ( this->hx == 0 && (this->L % 2 == 0 || this->hz != 0) ); }
 
         bool add_parity_breaking;
         
         typedef typename XYZUIparent::model_pointer model_pointer;
+        typedef typename XYZUIparent::element_type element_type;
         
     public:
 		// ----------------------------------- CONSTRUCTORS
@@ -66,6 +80,8 @@ namespace XYZ_UI{
         void compare_hamiltonian();
         void check_symmetry_generators();
 
+	    virtual void eigenstate_entanglement() override;
+
         template <
 			typename callable, 
 			typename... _types
@@ -76,11 +92,11 @@ namespace XYZ_UI{
 		) {
             
 			const int k_end = (this->boundary_conditions) ? 1 : this->L;
-			v_1d<int> zxsec = (this->hz == 0                                       )? v_1d<int>({-1, 1}) : v_1d<int>({1});
-			v_1d<int> zzsec = (this->hx == 0 && (this->L % 2 == 0 || this->hz != 0))? v_1d<int>({-1, 1}) : v_1d<int>({1});
+			v_1d<int> zxsec = (this->use_flip_X())? v_1d<int>({-1, 1}) : v_1d<int>({1});
+			v_1d<int> zzsec = (this->use_flip_Z())? v_1d<int>({-1, 1}) : v_1d<int>({1});
 		#pragma omp parallel for num_threads(outer_threads)// schedule(dynamic)
 			for (int ks = 0; ks < k_end; ks++) {
-				v_1d<int> psec = (ks == 0 || ks == this->L / 2.)? v_1d<int>({-1, 1}) : v_1d<int>({1});
+				v_1d<int> psec = k_real_sec(ks)? v_1d<int>({-1, 1}) : v_1d<int>({1});
                 std::cout << psec << std::endl;
                 for(auto& ps : psec){
                     for(auto& zxs : zxsec){

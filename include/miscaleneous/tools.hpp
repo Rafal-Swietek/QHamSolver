@@ -68,17 +68,21 @@ _ty my_abs(_ty value)
 /// @tparam T 
 /// @param a_value 
 /// @return 
-template <typename T>
+template <typename _ty>
 inline
-int order_of_magnitude(const T a_value) {
+int order_of_magnitude(const _ty a_value) {
 	if(a_value != 0){
 		std::string num_str = std::to_string(a_value - int(a_value) );
+
+        num_str.erase ( num_str.find_last_not_of('0') + 1, std::string::npos );
+        num_str.erase ( num_str.find_last_not_of('.') + 1, std::string::npos );
 		int len = num_str.find_last_of('.');
+
 		num_str.erase(0,len+1);
-		
 		len = num_str.length();
-		//std::cout << a_value << "\t\t" << std::log10(std::abs(a_value)) << "\t\t" << m << "\t\t" << std::ceil(m) + 1. << std::endl;
-		return int(std::min(len, 3));
+        if(num_str == "0")
+            len = 0;
+		return len;
 	}
 	else return 0;
 }

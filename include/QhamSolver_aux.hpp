@@ -11,8 +11,9 @@ class QHamSolver{
         arma::Mat<_ty> eigenvectors;
         arma::vec eigenvalues;
         u64 dim;
-        u64 E_av_idx;
     public:
+        u64 E_av_idx;
+        
         //<! ----------------------------------------------- CONSTRUCTORS / DESTRUCTORS
         ~QHamSolver() { DESTRUCTOR_CALL; }
 
@@ -20,14 +21,17 @@ class QHamSolver{
         QHamSolver(_param_types... args);
 
         //<! ----------------------------------------------- GETTERS
-	    auto get_hilbert_size()	     const { return this->dim; }					    // get the Hilbert space size
-	    auto get_mapping()		     const { return this->H.get_mapping(); }		    // constant reference to the mapping
-	    auto& get_eigenvectors()     const { return this->eigenvectors; }			    // get the const reference to the eigenvectors
-	    auto get_eigenvalues()	     const { return this->eigenvalues; }			    // get the const reference to eigenvalues
-	    auto get_hamiltonian()	     const { return this->H.get_hamiltonian(); }	    // get the const reference to a Hamiltonian
-	    auto get_dense_hamiltonian() const { return this->H.get_dense_hamiltonian(); }	// get the const reference to a Hamiltonian
+	    auto get_hilbert_size()	        const { return this->dim; }					        // get the Hilbert space size
+	    auto get_mapping()		        const { return this->H.get_mapping(); }		        // constant reference to the mapping
+	    
+        auto& get_eigenvectors()        const { return this->eigenvectors; }			    // get the const reference to the eigenvectors
+	    auto get_eigenState(u64 idx)    const { return this->eigenvectors.col(idx); }	    // get the eigenvector at index idx
+	    
+        auto get_eigenvalues()	        const { return this->eigenvalues; }			        // get the const reference to eigenvalues
+	    auto get_hamiltonian()	        const { return this->H.get_hamiltonian(); }	        // get the const reference to a Hamiltonian
+	    auto get_dense_hamiltonian()    const { return this->H.get_dense_hamiltonian(); }	// get the const reference to a Hamiltonian
 
-        auto& get_model()            const { return this->H; }
+        auto& get_model_ref()           const { return this->H; }
 
         //<! ----------------------------------------------- ROUTINES
         void generate_hamiltonian();

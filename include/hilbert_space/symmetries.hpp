@@ -8,9 +8,16 @@
 #define _HILBERT_SYM
 #include "../operators/symmetries.hpp"
 
+#ifdef USE_REAL_SECTORS
+    using elem_ty = double;
+	#pragma message ("--> Using real symmetry transformation")
+#else
+    using elem_ty = cpx;
+#endif
+
 class point_symmetric : public hilbert_space_base{
 	v_1d<op::genOp> _symmetry_group;
-	v_1d<cpx> _normalisation;
+	v_1d<elem_ty> _normalisation;
 	v_1d<int> _sectors;
 
 	int k_sector = 0;			//<! quasimomentum symmetry ector
@@ -19,11 +26,13 @@ class point_symmetric : public hilbert_space_base{
 	bool _real_k_sector = 1;	//<! is the k_sector real or complex?, i.e. k = 0, pi
 	
 	void generate_symmetry_goup(const v_1d<op::genOp>& sym_gen);
-	auto get_symmetry_normalization(u64 base_idx) const -> cpx;
+	auto get_symmetry_normalization(u64 base_idx) const -> elem_ty;
 
 	/// @brief 
 	virtual void init() override 
 		{ this->create_basis(); }
+	
+	typedef std::pair<u64, elem_ty> return_type;		// return type of operator, resulting state and value
 public:
     point_symmetric() = default;
 	point_symmetric(unsigned int L, const v_1d<op::genOp>& sym_gen, int _BC = 1, int k_sector = 0, int pos_of_parity = -1);
@@ -33,14 +42,14 @@ public:
 	virtual u64 operator()(u64 idx) override;
 	virtual u64 find(u64 element) override;
 
-	op::return_type find_SEC_representative(u64 base_idx) const;
+	return_type find_SEC_representative(u64 base_idx) const;
 
 	auto get_symmetry_group() const { return this-> _symmetry_group; }
 	auto get_normalisation()  const { return this-> _normalisation; }
 	auto get_norm(u64 idx)	  const { return this-> _normalisation[idx]; }
 	auto get_sectors() 		  const { return this-> _sectors; }
 
-	arma::sp_cx_mat symmetry_rotation() const;
+	arma::SpMat<elem_ty> symmetry_rotation() const;
 };
 
 
@@ -132,7 +141,7 @@ point_symmetric::generate_symmetry_goup(const v_1d<op::genOp>& sym_gen_in)
 /// @param base_idx find SEC for given input state
 /// @return SEC
 inline
-op::return_type 
+point_symmetric::return_type 
 point_symmetric::find_SEC_representative(u64 base_idx) const 
 {
 	u64 SEC = INT64_MAX;
@@ -144,22 +153,31 @@ point_symmetric::find_SEC_representative(u64 base_idx) const
 			return_val = return_value;
 		}
 	}
-	return std::make_pair(SEC, return_val);
+	#ifdef USE_REAL_SECTORS
+		return std::make_pair(SEC, std::real(return_val));
+	#else
+		return std::make_pair(SEC, return_val);
+	#endif
 }
 
 /// @brief Calculate normalisation for input state (sum off all symmetry eigenvalues for generators not changing input state)
 /// @param base_idx input state
 /// @return normalisation
 inline
-cpx 
+elem_ty 
 point_symmetric::get_symmetry_normalization(u64 base_idx) const 
 {
-	cpx normalisation = cpx(0.0, 0.0);
+	elem_ty normalisation = 0.0;
 	//for (unsigned int L = 0; l < this->_symmetry_group.size(); l++) {
 	for( auto &G : this->_symmetry_group){
 		auto [state, return_value] = G(base_idx);
-		if (state == base_idx)
-			normalisation += return_value;
+		#ifdef USE_REAL_SECTORS
+			if (state == base_idx)
+				normalisation += std::real(return_value);
+		#else
+			if (state == base_idx)
+				normalisation += return_value;
+		#endif
 	}
 	return std::sqrt(normalisation);
 }
@@ -167,17 +185,23 @@ point_symmetric::get_symmetry_normalization(u64 base_idx) const
 /// @brief Generate Unitary transformation to full hilbert space from reduced basis
 /// @return unitary transformation U
 inline
-arma::sp_cx_mat
+arma::SpMat<elem_ty>
 point_symmetric::symmetry_rotation() const
 {
 	const u64 dim_tot = ULLPOW(this->system_size);
-	arma::sp_cx_mat U(dim_tot, this->dim);
+	arma::SpMat<elem_ty> U(dim_tot, this->dim);
 #pragma omp parallel for
 	for (long int k = 0; k < this->dim; k++) {
 		for (auto& G : this->_symmetry_group) {
 			auto [idx, sym_eig] = G(this->mapping[k]);
+		
+		#ifdef USE_REAL_SECTORS
 			if(idx < dim_tot) // only if exists in sector
-				U(idx, k) += std::conj(sym_eig / (this->_normalisation[k] * sqrt(this->_symmetry_group.size())));
+				U(idx, k) += std::real(sym_eig / (this->_normalisation[k] * std::sqrt(this->_symmetry_group.size())));
+		#else
+			if(idx < dim_tot) // only if exists in sector
+				U(idx, k) += std::conj(sym_eig / (this->_normalisation[k] * std::sqrt(this->_symmetry_group.size())));
+		#endif
 			// CONJUNGATE YOU MORON CAUSE YOU RETURN TO FULL STATE, I.E. INVERSE MAPPING!!!!!! 
 		}
 	}
@@ -190,12 +214,12 @@ inline
 void point_symmetric::create_basis()
 {
 	//<! kernel for multithreaded mapping generation
-	auto mapping_kernel = [this](u64 start, u64 stop, std::vector<u64>& map_threaded, std::vector<cpx>& norm_threaded)
+	auto mapping_kernel = [this](u64 start, u64 stop, std::vector<u64>& map_threaded, std::vector<elem_ty>& norm_threaded)
 	{
 		for (u64 j = start; j < stop; j++){
 			auto SEC = std::get<0>(find_SEC_representative(j));
 			if (SEC == j) {
-				cpx N = get_symmetry_normalization(j);					// normalisation condition -- check if state in basis
+				elem_ty N = get_symmetry_normalization(j);					// normalisation condition -- check if state in basis
 				if (std::abs(N) > 1e-6) {
 					map_threaded.push_back(j);
 					norm_threaded.push_back(N);
@@ -211,14 +235,14 @@ void point_symmetric::create_basis()
 	else {
 		//Threaded
 		v_2d<u64> map_threaded(num_of_threads);
-		v_2d<cpx> norm_threaded(num_of_threads);
+		v_2d<elem_ty> norm_threaded(num_of_threads);
 		std::vector<std::thread> threads;
 		threads.reserve(num_of_threads);
 		for (int t = 0; t < num_of_threads; t++) {
 			start = (u64)(_powL / (double)num_of_threads * t);
 			stop = ((t + 1) == num_of_threads ? _powL : u64(_powL / (double)num_of_threads * (double)(t + 1)));
 			map_threaded[t] = v_1d<u64>();
-			norm_threaded[t] = v_1d<cpx>();
+			norm_threaded[t] = v_1d<elem_ty>();
 			threads.emplace_back(mapping_kernel, start, stop, ref(map_threaded[t]), ref(norm_threaded[t]));
 		}
 		for (auto& t : threads) t.join();

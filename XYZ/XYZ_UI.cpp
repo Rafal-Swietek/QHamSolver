@@ -9,9 +9,9 @@ void ui::make_sim(){
     printAllOptions();
     
     //check_symmetry_generators();
-    //compare_hamiltonian();
-    //compare_energies();
-    //return;
+    compare_hamiltonian();
+    compare_energies();
+    return;
 
     this->ptr_to_model = create_new_model_pointer();
 	
@@ -22,7 +22,7 @@ void ui::make_sim(){
 		diagonalize(); 
 		break;
 	case 1:
-		spectral_form_factor();
+		eigenstate_entanglement();
 		break;
 	default:
 		#define generate_scaling_array(name) arma::linspace(this->name, this->name + this->name##s * (this->name##n - 1), this->name##n);
@@ -63,7 +63,8 @@ void ui::make_sim(){
                                                                     this->syms.zx_sym = zx;
                                                                     this->syms.zz_sym = zz;
                                                                     this->reset_model_pointer();
-                                                                    this->diagonalize();
+                                                                    //this->diagonalize();
+                                                                    this->eigenstate_entanglement();
                                                                 };
                                         loopSymmetrySectors(kernel);
 
@@ -96,9 +97,16 @@ std::string ui::set_info(std::vector<std::string> skip, std::string sep) const
             ",e1=" + to_string_prec(this->eta1) + \
             ",e2=" + to_string_prec(this->eta2) + \
             ",hx=" + to_string_prec(this->hx) + \
-            ",hz=" + to_string_prec(this->hz) + \
-            ",w=" + to_string_prec(this->w) + \
-            ",pb=" + std::to_string((int)this->add_parity_breaking);
+            ",hz=" + to_string_prec(this->hz);
+        #ifdef USE_SYMMETRIES
+            if(this->boundary_conditions == 0)      name += ",k=" + std::to_string(this->syms.k_sym);
+            if(this->k_real_sec(this->syms.k_sym))  name += ",p=" + std::to_string(this->syms.p_sym);
+            if(this->use_flip_X())                  name += ",zx=" + std::to_string(this->syms.zx_sym);
+            if(this->use_flip_Z())                  name += ",zz=" + std::to_string(this->syms.zz_sym);
+        #else
+            name += ",w=" + to_string_prec(this->w) + \
+                    ",pb=" + std::to_string((int)this->add_parity_breaking);
+        #endif
 
 		auto tmp = split_str(name, ",");
 		std::string tmp_str = sep;
@@ -160,7 +168,7 @@ void ui::compare_hamiltonian()
     {
         auto symmetric_model = std::make_unique<QHamSolver<XYZsym>>(this->boundary_conditions, this->L, this->J1, this->J2, this->delta1, this->delta2, this->eta1, this->eta2,
                                                                         this->hx, this->hz, k, p, zx, zz);
-        auto U = symmetric_model->get_model().get_hilbert_space().symmetry_rotation();
+        auto U = symmetric_model->get_model_ref().get_hilbert_space().symmetry_rotation();
         arma::sp_cx_mat Hsym = cast_cx_sparse(symmetric_model->get_hamiltonian());
         H += U * Hsym * U.t();
     };
@@ -198,6 +206,75 @@ void ui::check_symmetry_generators()
         std::cout << std::endl;
     }
 }
+
+/// @brief 
+void ui::eigenstate_entanglement()
+{
+    clk::time_point start = std::chrono::system_clock::now();
+	
+	std::string dir = this->saving_dir + "Entropy" + kPSep + "Eigenstate" + kPSep;
+	createDirs(dir);
+	
+    int LA = this->site;
+	size_t dim = this->ptr_to_model->get_hilbert_size();
+	
+	std::string info = this->set_info();
+	std::string filename = info + "_subsize=" + std::to_string(LA);
+
+    #ifdef ARMA_USE_SUPERLU
+        const int size = this->ch? 500 : dim;
+        if(this->ch){
+            this->ptr_to_model->hamiltonian();
+            this->ptr_to_model->diag_sparse(true);
+        } else
+            this->ptr_to_model->diagonalization();
+    
+    #else
+        const int size = dim;
+        this->ptr_to_model->diagonalization();
+    #endif
+
+    std::cout << " - - - - - - FINISHED DIAGONALIZATION IN : " << tim_s(start) << " seconds - - - - - - " << std::endl; // simulation end
+    
+    start = std::chrono::system_clock::now();
+    const arma::vec E = this->ptr_to_model->get_eigenvalues();
+    const auto U = this->ptr_to_model->get_model_ref().get_hilbert_space().symmetry_rotation();
+
+    std::cout << " - - - - - - FINISHED CREATING SYMMETRY TRANSFORMATION IN : " << tim_s(start) << " seconds - - - - - - " << std::endl; // simulation end
+
+    arma::vec S(size, arma::fill::zeros);
+    
+    int th_num = this->thread_number;
+    omp_set_num_threads(1);
+    std::cout << th_num << "\t\t" << omp_get_num_threads() << std::endl;
+    
+    start = std::chrono::system_clock::now();
+#pragma omp parallel for num_threads(th_num) schedule(dynamic)
+    for(int n = 0; n < size; n++){
+        auto eigenstate = this->ptr_to_model->get_eigenState(n);
+        
+        arma::Col<element_type> state = U * eigenstate;
+        S(n) = entropy::schmidt_decomposition(state, LA, this->L);
+        double entro = entropy::vonNeumann(state, LA, this->L);
+        //if(std::abs(entro - S(n)) > 1e-14)
+        printSeparated(std::cout, "\t", 16, true, E(n), entro, S(n), std::abs(entro - S(n)));
+    }
+    std::cout << " - - - - - - FINISHED ENTROPY CALCULATION IN : " << tim_s(start) << " seconds - - - - - - " << std::endl; // simulation end
+    
+    E.save(arma::hdf5_name(dir + filename + ".hdf5", "energies"));
+	S.save(arma::hdf5_name(dir + filename + ".hdf5", "entropy", arma::hdf5_opts::append));
+    
+        
+    #ifdef ARMA_USE_SUPERLU
+        arma::Mat<element_type> V;
+        if(this->ch) V = this->ptr_to_model->get_eigenvectors();
+        else         V = this->ptr_to_model->get_eigenvectors().submat(0, this->ptr_to_model->E_av_idx - 50, dim - 1, this->ptr_to_model->E_av_idx + 50);
+    #else
+        arma::Mat<element_type> V = this->ptr_to_model->get_eigenvectors().submat(0, this->ptr_to_model->E_av_idx - 50, dim - 1, this->ptr_to_model->E_av_idx + 50);
+    #endif
+    V.save(arma::hdf5_name(dir + filename + ".hdf5", "eigenvectors",arma::hdf5_opts::append));
+}
+
 // -------------------------------------------------------------------------------------------------------------------------------------
 // ---------------------------------------------------------------------------------------------------------------- IMPLEMENTATION OF UI
 
@@ -283,10 +360,13 @@ void ui::parse_cmd_options(int argc, std::vector<std::string> argv)
     //<! SYMMETRIES
     choosen_option = "-k";
     this->set_option(this->syms.k_sym, argv, choosen_option);
+
     choosen_option = "-p";
     this->set_option(this->syms.p_sym, argv, choosen_option);
+    
     choosen_option = "-zx";
     this->set_option(this->syms.zx_sym, argv, choosen_option);
+    
     choosen_option = "-zz";
     this->set_option(this->syms.zz_sym, argv, choosen_option);
 
@@ -424,14 +504,14 @@ void ui::printAllOptions() const{
 
 		  << "hz  = " << this->hz << std::endl
 		  << "hzn = " << this->hzn << std::endl
-		  << "hzs = " << this->hzs << std::endl
+		  << "hzs = " << this->hzs << std::endl;
     #ifdef USE_SYMMETRIES
-		  << "k  = " << this->syms.k_sym << std::endl
-		  << "p  = " << this->syms.p_sym << std::endl
-		  << "zx  = " << this->syms.zx_sym << std::endl
-		  << "zz  = " << this->syms.zz_sym << std::endl
+		  if(this->boundary_conditions == 0)        std::cout << "k  = " << this->syms.k_sym << std::endl;
+		  if(this->k_real_sec(this->syms.k_sym))    std::cout << "p  = " << this->syms.p_sym << std::endl;
+		  if(this->use_flip_X())                    std::cout << "zx  = " << this->syms.zx_sym << std::endl;
+		  if(this->use_flip_Z())                    std::cout << "zz  = " << this->syms.zz_sym << std::endl;
     #else
-		  << "seed  = " << this->seed << std::endl
+		 std::cout  << "seed  = " << this->seed << std::endl
 		  << "realisations  = " << this->realisations << std::endl
 		  << "honid  = " << this->jobid << std::endl
 		  << "w  = " << this->w << std::endl
@@ -439,7 +519,7 @@ void ui::printAllOptions() const{
 		  << "wn = " << this->wn << std::endl
 		  << "add parity breaking term = " << this->add_parity_breaking 
     #endif
-          << std::endl;
+          std::cout << std::endl;
     printSeparated(std::cout, "\t", 16, true, "----------------------------------------------------------------------------------------------------");
 }   
 
