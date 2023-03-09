@@ -4,7 +4,7 @@ scaling of the critical point with system size.
 """
 
 import numpy as np
-from config import hamiltonian
+#from config import hamiltonian
 
 def _crit_free(size, *args):
     """
@@ -13,7 +13,7 @@ def _crit_free(size, *args):
     For Ising chain the sizes are: 11,12,13,14,...
     """
     crit = np.array(args)
-    idx = int( (size - 12) / 2 if hamiltonian == 1 else size - 11 )
+    idx = size - 10
     return crit[idx]
 
 def _crit_free_inv(size, *args):
@@ -23,7 +23,7 @@ def _crit_free_inv(size, *args):
     For Ising chain the sizes are: 11,12,13,14,...
     """
     crit = 1. / np.array(args)
-    idx = int( (size - 12) / 2 if hamiltonian == 1 else size - 11 )
+    idx = size - 10
     return crit[idx]
 
 def _crit_const(size, x0):
