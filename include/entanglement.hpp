@@ -27,7 +27,7 @@ namespace entaglement{
     auto reduced_density_matrix(
         const arma::Col<_ty>& state,//<! input state in full Hilbert space
         int A_size,                 //<! subsystem size
-        int L,                      //<! system size
+        unsigned int L,                      //<! system size
         int config = 2              //<! on-site configuration number
         ) 
         -> arma::Mat<_ty> 
@@ -56,7 +56,7 @@ namespace entaglement{
     auto reduced_density_matrix_sym(
         const arma::Col<_ty>& state, //<! input state in full Hilbert space
         int A_size,                  //<! subsystem size
-        int L,                       //<! system size
+        unsigned int L,                       //<! system size
         const v_1d<u64>& full_map,   //<! mapping to specific symmetry sector
         int config = 2               //<! on-site configuration number
         ) 
@@ -104,7 +104,7 @@ namespace entropy{
     double vonNeumann(
         const arma::Col<_ty>& state,                //<! input state in full Hilbert space
         int A_size,                                 //<! subsystem size
-        int L,                                      //<! system size
+        unsigned int L,                                      //<! system size
         const v_1d<u64>& full_map = v_1d<u64>()     //<! mapping to specific symmetry sector
         ){
     	arma::Mat<_ty> rho = full_map.empty()? entaglement::reduced_density_matrix(state, A_size, L)
@@ -133,7 +133,7 @@ namespace entropy{
     inline
     arma::vec vonNeumann(
         const arma::Col<_ty>& state,                //<! input state in full Hilbert space
-        int L,                                      //<! system size
+        unsigned int L,                                      //<! system size
         const v_1d<u64>& full_map = v_1d<u64>()     //<! mapping to specific symmetry sector
     ){
     	arma::vec _entropy(L - 1, arma::fill::zeros);
@@ -160,7 +160,7 @@ namespace entropy{
     double reyni_entropy(
         const arma::Col<_ty>& state,
         int A_size,
-        int L,
+        unsigned int L,
         int alfa,
         const v_1d<u64>& full_map = v_1d<u64>()
         ) {
@@ -188,7 +188,7 @@ namespace entropy{
     double shannon_entropy(
         const arma::Col<_ty>& state,                //<! input state in full Hilbert space
         int A_size,                                 //<! subsystem size
-        int L,                                      //<! system size
+        unsigned int L,                                      //<! system size
         const v_1d<u64>& full_map = v_1d<u64>()     //<! mapping to specific symmetry sector
         ) {
     	arma::Mat<_ty> rho = full_map.empty()? entaglement::reduced_density_matrix(state, A_size, L)
@@ -216,7 +216,7 @@ namespace entropy{
     auto schmidt_decomposition(
         const arma::Col<_ty>& state,
         int A_size,
-        int L,
+        unsigned int L,
         int config = 2
         )
     {

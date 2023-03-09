@@ -28,5 +28,6 @@ DISABLE_OVERFLOW;
 #endif
 
 #include <armadillo>
-	
+#undef ARMA_USE_SUPERLU
+
 DISABLE_WARNING_POP

@@ -7,6 +7,11 @@ namespace op {
 	//! ------------------------------------------------------------------------------------------------ MULTIPLICATION
 	//! ----------------------------------------------------------- with another class instance
 	//! --	 X = operators<...> * operators<...> implementation
+	/// @brief Product with template expansion of operator (lhs) and another operator (rhs)
+	/// @tparam ..._ty variadic template of operator (lhs)
+	/// @tparam ..._ty3 variadic template of input operator (rhs)
+	/// @param opFun input kernel function
+	/// @return operator with kernel being product of invocing operator (lhs) and input operator (rhs)
 	template <typename... _ty> 
 	template <typename... _ty2>
 	inline 
@@ -26,7 +31,12 @@ namespace op {
 	}
 
 	//! ----------------------------------------------------------- with another function 
-	//! --	 X = operators<...> * fun<...> implementation
+	//! --	 X = (this) * fun<...> implementation
+	/// @brief Product with template expansion of operator (lhs) and kernel functions (rhs)
+	/// @tparam ..._ty variadic template of operator (lhs)
+	/// @tparam ..._ty3 variadic template of input kernel (rhs)
+	/// @param opFun input kernel function
+	/// @return operator with kernel being product of invocing operator (lhs) and input kernel function (rhs)
 	template <typename... _ty>
 	template <typename... _ty2>
 	inline 
@@ -44,7 +54,11 @@ namespace op {
 	
 	//! ------------------------------------------------------------------------------------------------ MULTIPLICATION WITNO NO TEMPLATE EXPANSION
 	//! ----------------------------------------------------------- with another class instance
-	//! --	 X = operators<...> * operators<...> implementation
+	//! --	 X = (this) * operators<...> implementation
+	/// @brief Product with no template expansion of operator (lhs) and anothe operator (rhs)
+	/// @tparam ..._ty variadic template of operator (and same for input operator)
+	/// @param opFun input kernel function
+	/// @return operator with kernel being simple product of invocing operator (lhs) and input operator (rhs)
 	template <typename... _ty>
 	inline 
 	auto generic_operator<_ty...>::
@@ -63,9 +77,12 @@ namespace op {
 	}
 
 	//! --	 X *= operators<...> implementation
+	/// @brief Self - product with no template expansion of operator (invocing) and input operator (after %=)
+	/// @tparam ..._ty variadic template of operator (and same for input operator)
+	/// @param _operator input operator
 	template <typename... _ty>
 	inline 
-	auto generic_operator<_ty...>::
+	void generic_operator<_ty...>::
 		operator%=(const generic_operator<_ty...>& _operator)
 	{
 		assert_hilbert_space(_operator);
@@ -74,13 +91,16 @@ namespace op {
 	}
 
 	//! ----------------------------------------------------------- with another function 
-	//! --	 X = operators<...> * fun<...> implementation
+	//! --	X = (this) * f<...>() implementation
+	/// @brief Product with no template expansion of operator (lhs) and kernel function (rhs)
+	/// @tparam ..._ty variadic template of operator (and same for function)
+	/// @param opFun input kernel function
+	/// @return operator with kernel being simple product of invocing operator (lhs) and input kernel (rhs)
 	template <typename... _ty>
 	inline 
 	auto generic_operator<_ty...>::
 		operator%(const std::function<return_type(u64, _ty...)>& opFun)
-		const
-		-> generic_operator<_ty...>
+		const -> generic_operator<_ty...>
 	{
 		return generic_operator<_ty...>(
 			this->L, std::move(this->_kernel % opFun), this->opVal);

@@ -68,14 +68,23 @@ _ty my_abs(_ty value)
 /// @tparam T 
 /// @param a_value 
 /// @return 
-template <typename T>
+template <typename _ty>
 inline
-int order_of_magnitude(const T a_value) {
-	if(a_value < 1.0 && a_value != 0){
-		T m = std::abs(std::log10(my_abs(a_value)));
-		return int(std::max(std::ceil(m) + 1., 2.));
+int order_of_magnitude(const _ty a_value) {
+	if(a_value != 0){
+		std::string num_str = std::to_string(a_value - int(a_value) );
+
+        num_str.erase ( num_str.find_last_not_of('0') + 1, std::string::npos );
+        num_str.erase ( num_str.find_last_not_of('.') + 1, std::string::npos );
+		int len = num_str.find_last_of('.');
+
+		num_str.erase(0,len+1);
+		len = num_str.length();
+        if(num_str == "0")
+            len = 0;
+		return len;
 	}
-	else return 2;
+	else return 0;
 }
 
 /// @brief Print value of any type to custom precision
@@ -147,6 +156,20 @@ void apply_permutation(
 
 //-------------------------------------------------------------------------------------------------------------- ADDITIONAL TOOLS
 
+inline
+std::complex<double> pow_im(unsigned int power){
+	const int num = power % 4;
+	switch(num){
+		case 0: return std::complex<double>(1.0, 0.0);		//  1
+		case 1: return std::complex<double>(0.0, 1.0);		//  i
+		case 2: return std::complex<double>(-1.0, 0.0);		// -1
+		case 3: return std::complex<double>(0.0, -1.0);		// -i
+	default:
+		_assert_(false, "Only integer positive powers. You fucked uo mate!");
+		return 0.0;
+	}
+}
+
 /// @brief Gets the sign of input value
 /// @tparam T template parameter
 /// @param val input value
@@ -169,8 +192,8 @@ std::ostream& operator<<(
 	const std::vector<_type>& vec	//<! vector to print
 ) {
 	if (vec.size() != 0) {
-		std::copy(vec.begin(), vec.end() - 1, std::ostream_iterator<_type>(os, " "));
-		os << vec.back() << ' ';
+		std::copy(vec.begin(), vec.end() - 1, std::ostream_iterator<_type>(os, "\n"));
+		os << vec.back() << '\n';
 	}
 	else
 		os << "Empty container!" << std::endl;

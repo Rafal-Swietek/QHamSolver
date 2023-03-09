@@ -21,18 +21,34 @@ class U1_hilbert_space : public hilbert_space_base
     /// @tparam U1_sym What kind of U(1) symmetry> charge, spin, etc?
     /// @tparam spinless If chosen U1_sym==charge, are the fermions spinless?
     virtual void init() override {
-        switch(U1_sym){
-        case U1::spin :
+        
+        //<! check if input sector is allowed by system
+        //switch(U1_sym){
+        //case U1::spin :
+        //    this->max_sector = this->system_size / 2.;
+        //    this->min_sector = -this->system_size / 2.;
+        //case U1::charge :
+        //    this->max_sector = (spinless? 1 : 2) * this->system_size;
+        //    this->min_sector = 0;
+        //}
+        if constexpr (U1_sym == U1::spin){
             this->max_sector = this->system_size / 2.;
             this->min_sector = -this->system_size / 2.;
-        case U1::charge :
+        } else if constexpr (U1_sym == U1::spin){
             this->max_sector = (spinless? 1 : 2) * this->system_size;
             this->min_sector = 0;
+        } else {
+            this->max_sector = 0;
+            this-min_sector = 0;
         }
         bool allowed_sector = (this->U1_sector < this->max_sector && this->U1_sector > this->min_sector);
+        
         if(allowed_sector == false)
             std::cout << this->U1_sector << "\t\t" << this->min_sector << "\t\t" << this->max_sector << "\t\t" << std::endl;
+
         _assert_( (allowed_sector == false), NOT_ALLOWED_SYMETRY_SECTOR);
+
+        //<! create basis for given sector
         this->create_basis();
     }
     
@@ -41,16 +57,22 @@ class U1_hilbert_space : public hilbert_space_base
     /// @return true or false whether element is allowed
     bool check_if_allowed_element(u64 idx)
     {
-        switch(U1_sym){
-        case U1::spin :    return __builtin_popcountll(idx) - this->system_size / 2. == this->U1_sector;
-        case U1::charge :  return __builtin_popcountll(idx) == this->U1_sector;
-        default:
+        //switch(U1_sym){
+        //case U1::spin :    return __builtin_popcountll(idx) - this->system_size / 2. == this->U1_sector;
+        //case U1::charge :  return __builtin_popcountll(idx) == this->U1_sector;
+        //default:
+        //    return __builtin_popcountll(idx) - this->system_size / 2. == this->U1_sector;
+        //}
+        if constexpr (U1_sym == U1::spin)
             return __builtin_popcountll(idx) - this->system_size / 2. == this->U1_sector;
-        }
+        else if constexpr (U1_sym == U1::spin)
+            return __builtin_popcountll(idx) == this->U1_sector;
+        else
+            return idx;
     }
 public:
     U1_hilbert_space() = default;
-    U1_hilbert_space(int L, float sector = 0)
+    U1_hilbert_space(unsigned int L, float sector = 0)
     { 
         this->system_size = L; 
         this->U1_sector = sector; 
@@ -97,7 +119,6 @@ public:
     /// @brief Overloaded operator to access elements in hilbert space
     /// @param idx Index of element in hilbert space
     /// @return Element of hilbert space at position 'index'
-    _nodiscard
     virtual
     u64 operator()(u64 idx) override
         { _assert_((idx < this->dim), OUT_OF_MAP);
@@ -107,7 +128,6 @@ public:
     /// @brief Find index of element in hilbert space
     /// @param element element to find its index
     /// @return index of element 'element'
-    _nodiscard
     virtual 
     u64 find(u64 element) override
         { return binary_search(this->mapping, 0, this->dim - 1, element); }

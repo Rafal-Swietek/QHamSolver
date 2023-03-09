@@ -38,7 +38,9 @@ protected:
 	std::string getCmdOption(const v_1d<std::string>& vec, std::string option) const;					 	// get the option from cmd input
 
 	// ----------------------------------- TEMPLATES
-
+	typedef std::unique_ptr<QHamSolver<Hamiltonian>> model_pointer;
+    typedef typename Hamiltonian::element_type element_type;
+	
 	template <typename _ty>
 	void set_option(_ty& value, const v_1d<std::string>& argv, 
                         std::string choosen_option, bool geq_0 = false);					        // set an option
@@ -47,7 +49,7 @@ protected:
 	//void set_default_msg(_ty& value, string option, string message, 
     //                                const unordered_map <string, string>& map) const;	    // setting value to default and sending a message
 
-    int L, Ls, Ln;										// lattice params
+    unsigned int L, Ls, Ln;								// lattice params
     bool ch;											// boolean values
     int realisations;									// number of realisations to average on for disordered case - symmetries got 1
     size_t seed;										// radnom seed for random generator
@@ -63,7 +65,7 @@ protected:
     int op;												// choose operator
     int fun;											// choose function to start calculations
 
-	std::shared_ptr<QHamSolver<Hamiltonian>> ptr_to_model;
+	model_pointer ptr_to_model;
 public:
 	virtual ~user_interface() = default;
 
@@ -87,7 +89,10 @@ public:
 	std::vector<std::string> parse_input_file(string filename) const;					// if the input is taken from file we need to make it look the same way as the command line does
 
 	// ------------------------------------------------- SIMULATIONS
-	virtual void make_sim() = 0;
+	virtual model_pointer create_new_model_pointer() = 0;
+	virtual void reset_model_pointer() = 0;
+
+	virtual void make_sim() = 0;			//<! main simulation funciton
 
 	// ------------------------------------------------- MAIN ROUTINES
 	template <
@@ -111,6 +116,7 @@ public:
 	virtual void diagonalize();
 	virtual void spectral_form_factor();
 	virtual void average_sff();
+	virtual void eigenstate_entanglement() = 0;
 };
 
 // MOVE TO USER_INTERFACE_IMPL.HPP
@@ -294,25 +300,27 @@ void user_interface<Hamiltonian>::parse_cmd_options(int argc, std::vector<std::s
 	//---------- SIMULATION PARAMETERS
 	// system size
 	choosen_option = "-L";
-	this->set_option(this->L, argv, choosen_option);
+	this->set_option(this->L, argv, choosen_option, true);
 	choosen_option = "-Ls";
-	this->set_option(this->Ls, argv, choosen_option, false);
+	this->set_option(this->Ls, argv, choosen_option);
 	choosen_option = "-Ln";
-	this->set_option(this->Ln, argv, choosen_option);
+	this->set_option(this->Ln, argv, choosen_option, true);
 
 	// boundary condition
 	choosen_option = "-b";
-	this->set_option(this->boundary_conditions, argv, choosen_option);
+	this->set_option(this->boundary_conditions, argv, choosen_option, true);
 	if (this->boundary_conditions > 2)
 		_assert_(false, "max boundary condition is 2");
 
 	// choose site
 	choosen_option = "-s";
 	this->set_option(this->site, argv, choosen_option);
+	if(this->site < 0)
+		this->site = this->L / 2;
 
 	// choose operator
 	choosen_option = "-op";
-	this->set_option(this->op, argv, choosen_option);
+	this->set_option(this->op, argv, choosen_option, true);
 	
 	// q for participation ration calculation
 	choosen_option = "-q_ipr";
@@ -320,15 +328,15 @@ void user_interface<Hamiltonian>::parse_cmd_options(int argc, std::vector<std::s
 
 	// boolean value
 	choosen_option = "-ch";
-	this->set_option(this->ch, argv, choosen_option);
+	this->set_option(this->ch, argv, choosen_option, true);
 	
 	// disorder
 	choosen_option = "-jobid";
-	this->set_option(this->jobid, argv, choosen_option);
+	this->set_option(this->jobid, argv, choosen_option, true);
 	choosen_option = "-seed";
-	this->set_option(this->seed, argv, choosen_option);
+	this->set_option(this->seed, argv, choosen_option, true);
 	choosen_option = "-r";
-	this->set_option(this->realisations, argv, choosen_option);
+	this->set_option(this->realisations, argv, choosen_option, true);
 
 	//choose dimensionality
 	choosen_option = "-beta";
@@ -336,17 +344,17 @@ void user_interface<Hamiltonian>::parse_cmd_options(int argc, std::vector<std::s
 
 	// choose function
 	choosen_option = "-fun";
-	this->set_option(this->fun, argv, choosen_option, false);
+	this->set_option(this->fun, argv, choosen_option, true);
 
 	// buckets
 	choosen_option = "-mu";
-	this->set_option(this->mu, argv, choosen_option);
+	this->set_option(this->mu, argv, choosen_option, true);
 	choosen_option = "-num_of_points";
-	this->set_option(this->num_of_points, argv, choosen_option);
+	this->set_option(this->num_of_points, argv, choosen_option, true);
 
 	// thread number
 	choosen_option = "-th";
-	this->set_option(this->thread_number, argv, choosen_option);
+	this->set_option(this->thread_number, argv, choosen_option, true);
 	this->thread_number /= outer_threads;
 	if (this->thread_number > std::thread::hardware_concurrency())
 		_assert_(false, "Wrong number of threads. Exceeding hardware\n");
@@ -384,6 +392,10 @@ void user_interface<Hamiltonian>::diagonalize(){
 	{
 		int real = realis + this->jobid;
 		std::string _suffix = "_real=" + std::to_string(real);
+		#ifdef USE_SYMMETRIES
+			//<! no suffix for symmetric model
+			_suffix = "";
+		#endif
 		std::string info = this->set_info({});
 		std::cout << "\n\t\t--> finished creating model for " << info + _suffix << " - in time : " << tim_s(start) << "s" << std::endl;
 		
@@ -394,18 +406,18 @@ void user_interface<Hamiltonian>::diagonalize(){
 		
 		std::cout << "\t\t	--> finished diagonalizing for " << info + _suffix << " - in time : " << tim_s(start) << "s" << std::endl;
 		
-		std::cout << eigenvalues.t() << std::endl;
+		//std::cout << eigenvalues.t() << std::endl;
 
 		std::string name = dir + info + _suffix + ".hdf5";
-		eigenvalues.save(arma::hdf5_name(name, "eigenvalues/", arma::hdf5_opts::append));
+		eigenvalues.save(arma::hdf5_name(name, "eigenvalues", arma::hdf5_opts::append));
 		std::cout << "\t\t	--> finished saving eigenvalues for " << info + _suffix << " - in time : " << tim_s(start) << "s" << std::endl;
 		if(this->ch){
 			auto H = ptr_to_model->get_dense_hamiltonian();
-			H.save(arma::hdf5_name(name, "hamiltonian/" + _suffix, arma::hdf5_opts::append));
+			H.save(arma::hdf5_name(name, "hamiltonian", arma::hdf5_opts::append));
 			std::cout << "\t\t	--> finished saving Hamiltonian for " << info << " - in time : " << tim_s(start) << "s" << std::endl;
 
 			auto V = ptr_to_model->get_eigenvectors();
-			V.save(arma::hdf5_name(name, "eigenvectors/" + _suffix, arma::hdf5_opts::append));
+			V.save(arma::hdf5_name(name, "eigenvectors", arma::hdf5_opts::append));
 			std::cout << "\t\t	--> finished saving eigenvectors for " << info << " - in time : " << tim_s(start) << "s" << std::endl;
 		}
 	};
@@ -597,8 +609,8 @@ void user_interface<Hamiltonian>::average_sff(){
 	double Z_folded = 0.0;
 	double r1 = 0.0;
 	double r2 = 0.0;
-	double tH = 0.;
-	double tH_typ = 0.;
+	double wH = 0.;
+	double wH_typ = 0.;
 	size_t dim = ptr_to_model->get_hilbert_size();
 	int counter_realis = 0;
 	
@@ -625,8 +637,8 @@ void user_interface<Hamiltonian>::average_sff(){
 			Z += data[2](0);
 			r1 += data[3](0);
 			r2 += data[4](0);
-			tH += data[5](0);
-			tH_typ += data[6](0);
+			wH += data[5](0);
+			wH_typ += data[6](0);
 			counter_realis++;
 		}
 
@@ -653,8 +665,8 @@ void user_interface<Hamiltonian>::average_sff(){
 	r2 /= norm;
 	sff = sff / Z;
 	sff_fold = sff_fold / Z_folded;
-	tH /= norm;
-	tH_typ /= norm;
+	wH /= norm;
+	wH_typ /= norm;
 
 	// ---------- find Thouless time
 	double eps = 5e-2;
@@ -683,8 +695,8 @@ void user_interface<Hamiltonian>::average_sff(){
 			delta_min = delta;
 			thouless_time_fold = times_fold(i); 
 		}
-		if(times_fold(i) >= 2.5 * tH) break;
+		if(times_fold(i) >= 2.5 / wH) break;
 	}
-	save_to_file(dir + info + ".dat", 			 times, 	 sff, 	   tH, thouless_time, 	   r1, r2, dim, tH_typ);
-	save_to_file(dir + "folded" + info + ".dat", times_fold, sff_fold, tH, thouless_time_fold, r1, r2, dim, tH_typ);
+	save_to_file(dir + info + ".dat", 			 times, 	 sff, 	   wH, thouless_time, 	   r1, r2, dim, wH_typ);
+	save_to_file(dir + "folded" + info + ".dat", times_fold, sff_fold, wH, thouless_time_fold, r1, r2, dim, wH_typ);
 }

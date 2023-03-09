@@ -31,7 +31,7 @@ namespace op {
 #include "generic_operator_impl.hpp"
 //#include "generic_operator_const_index_impl.h"
 //#include "local_operators.h"
-#include "symmetries.hpp"
+//#include "symmetries.hpp"
 
 #include "compiler_setup/typedef_operators.h"
 #endif

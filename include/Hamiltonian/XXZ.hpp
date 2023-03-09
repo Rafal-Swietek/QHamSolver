@@ -48,7 +48,7 @@ public:
     //<! ----------------------------------------------------- CONSTRUCTORS
     XXZ() = default;
     XXZ(std::istream& os);
-    XXZ(int _BC, int L, double J1, double delta1, 
+    XXZ(int _BC, unsigned int L, double J1, double delta1, 
             double w, const u64 _seed = std::random_device{}(), 
             double J2 = 0, double delta2 = 0);
 
@@ -77,7 +77,7 @@ public:
 /// @param J2 next-nearest neighbour coupling
 /// @param delta2 next-nearest neighbour interaction
 template <int U1_sector>
-XXZ<U1_sector>::XXZ(int _BC, int L, double J1, double delta1, double w, 
+XXZ<U1_sector>::XXZ(int _BC, unsigned int L, double J1, double delta1, double w, 
                         const u64 _seed, double J2, double delta2)
 { 
     this->_boundary_condition = _BC;

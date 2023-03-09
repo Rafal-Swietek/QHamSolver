@@ -23,7 +23,7 @@
 /// @param add_parity_breaking add edge term to break parity (if no disorder present)
 /// @param w uniformly distributed disorder
 /// @param seed random seed for disorder
-XYZ::XYZ(int _BC, int L, double J1, double J2, double delta1, double delta2, double eta1, double eta2,
+XYZ::XYZ(int _BC, unsigned int L, double J1, double J2, double delta1, double delta2, double eta1, double eta2,
             double hx, double hz, bool add_parity_breaking, double w, const u64 seed)
 { 
     CONSTRUCTOR_CALL;
@@ -168,7 +168,7 @@ std::ostream& XYZ::write(std::ostream& os) const
 
     printSeparated(os, "\t", 16, true, "J_2", this->_J2);
     printSeparated(os, "\t", 16, true, "\u0394_2", this->_delta2);
-    printSeparated(os, "\t", 16, true, "\u03B7_1", this->_eta2);
+    printSeparated(os, "\t", 16, true, "\u03B7_2", this->_eta2);
     printSeparated(os, "\t", 16, true, "seed", this->_seed);
     printSeparated(os, "\t", 16, true, "----------------------------------------------------------------------------------------------------");
     printSeparated(os, "\t", 16, true, "----------------------------------------------------------------------------------------------------");

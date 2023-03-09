@@ -21,7 +21,6 @@ namespace op {
 	namespace __builtins {
 
 		//! pre-calculate powers at operator setting level
-		_nodiscard
 		inline
 		auto calculate_powers() -> std::vector<u64>
 		{
@@ -35,9 +34,8 @@ namespace op {
 		//! ---------------------------------------------- SYMMETRY GENERATORS
 		//! 
 		//! parity generator: inverse order of binary/octal/.. string, i.e->binary-> P * |010111> = |111010>
-		_nodiscard
 		inline
-		auto parity(int L) -> _global_fun
+		auto parity(unsigned int L) -> _global_fun
 		{
 			return [L](u64 n)
 			{
@@ -53,39 +51,36 @@ namespace op {
 		};
 		//!
 		//! spin-flip generator: flip all digits of binary/octal/.. string, i.e->binary-> Z * |010111> = |101000>
-		_nodiscard
 		inline
-		auto spin_flip_x(int L) -> _global_fun
+		auto spin_flip_x(unsigned int L) -> _global_fun
 			{ return [L](u64 n) { return std::make_pair(powers[L] - 1 - n, 1.0); }; };
 		
-		_nodiscard
 		inline
-		auto spin_flip_y(int L) -> _global_fun
+		auto spin_flip_y(unsigned int L) -> _global_fun
 			{ 
 				static_check((config == 2), ONLY_SPIN_HALF_OEPRATOR);
 				return [L](u64 n) { 
 							const int _num_of_down_spins = L - __builtin_popcountll(n);
 							double sign = -2.0 * (_num_of_down_spins % 2) + 1.0;
-							return std::make_pair(powers[L] - 1 - n, im * sign); 
+							return std::make_pair(powers[L] - 1 - n, pow_im(L) * sign); 
 						}; 
 			};
 		
-		_nodiscard
 		inline
-		auto spin_flip_z(int L) -> _global_fun
+		auto spin_flip_z(unsigned int L) -> _global_fun
 			{ 
 				static_check((config == 2), ONLY_SPIN_HALF_OEPRATOR);
 				return [L](u64 n) { 
 							const int _num_of_down_spins = L - __builtin_popcountll(n);
-							return std::make_pair(n, -2.0 * (_num_of_down_spins % 2) + 1.0); 
+							double sign = -2.0 * (_num_of_down_spins % 2) + 1.0;
+							return std::make_pair(n, sign); 
 						}; 
 			};
 		
 
 		//! translation generator: shift order of binary/octal/.. string to the left, i.e->binary-> T * |010111> = |101110>
-		_nodiscard
 		inline
-		auto translation(int L) -> _global_fun
+		auto translation(unsigned int L) -> _global_fun
 		{
 			return [L](u64 n)
 					{
@@ -104,9 +99,8 @@ namespace op {
 
 		//! ---------------------------------------------- OTHER BIT OEPRATIONS
 		//! checks the digit at the current position
-		_nodiscard
 		inline
-		auto get_digit(int L) -> _ifun
+		auto get_digit(unsigned int L) -> _ifun
 		{
 			return [L](u64 n, int bit_pos)
 					{
@@ -116,9 +110,8 @@ namespace op {
 		};
 
 		//! flips a bit at the specified position
-		_nodiscard
 		inline
-		auto flip(int L) -> _local_fun
+		auto flip(unsigned int L) -> _local_fun
 		{
 			return [L](u64 n, int bit_pos)
 				{
@@ -133,7 +126,7 @@ namespace op {
 
 	inline
 	auto
-	choose_symmetry(__builtin_operators sym, int L)
+	choose_symmetry(__builtin_operators sym, unsigned int L)
 	{
 		switch(sym){
 			case __builtin_operators::T: 		return __builtins::translation(L);
@@ -142,7 +135,8 @@ namespace op {
 			case __builtin_operators::Zy: 		return __builtins::spin_flip_y(L);
 			case __builtin_operators::Zz: 		return __builtins::spin_flip_z(L);
 			default:
-				std::cout << "No other operator implemented" << std::endl;
+				std::cout << "No other operator implemented. Using translation as default" << std::endl;
+				return __builtins::translation(L);
 		}
 	}
 };
