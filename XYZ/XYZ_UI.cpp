@@ -9,10 +9,10 @@ void ui::make_sim(){
     printAllOptions();
     
     //check_symmetry_generators();
-    compare_hamiltonian();
-    compare_energies();
-    return;
-
+    //compare_hamiltonian();
+    //compare_energies();
+    //return;
+//
     this->ptr_to_model = create_new_model_pointer();
 	
 	clk::time_point start = std::chrono::system_clock::now();
@@ -62,9 +62,11 @@ void ui::make_sim(){
                                                                     this->syms.p_sym = p;
                                                                     this->syms.zx_sym = zx;
                                                                     this->syms.zz_sym = zz;
+                                                                    
                                                                     this->reset_model_pointer();
                                                                     //this->diagonalize();
                                                                     this->eigenstate_entanglement();
+
                                                                 };
                                         loopSymmetrySectors(kernel);
 
@@ -255,9 +257,9 @@ void ui::eigenstate_entanglement()
         
         arma::Col<element_type> state = U * eigenstate;
         S(n) = entropy::schmidt_decomposition(state, LA, this->L);
-        double entro = entropy::vonNeumann(state, LA, this->L);
+        //double entro = entropy::vonNeumann(state, LA, this->L);
         //if(std::abs(entro - S(n)) > 1e-14)
-        printSeparated(std::cout, "\t", 16, true, E(n), entro, S(n), std::abs(entro - S(n)));
+        //printSeparated(std::cout, "\t", 16, true, E(n), entro, S(n), std::abs(entro - S(n)));
     }
     std::cout << " - - - - - - FINISHED ENTROPY CALCULATION IN : " << tim_s(start) << " seconds - - - - - - " << std::endl; // simulation end
     
@@ -490,10 +492,13 @@ void ui::printAllOptions() const{
 		  << "J2n = " << this->J2n << std::endl
 		  << "J2s = " << this->J2s << std::endl
 
+          << "\u03B7_1  = " << this->eta1 << std::endl
+		  << "\u03B7_2  = " << this->eta2 << std::endl
+
 		  << "delta1  = " << this->delta1 << std::endl
 		  << "delta1n = " << this->delta1n << std::endl
 		  << "delta1s = " << this->delta1s << std::endl
-
+		  
 		  << "delta2  = " << this->delta2 << std::endl
 		  << "delta2n = " << this->delta2n << std::endl
 		  << "delta2s = " << this->delta2s << std::endl

@@ -315,6 +315,8 @@ void user_interface<Hamiltonian>::parse_cmd_options(int argc, std::vector<std::s
 	// choose site
 	choosen_option = "-s";
 	this->set_option(this->site, argv, choosen_option);
+	if(this->site < 0)
+		this->site = this->L / 2;
 
 	// choose operator
 	choosen_option = "-op";
