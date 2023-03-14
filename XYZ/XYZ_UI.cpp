@@ -8,10 +8,10 @@ namespace XYZ_UI{
 void ui::make_sim(){
     printAllOptions();
     
-    //check_symmetry_generators();
+    check_symmetry_generators();
     //compare_hamiltonian();
     //compare_energies();
-    //return;
+    return;
 //
     this->ptr_to_model = create_new_model_pointer();
 	
@@ -221,7 +221,7 @@ void ui::eigenstate_entanglement()
 	size_t dim = this->ptr_to_model->get_hilbert_size();
 	
 	std::string info = this->set_info();
-	std::string filename = info + "_subsize=" + std::to_string(LA);
+	std::string filename = info;// + "_subsize=" + std::to_string(LA);
 
     #ifdef ARMA_USE_SUPERLU
         const int size = this->ch? 500 : dim;
@@ -240,26 +240,36 @@ void ui::eigenstate_entanglement()
     
     start = std::chrono::system_clock::now();
     const arma::vec E = this->ptr_to_model->get_eigenvalues();
-    const auto U = this->ptr_to_model->get_model_ref().get_hilbert_space().symmetry_rotation();
-
+    
+    #ifdef USE_SYMMETRIES
+        const auto U = this->ptr_to_model->get_model_ref().get_hilbert_space().symmetry_rotation();
+        auto transform = [&](const auto& state)
+                                { return U * state; };
+    #else
+        auto transform = [&](const auto& state)
+                                { return state; };
+    #endif
     std::cout << " - - - - - - FINISHED CREATING SYMMETRY TRANSFORMATION IN : " << tim_s(start) << " seconds - - - - - - " << std::endl; // simulation end
 
-    arma::vec S(size, arma::fill::zeros);
-    
+    arma::mat S(size, this->L / 2 + 1, arma::fill::zeros);
     int th_num = this->thread_number;
     omp_set_num_threads(1);
     std::cout << th_num << "\t\t" << omp_get_num_threads() << std::endl;
     
-    start = std::chrono::system_clock::now();
-#pragma omp parallel for num_threads(th_num) schedule(dynamic)
-    for(int n = 0; n < size; n++){
-        auto eigenstate = this->ptr_to_model->get_eigenState(n);
-        
-        arma::Col<element_type> state = U * eigenstate;
-        S(n) = entropy::schmidt_decomposition(state, LA, this->L);
-        //double entro = entropy::vonNeumann(state, LA, this->L);
-        //if(std::abs(entro - S(n)) > 1e-14)
-        //printSeparated(std::cout, "\t", 16, true, E(n), entro, S(n), std::abs(entro - S(n)));
+    auto subsystem_sizes = arma::conv_to<arma::Col<int>>::from(arma::linspace(0, this->L / 2, this->L / 2 + 1));
+    std::cout << subsystem_sizes.t() << std::endl;
+    for(auto& LA : subsystem_sizes){
+        start = std::chrono::system_clock::now();
+    #pragma omp parallel for num_threads(th_num) schedule(dynamic)
+        for(int n = 0; n < size; n++){
+            auto eigenstate = this->ptr_to_model->get_eigenState(n);
+            
+            arma::Col<element_type> state = transform(eigenstate);
+            S(n, LA) = entropy::schmidt_decomposition(state, LA, this->L);
+            //double entro = entropy::vonNeumann(state, LA, this->L);
+            //if(std::abs(entro - S(n)) > 1e-14)
+            //printSeparated(std::cout, "\t", 16, true, E(n), entro, S(n), std::abs(entro - S(n)));
+        }
     }
     std::cout << " - - - - - - FINISHED ENTROPY CALCULATION IN : " << tim_s(start) << " seconds - - - - - - " << std::endl; // simulation end
     
@@ -522,7 +532,7 @@ void ui::printAllOptions() const{
 		  << "w  = " << this->w << std::endl
 		  << "ws = " << this->ws << std::endl
 		  << "wn = " << this->wn << std::endl
-		  << "add parity breaking term = " << this->add_parity_breaking 
+		  << "add parity breaking term = " << this->add_parity_breaking << std::endl;
     #endif
           std::cout << std::endl;
     printSeparated(std::cout, "\t", 16, true, "----------------------------------------------------------------------------------------------------");
