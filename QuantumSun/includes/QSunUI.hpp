@@ -47,7 +47,7 @@ namespace QSunUI{
         virtual std::string set_info(std::vector<std::string> skip = {}, 
 										std::string sep = "_") const override;
         void diagonal_matrix_elements();
-	    virtual void eigenstate_entanglement() override {};
+	    virtual void eigenstate_entanglement() override;
     };
 }
 

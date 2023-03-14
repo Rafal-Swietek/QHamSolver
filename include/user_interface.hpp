@@ -120,6 +120,22 @@ public:
 	virtual void analyze_spectra();
 };
 
+
+template <class Hamiltonian>
+class user_interface_sym : public user_interface<Hamiltonian>{
+	static_check((std::is_base_of_v<_hamiltonian, Hamiltonian>), 
+                    "\n" BAD_INHERITANCE "\n\t base class is: hamiltonian_base<element_type, hilbert_space>");
+
+};
+
+template <class Hamiltonian>
+class user_interface_dis : public user_interface<Hamiltonian>{
+	static_check((std::is_base_of_v<_hamiltonian, Hamiltonian>), 
+                    "\n" BAD_INHERITANCE "\n\t base class is: hamiltonian_base<element_type, hilbert_space>");
+
+};
+
+// MAKE ALL FUNC VIRTUAL AND MOVE IMPL FROM MODELS TO APPROPRIATE UI (SYM or DIS)
 // MOVE TO USER_INTERFACE_IMPL.HPP
 
 // -------------------------------------------------------------------------------------------------------------------------------------

@@ -9,9 +9,8 @@ namespace QSunUI{
 
 void ui::make_sim(){
     printAllOptions();
-    bool normalize_grain = 1;
-
-    this->create_new_model_pointer();
+    
+	this->ptr_to_model = this->create_new_model_pointer();
 	
 	clk::time_point start = std::chrono::system_clock::now();
     switch (this->fun)
@@ -21,6 +20,9 @@ void ui::make_sim(){
 		break;
 	case 1:
 		spectral_form_factor();
+		break;
+	case 2:
+		eigenstate_entanglement();
 		break;
 	default:
 		#define generate_scaling_array(name) arma::linspace(this->name, this->name + this->name##s * (this->name##n - 1), this->name##n);
@@ -58,6 +60,89 @@ void ui::make_sim(){
 }
 
 
+
+
+/// @brief 
+void ui::eigenstate_entanglement()
+{
+    clk::time_point start = std::chrono::system_clock::now();
+	
+	std::string dir = this->saving_dir + "Entropy" + kPSep + "Eigenstate" + kPSep;
+	createDirs(dir);
+	
+    int LA = this->site;
+	size_t dim = this->ptr_to_model->get_hilbert_size();
+	#ifdef ARMA_USE_SUPERLU
+        const int size = this->ch? 500 : dim;
+    #else
+        const int size = dim;
+    #endif
+	std::string info = this->set_info();
+	std::string filename = info;// + "_subsize=" + std::to_string(LA);
+
+	arma::mat entropies(size, this->L + 1, arma::fill::zeros);
+	arma::vec energies(size, arma::fill::zeros);
+	int counter = 0;
+
+	auto subsystem_sizes = arma::conv_to<arma::Col<int>>::from(arma::linspace(0, this->L, this->L + 1));
+	std::cout << subsystem_sizes.t() << std::endl;
+
+#pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
+	for(int realis = 0; realis < this->realisations; realis++)
+	{
+		if(realis > 0)
+			ptr_to_model->generate_hamiltonian();
+		start = std::chrono::system_clock::now();
+    #ifdef ARMA_USE_SUPERLU
+        if(this->ch){
+            this->ptr_to_model->hamiltonian();
+            this->ptr_to_model->diag_sparse(true);
+        } else
+            this->ptr_to_model->diagonalization();
+    
+    #else
+        this->ptr_to_model->diagonalization();
+    #endif
+
+		std::cout << " - - - - - - finished diagonalization in : " << tim_s(start) << " s for realis = " << realis << " - - - - - - " << std::endl; // simulation end
+		
+		const arma::vec E = this->ptr_to_model->get_eigenvalues();
+
+		arma::mat S(size, this->L + 1, arma::fill::zeros);
+
+		outer_threads = this->thread_number;
+		omp_set_num_threads(1);
+		std::cout << outer_threads << "\t\t" << omp_get_num_threads() << std::endl;
+		
+		for(auto& LA : subsystem_sizes){
+			start = std::chrono::system_clock::now();
+		#pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
+			for(int n = 0; n < size; n++){
+				
+				arma::Col<element_type> state = this->ptr_to_model->get_eigenState(n);
+				S(n, LA) = entropy::schmidt_decomposition(state, LA, this->L);
+			}
+    		std::cout << " - - - - - - finished entropy size LA: " << LA << " in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
+		}
+		std::string dir_realis = dir + "realisation=" + std::to_string(this->jobid + realis) + kPSep;
+		createDirs(dir_realis);
+		E.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "energies"));
+		S.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "entropy", arma::hdf5_opts::append));
+		entropies += S;
+		energies += E;
+		
+		counter++;
+
+		std::cout << " - - - - - - finished realisation realis = " << realis << " in : " << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
+	}
+    
+	energies /= double(counter);
+	entropies /= double(counter);
+
+    energies.save(arma::hdf5_name(dir + filename + ".hdf5", "energies"));
+	entropies.save(arma::hdf5_name(dir + filename + ".hdf5", "entropy", arma::hdf5_opts::append));
+    std::cout << " - - - - - - FINISHED ENTROPY CALCULATION IN : " << tim_s(start) << " seconds - - - - - - " << std::endl; // simulation end
+}
 
 
 
@@ -164,7 +249,7 @@ void ui::diagonal_matrix_elements(){
 
 /// @brief Create unique pointer to model with current parameters in class
 typename ui::model_pointer ui::create_new_model_pointer(){
-    this->ptr_to_model = std::make_unique<QHamSolver<QuantumSun>>(this->L, this->J, this->alfa, this->gamma, this->w, this->h, 
+    return std::make_unique<QHamSolver<QuantumSun>>(this->L, this->J, this->alfa, this->gamma, this->w, this->h, 
 																	this->seed, this->grain_size, this->zeta, this->initiate_avalanche, normalize_grain); 
 }
 
