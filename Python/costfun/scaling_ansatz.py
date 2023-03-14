@@ -7,7 +7,6 @@ ansatz, like KT for Kosterlitz-Thouless
 """
 
 import numpy as np
-from config import hamiltonian
 from scipy.special import binom
 
 def _rescale_spacing(x, L, crit_fun, *args):
@@ -26,7 +25,7 @@ def _rescale_KT(x, L, crit_fun, nu, *args):
 
 def _rescale_FGR(x, L, crit_fun, nu, *args):
     """Fermi Golden Rule"""
-    dim = binom(L, L/2) if hamiltonian == 1 else 2**L
+    dim = 2**L
     return np.sign(x - crit_fun(L, *args)) * abs(x - crit_fun(L, *args)) * dim**(1. / nu)
 
 

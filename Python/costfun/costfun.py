@@ -181,7 +181,7 @@ def cost_func_minization(x, y, sizes, bnds,
                     args=(x, y, sizes, scale_func, crit_func, wH),
                     popsize=int(population_size), 
                     maxiter=int(maxiterarions), 
-                    workers=workers, atol=1e-3,
+                    workers=workers, atol=1e-4,
                     seed=seed
             )
     optimal_res = np.array(result.x)
@@ -265,8 +265,8 @@ def get_crit_points(x, y, vals, crit_fun='free', scaling_ansatz = 'classic', see
                                     scale_func=scaling_ansatz, 
                                     crit_func=crit_fun,
                                     bnds=bounds,
-                                    population_size=1e2,
-                                    maxiterarions=1e3, workers=10,
+                                    population_size=1e3,
+                                    maxiterarions=1e4, workers=10,
                                     seed = seed,
                                     wH = wH
                                 )
