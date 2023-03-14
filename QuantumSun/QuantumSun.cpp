@@ -70,7 +70,7 @@ void QuantumSun::create_hamiltonian()
     this->_seed = std::abs(2 * (long)this->_seed - 10000) % ULONG_MAX;
     disorder_generator = disorder<double>(this->_seed);
     this->H = sparse_matrix(this->dim, this->dim);
-    this->_disorder = disorder_generator.uniform(system_size, this->_hz, this->_hz + this->_w); 
+    this->_disorder = disorder_generator.uniform(system_size, this->_hz - this->_w, this->_hz + this->_w); 
     
     const size_t dim_loc = ULLPOW( (this->system_size - this->grain_size) );
 	const size_t dim_erg = ULLPOW( (this->grain_size) );

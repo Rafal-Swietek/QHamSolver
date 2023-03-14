@@ -112,11 +112,12 @@ public:
 		}
     };
 
-	auto get_eigenvalues(std::string _suffix = "");
+	auto get_eigenvalues(std::string _suffix = "", bool diag_if_empty = true);
 	virtual void diagonalize();
 	virtual void spectral_form_factor();
 	virtual void average_sff();
 	virtual void eigenstate_entanglement() = 0;
+	virtual void analyze_spectra();
 };
 
 // MOVE TO USER_INTERFACE_IMPL.HPP
@@ -430,7 +431,7 @@ void user_interface<Hamiltonian>::diagonalize(){
 /// @param _suffix string suffix used distinct different realisations
 /// @return returns arma::vec of eigenvalues
 template <class Hamiltonian>
-auto user_interface<Hamiltonian>::get_eigenvalues(std::string _suffix) 
+auto user_interface<Hamiltonian>::get_eigenvalues(std::string _suffix, bool diag_if_empty) 
 {
 	arma::vec eigenvalues;
 	std::string dir = this->saving_dir + "DIAGONALIZATION" + kPSep;
@@ -442,14 +443,14 @@ auto user_interface<Hamiltonian>::get_eigenvalues(std::string _suffix)
 		loaded = eigenvalues.load(arma::hdf5_name(name + _suffix + ".hdf5", "eigenvalues/dataset"));
 		if(!loaded)
 			loaded = eigenvalues.load(arma::hdf5_name(name + ".hdf5", "eigenvalues/" + _suffix));
-		if(!loaded){
+		if(!loaded && diag_if_empty){
 			ptr_to_model->diagonalization(false);
 			eigenvalues = ptr_to_model->get_eigenvalues();	
 		}
 	}
 	#ifndef MY_MAC
 		// save eigenvalues (yet unsaved)
-		if(!loaded)
+		if(!loaded && diag_if_empty)
 			eigenvalues.save(arma::hdf5_name(name + _suffix + ".hdf5", "eigenvalues/"));
 	#endif
 	return eigenvalues;
@@ -700,3 +701,117 @@ void user_interface<Hamiltonian>::average_sff(){
 	save_to_file(dir + info + ".dat", 			 times, 	 sff, 	   wH, thouless_time, 	   r1, r2, dim, wH_typ);
 	save_to_file(dir + "folded" + info + ".dat", times_fold, sff_fold, wH, thouless_time_fold, r1, r2, dim, wH_typ);
 }
+
+/// @brief Analyze all spectra (all realisations). Average spectral quantities and distirbutions (level spacing and gap ratio)
+/// @tparam Hamiltonian template parameter for current used model
+template <class Hamiltonian>
+void user_interface<Hamiltonian>::analyze_spectra()
+{
+
+	std::string info = this->set_info();
+
+	std::string dir_spacing 	= this->saving_dir + "LevelSpacingDistribution" + kPSep;
+	std::string dir_DOS 		= this->saving_dir + "DensityOfStates" + kPSep;
+	std::string dir_unfolding 	= this->saving_dir + "Unfolding" + kPSep;
+	std::string dir_gap 		= this->saving_dir + "LevelSpacing" + kPSep + "distribution" + kPSep;
+	createDirs(dir_DOS, dir_spacing, dir_unfolding, dir_gap);
+
+	size_t N = this->ptr_to_model->get_hilbert_size();
+	const u64 num = 0.6 * N;
+	double wH 				= 0.0;
+	double wH_typ 			= 0.0;
+	double wH_typ_unfolded 	= 0.0;
+
+	arma::vec energies_all, energies_unfolded_all;
+	arma::vec spacing, spacing_unfolded, spacing_log, spacing_unfolded_log;
+	arma::vec gap_ratio, gap_ratio_unfolded;
+	//-------SET KERNEL
+	int counter_realis = 0;
+#pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
+	for(int realis = 0; realis < this->realisations; realis++)
+	{
+		std::string suffix = "_real=" + std::to_string(realis + this->jobid);
+		arma::vec eigenvalues = this->get_eigenvalues(suffix, false);
+
+		if(eigenvalues.empty()) continue;
+		arma::vec energies_unfolded = statistics::unfolding(eigenvalues, std::min((unsigned)20, this->L));
+		//------------------- Get 50% spectrum
+		double E_av = arma::trace(eigenvalues) / double(N);
+		auto i = min_element(begin(eigenvalues), end(eigenvalues), [=](double x, double y) {
+			return abs(x - E_av) < abs(y - E_av);
+			});
+		u64 E_av_idx = i - eigenvalues.begin();
+		const long E_min = E_av_idx - num / 2.;
+		const long E_max = E_av_idx + num / 2. + 1;
+		const long num_small = (N > 1000)? 500 : 100;
+		arma::vec energies = this->ch? exctract_vector(eigenvalues, E_av_idx - num_small / 2., E_av_idx + num_small / 2.) :
+										exctract_vector(eigenvalues, E_min, E_max);
+		arma::vec energies_unfolded_cut = this->ch? exctract_vector(energies_unfolded, E_av_idx - num_small / 2., E_av_idx + num_small / 2.) :
+														exctract_vector(energies_unfolded, E_min, E_max);
+		
+		//------------------- Level Spacings
+		arma::vec level_spacings(energies.size() - 1, arma::fill::zeros);
+		arma::vec level_spacings_unfolded(energies.size() - 1, arma::fill::zeros);
+		for(int i = 0; i < energies.size() - 1; i++){
+			const double delta 			= energies(i+1) 			 - energies(i);
+			const double delta_unfolded = energies_unfolded_cut(i+1) - energies_unfolded_cut(i);
+
+			wH 				 += delta / double(energies.size()-1);
+			wH_typ  		 += std::log(abs(delta)) / double(energies.size()-1);
+			wH_typ_unfolded  += std::log(abs(delta_unfolded)) / double(energies.size()-1);
+
+			level_spacings(i) 			= delta;
+			level_spacings_unfolded(i) 	= delta_unfolded;
+		}
+		arma::vec gap = statistics::eigenlevel_statistics_return(eigenvalues);
+		arma::vec gap_unfolded = statistics::eigenlevel_statistics_return(energies_unfolded);
+
+		//------------------- Combine realisations
+	#pragma omp critical
+		{
+			energies_all = arma::join_cols(energies_all, energies);
+			energies_unfolded_all = arma::join_cols(energies_unfolded_all, energies_unfolded_cut);
+			
+			spacing = arma::join_cols(spacing, level_spacings);
+			spacing_log = arma::join_cols(spacing_log, arma::log10(level_spacings));
+			spacing_unfolded = arma::join_cols(spacing_unfolded, level_spacings_unfolded);
+			spacing_unfolded_log = arma::join_cols(spacing_unfolded_log, arma::log10(level_spacings_unfolded));
+			
+			gap_ratio = arma::join_cols(gap_ratio, gap);
+			gap_ratio_unfolded = arma::join_cols(gap_ratio_unfolded, gap_unfolded);
+			counter_realis++;
+		}
+	}
+
+	//------CALCULATE FOR MODEL
+	double norm = counter_realis;
+	
+	if(spacing.is_empty() || spacing_log.is_empty() || spacing_unfolded.is_empty() || spacing_unfolded_log.is_empty()
+							 || energies_all.is_empty() || energies_unfolded_all.is_empty()){
+		std::cout << "Empty arrays, eeeh?" << std::endl;
+		return;
+	}
+	if(spacing.is_zero() || spacing_log.is_zero() || spacing_unfolded.is_zero() || spacing_unfolded_log.is_zero()
+							 || energies_all.is_zero() || energies_unfolded_all.is_zero()) {
+		std::cout << "Zero arrays, eeeh?" << std::endl;
+		return;
+	}
+
+	wH /= norm;	wH_typ /= norm;	wH_typ_unfolded /= norm;
+	std::string prefix = this->ch ? "_500_states" : "";
+
+	const int num_hist = this->num_of_points;
+	statistics::probability_distribution(dir_spacing, prefix + info, spacing, num_hist, std::exp(wH_typ_unfolded), wH, std::exp(wH_typ));
+	statistics::probability_distribution(dir_spacing, prefix + "_log" + info, spacing_log, num_hist, wH_typ_unfolded, wH, wH_typ);
+	statistics::probability_distribution(dir_spacing, prefix + "unfolded" + info, spacing_unfolded, num_hist, std::exp(wH_typ_unfolded), wH, std::exp(wH_typ));
+	statistics::probability_distribution(dir_spacing, prefix + "unfolded_log" + info, spacing_unfolded_log, num_hist, wH_typ_unfolded, wH, wH_typ);
+	
+	statistics::probability_distribution(dir_DOS, prefix + info, energies_all, num_hist);
+	statistics::probability_distribution(dir_DOS, prefix + "unfolded" + info, energies_unfolded_all, num_hist);
+
+	statistics::probability_distribution(dir_gap, info, gap_ratio, num_hist);
+	statistics::probability_distribution(dir_gap, info, gap_ratio_unfolded, num_hist);
+}
+
+
+

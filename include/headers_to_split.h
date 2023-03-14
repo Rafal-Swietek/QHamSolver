@@ -306,9 +306,52 @@ inline _Ty matrixVariance(const arma::Mat<_Ty>& mat) {
 // ------------------------------------- definitions
 arma::vec non_uniform_derivative(const arma::vec& x, const arma::vec& y);
 arma::vec log_derivative(const arma::vec& x, const arma::vec& y);
-double simpson_rule(double a, double b, int n, const arma::vec& f);
+inline
+double simpson_rule(double a, double b, int n, const arma::vec& f){
+	double h = (b - a) / n;
+
+	// Internal sample points, there should be n - 1 of them
+	double sum_odds = 0.0;
+#pragma omp parallel for reduction(+: sum_odds)
+	for (int i = 1; i < n; i += 2) {
+		int idx = int(((a + i * h) + abs(a)) / h);
+		sum_odds += (idx < f.size()) ? f(idx) : 0.0;
+	}
+
+	double sum_evens = 0.0;
+#pragma omp parallel for reduction(+: sum_evens)
+	for (int i = 2; i < n; i += 2) {
+		int idx = int(((a + i * h) + abs(a)) / h);
+		sum_evens += (idx < f.size()) ? f(idx) : 0.0;
+	}
+
+	return (f(0) + f(f.size() - 1) + 2 * sum_evens + 4 * sum_odds) * h / 3;
+}
+
 template<typename _type>
-_type simpson_rule(const arma::vec& x, const arma::Col<_type>& f);
+inline
+_type simpson_rule(const arma::vec& x, const arma::Col<_type>& f){
+	const int N = (int)f.size() - 1;
+	arma::vec h(N);
+	for (int i = 0; i < N; i++)
+		h(i) = x(i + 1) - x(i);
+	
+	_type sum = _type(0.0);
+//#pragma omp parallel for reduction(+: sum)
+	for (int i = 0; i <= N / 2 - 1; i++) {
+		_type a = 2 - h(2 * i + 1) / h(2 * i);
+		_type b = (h(2 * i) + h(2 * i + 1)) * (h(2 * i) + h(2 * i + 1)) / (h(2 * i) * h(2 * i + 1));
+		_type c = 2 - h(2 * i) / h(2 * i + 1);
+		sum += (h(2 * i) + h(2 * i + 1)) / 6.0 * (a * f(2 * i) + b * f(2 * i + 1) + c * f(2 * i + 2));
+	}
+
+	if (N % 2 == 0) {
+		_type a = (2 * h(N - 1) * h(N - 1)  + 3 * h(N - 1) * h(N - 2)) / (6 * (h(N - 2) + h(N - 1)));
+		_type b = (	h(N - 1) * h(N - 1) 	+ 3 * h(N - 1) * h(N - 2)) / (6 *  h(N - 2));
+		_type c = (	h(N - 1) * h(N - 1) * h(N - 1)				 	 ) / (6 *  h(N - 2) * (h(N - 2) + h(N - 1)));
+	}
+	return sum;
+}
 double binder_cumulant(const arma::vec& arr_in);														// calculate binder cumulant of dataset
 arma::vec get_NonDegenerated_Elements(const arma::vec& arr_in);											// compute non-unique values in dataset
 // ------------------------------------- inlines

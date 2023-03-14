@@ -203,7 +203,7 @@ void ui::check_symmetry_generators()
     for(auto& idx : {1, 130, 33, 71, 756}){
         for(auto& G : group){
             auto [state, val] = G(idx);
-            printSeparated(std::cout, "\t", 16, true, std::bitset<11>(idx), std::bitset<11>(state), val);
+            printSeparated(std::cout, "\t", 16, true, std::vector<bool>(this->L, idx), std::vector<bool>(this->L, state), val);
         }
         std::cout << std::endl;
     }
