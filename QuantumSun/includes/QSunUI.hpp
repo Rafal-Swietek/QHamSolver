@@ -4,12 +4,12 @@
 #define UI
 
 #include "config.hpp"
-#include "../../include/user_interface.hpp"
+#include "../../include/user_interface_dis.hpp"
 #include "QuantumSun.hpp"
 // ----------------------------------------------------------------------------- UI QUANTUM SUN -----------------------------------------------------------------------------
 
 namespace QSunUI{
-    class ui : public user_interface<QuantumSun>{
+    class ui : public user_interface_dis<QuantumSun>{
     protected:
         double J, Js;
         double alfa, alfas, gamma, gammas;
@@ -21,8 +21,8 @@ namespace QSunUI{
         int grain_size;
         bool initiate_avalanche;
 
-        typedef typename user_interface<QuantumSun>::model_pointer model_pointer;
-        typedef typename user_interface<QuantumSun>::element_type element_type;
+        typedef typename user_interface_dis<QuantumSun>::model_pointer model_pointer;
+        typedef typename user_interface_dis<QuantumSun>::element_type element_type;
     public:
 		// ----------------------------------- CONSTRUCTORS
 		ui() = default;
@@ -47,7 +47,6 @@ namespace QSunUI{
         virtual std::string set_info(std::vector<std::string> skip = {}, 
 										std::string sep = "_") const override;
         void diagonal_matrix_elements();
-	    virtual void eigenstate_entanglement() override;
     };
 }
 
