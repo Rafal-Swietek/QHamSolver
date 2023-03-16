@@ -78,7 +78,7 @@ void QuantumSun::create_hamiltonian()
     auto neighbor_generator = disorder<int>(this->_seed);
 
     /* Create random neighbours for coupling hamiltonian */
-    auto random_neigh = neighbor_generator.uniform(this->system_size, 0, this->grain_size - 1);
+    auto random_neigh = neighbor_generator.uniform(this->system_size - this->grain_size, 0, this->grain_size - 1);
     
 	#ifndef ENSEMBLE
 		#define ENSEMBLE GOE
@@ -99,7 +99,7 @@ void QuantumSun::create_hamiltonian()
             double u_j = 1 + disorder_generator.random_uni<double>(-this->_zeta, this->_zeta);
             this->_long_range_couplings(this->grain_size) = this->_initiate_avalanche? 1.0 : std::pow(this->_alfa, u_j);
             for (int j = this->grain_size + 1; j < this->system_size; j++){
-                int pos = j - this->grain_size + 1;
+                int pos = j - this->grain_size + 1 - (int)this->_initiate_avalanche; // if initiate avalanche next coupling alfa, not alfa^2
                 double u_j = pos + disorder_generator.random_uni<double>(-this->_zeta, this->_zeta);
                 this->_long_range_couplings(j) = std::pow(this->_alfa, u_j);
             }
@@ -119,13 +119,14 @@ void QuantumSun::create_hamiltonian()
     for (u64 k = 0; k < this->dim; k++) {
 		u64 base_state = this->_hilbert_space(k);
 		for (int j = this->grain_size; j < this->system_size; j++) {
+            int pos_in_array = j - this->grain_size;
 
 			/* disorder on localised spins */
             auto [val, Sz_k] = operators::sigma_z(base_state, this->system_size, { j });
-			this->set_hamiltonian_elements(k, this->_disorder(j - this->grain_size) * real(val), Sz_k);
+			this->set_hamiltonian_elements(k, this->_disorder(pos_in_array) * real(val), Sz_k);
 
 			/* coupling of localised spins to GOE grain */
-			int nei = random_neigh(j);
+			int nei = random_neigh(pos_in_array);
 		    auto [val1, Sx_k] = operators::sigma_x(base_state, this->system_size, { j });
 		    auto [val2, SxSx_k] = operators::sigma_x(Sx_k, this->system_size, { nei });
 			this->set_hamiltonian_elements(k, this->_J * this->_long_range_couplings(j) * real(val1 * val2), SxSx_k);
