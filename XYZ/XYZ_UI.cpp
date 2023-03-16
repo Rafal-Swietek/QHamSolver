@@ -209,83 +209,6 @@ void ui::check_symmetry_generators()
     }
 }
 
-/// @brief 
-void ui::eigenstate_entanglement()
-{
-    clk::time_point start = std::chrono::system_clock::now();
-	
-	std::string dir = this->saving_dir + "Entropy" + kPSep + "Eigenstate" + kPSep;
-	createDirs(dir);
-	
-    int LA = this->site;
-	size_t dim = this->ptr_to_model->get_hilbert_size();
-	
-	std::string info = this->set_info();
-	std::string filename = info;// + "_subsize=" + std::to_string(LA);
-
-    #ifdef ARMA_USE_SUPERLU
-        const int size = this->ch? 500 : dim;
-        if(this->ch){
-            this->ptr_to_model->hamiltonian();
-            this->ptr_to_model->diag_sparse(true);
-        } else
-            this->ptr_to_model->diagonalization();
-    
-    #else
-        const int size = dim;
-        this->ptr_to_model->diagonalization();
-    #endif
-
-    std::cout << " - - - - - - FINISHED DIAGONALIZATION IN : " << tim_s(start) << " seconds - - - - - - " << std::endl; // simulation end
-    
-    start = std::chrono::system_clock::now();
-    const arma::vec E = this->ptr_to_model->get_eigenvalues();
-    
-    #ifdef USE_SYMMETRIES
-        const auto U = this->ptr_to_model->get_model_ref().get_hilbert_space().symmetry_rotation();
-        auto transform = [&](const auto& state)
-                                { return U * state; };
-    #else
-        auto transform = [&](const auto& state)
-                                { return state; };
-    #endif
-    std::cout << " - - - - - - FINISHED CREATING SYMMETRY TRANSFORMATION IN : " << tim_s(start) << " seconds - - - - - - " << std::endl; // simulation end
-
-    arma::mat S(size, this->L / 2 + 1, arma::fill::zeros);
-    int th_num = this->thread_number;
-    omp_set_num_threads(1);
-    std::cout << th_num << "\t\t" << omp_get_num_threads() << std::endl;
-    
-    auto subsystem_sizes = arma::conv_to<arma::Col<int>>::from(arma::linspace(0, this->L / 2, this->L / 2 + 1));
-    std::cout << subsystem_sizes.t() << std::endl;
-    for(auto& LA : subsystem_sizes){
-        start = std::chrono::system_clock::now();
-    #pragma omp parallel for num_threads(th_num) schedule(dynamic)
-        for(int n = 0; n < size; n++){
-            auto eigenstate = this->ptr_to_model->get_eigenState(n);
-            
-            arma::Col<element_type> state = transform(eigenstate);
-            S(n, LA) = entropy::schmidt_decomposition(state, LA, this->L);
-            //double entro = entropy::vonNeumann(state, LA, this->L);
-            //if(std::abs(entro - S(n)) > 1e-14)
-            //printSeparated(std::cout, "\t", 16, true, E(n), entro, S(n), std::abs(entro - S(n)));
-        }
-    }
-    std::cout << " - - - - - - FINISHED ENTROPY CALCULATION IN : " << tim_s(start) << " seconds - - - - - - " << std::endl; // simulation end
-    
-    E.save(arma::hdf5_name(dir + filename + ".hdf5", "energies"));
-	S.save(arma::hdf5_name(dir + filename + ".hdf5", "entropy", arma::hdf5_opts::append));
-    
-        
-    #ifdef ARMA_USE_SUPERLU
-        arma::Mat<element_type> V;
-        if(this->ch) V = this->ptr_to_model->get_eigenvectors();
-        else         V = this->ptr_to_model->get_eigenvectors().submat(0, this->ptr_to_model->E_av_idx - 50, dim - 1, this->ptr_to_model->E_av_idx + 50);
-    #else
-        arma::Mat<element_type> V = this->ptr_to_model->get_eigenvectors().submat(0, this->ptr_to_model->E_av_idx - 50, dim - 1, this->ptr_to_model->E_av_idx + 50);
-    #endif
-    V.save(arma::hdf5_name(dir + filename + ".hdf5", "eigenvectors",arma::hdf5_opts::append));
-}
 
 // -------------------------------------------------------------------------------------------------------------------------------------
 // ---------------------------------------------------------------------------------------------------------------- IMPLEMENTATION OF UI
@@ -336,11 +259,6 @@ void ui::parse_cmd_options(int argc, std::vector<std::string> argv)
     //<! set all general UI parameters
     XYZUIparent::parse_cmd_options(argc, argv);
 
-    #ifdef USE_SYMMETRIES
-        //<! set averaging to one for symmetric model 
-        this->realisations = 1;
-        this->jobid = 1;
-    #endif
     //<! set the remaining UI parameters
 	std::string choosen_option = "";	
 

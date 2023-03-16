@@ -1,5 +1,37 @@
 #pragma once
 
+/// @brief Diagonalize model hamiltonian and save spectrum to .hdf5 file
+/// @tparam Hamiltonian template parameter for current used model
+template <class Hamiltonian>
+void user_interface_sym<Hamiltonian>::diagonalize(){
+	clk::time_point start = std::chrono::system_clock::now();
+	std::string dir = this->saving_dir + "DIAGONALIZATION" + kPSep;
+	createDirs(dir);
+
+    std::string info = this->set_info({});
+    std::cout << "\n\t\t--> finished creating model for " << info << " - in time : " << tim_s(start) << "s" << std::endl;
+    
+    this->ptr_to_model->diagonalization();
+    arma::vec eigenvalues = this->ptr_to_model->get_eigenvalues();
+    
+    std::cout << "\t\t	--> finished diagonalizing for " << info << " - in time : " << tim_s(start) << "s" << std::endl;
+    
+    //std::cout << eigenvalues.t() << std::endl;
+
+    std::string name = dir + info + ".hdf5";
+    eigenvalues.save(arma::hdf5_name(name, "eigenvalues", arma::hdf5_opts::append));
+    std::cout << "\t\t	--> finished saving eigenvalues for " << info << " - in time : " << tim_s(start) << "s" << std::endl;
+    if(this->ch){
+        auto H = this->ptr_to_model->get_dense_hamiltonian();
+        H.save(arma::hdf5_name(name, "hamiltonian", arma::hdf5_opts::append));
+        std::cout << "\t\t	--> finished saving Hamiltonian for " << info << " - in time : " << tim_s(start) << "s" << std::endl;
+
+        auto V = this->ptr_to_model->get_eigenvectors();
+        V.save(arma::hdf5_name(name, "eigenvectors", arma::hdf5_opts::append));
+        std::cout << "\t\t	--> finished saving eigenvectors for " << info << " - in time : " << tim_s(start) << "s" << std::endl;
+    }
+}
+
 
 /// @brief Analyze all spectra (all realisations). Average spectral quantities and distirbutions (level spacing and gap ratio)
 /// @tparam Hamiltonian template parameter for current used model
@@ -80,5 +112,77 @@ void user_interface_sym<Hamiltonian>::analyze_spectra()
 template <class Hamiltonian>
 void user_interface_sym<Hamiltonian>::eigenstate_entanglement()
 {
-   
+   clk::time_point start = std::chrono::system_clock::now();
+	
+	std::string dir = this->saving_dir + "Entropy" + kPSep + "Eigenstate" + kPSep;
+	createDirs(dir);
+	
+    int LA = this->site;
+	size_t dim = this->ptr_to_model->get_hilbert_size();
+	
+	std::string info = this->set_info();
+	std::string filename = info;// + "_subsize=" + std::to_string(LA);
+
+    #ifdef ARMA_USE_SUPERLU
+        const int size = this->ch? 500 : dim;
+        if(this->ch){
+            this->ptr_to_model->hamiltonian();
+            this->ptr_to_model->diag_sparse(true);
+        } else
+            this->ptr_to_model->diagonalization();
+    
+    #else
+        const int size = dim;
+        this->ptr_to_model->diagonalization();
+    #endif
+
+    std::cout << " - - - - - - FINISHED DIAGONALIZATION IN : " << tim_s(start) << " seconds - - - - - - " << std::endl; // simulation end
+    
+    start = std::chrono::system_clock::now();
+    const arma::vec E = this->ptr_to_model->get_eigenvalues();
+    
+    #ifdef USE_SYMMETRIES
+        const auto U = this->ptr_to_model->get_model_ref().get_hilbert_space().symmetry_rotation();
+        auto transform = [&](const auto& state)
+                                { return U * state; };
+    #else
+        auto transform = [&](const auto& state)
+                                { return state; };
+    #endif
+    std::cout << " - - - - - - FINISHED CREATING SYMMETRY TRANSFORMATION IN : " << tim_s(start) << " seconds - - - - - - " << std::endl; // simulation end
+
+    arma::mat S(size, this->L / 2 + 1, arma::fill::zeros);
+    int th_num = this->thread_number;
+    omp_set_num_threads(1);
+    std::cout << th_num << "\t\t" << omp_get_num_threads() << std::endl;
+    
+    auto subsystem_sizes = arma::conv_to<arma::Col<int>>::from(arma::linspace(0, this->L / 2, this->L / 2 + 1));
+    std::cout << subsystem_sizes.t() << std::endl;
+    for(auto& LA : subsystem_sizes){
+        start = std::chrono::system_clock::now();
+    #pragma omp parallel for num_threads(th_num) schedule(dynamic)
+        for(int n = 0; n < size; n++){
+            auto eigenstate = this->ptr_to_model->get_eigenState(n);
+            
+            arma::Col<element_type> state = transform(eigenstate);
+            S(n, LA) = entropy::schmidt_decomposition(state, LA, this->L);
+            //double entro = entropy::vonNeumann(state, LA, this->L);
+            //if(std::abs(entro - S(n)) > 1e-14)
+            //printSeparated(std::cout, "\t", 16, true, E(n), entro, S(n), std::abs(entro - S(n)));
+        }
+    }
+    std::cout << " - - - - - - FINISHED ENTROPY CALCULATION IN : " << tim_s(start) << " seconds - - - - - - " << std::endl; // simulation end
+    
+    E.save(arma::hdf5_name(dir + filename + ".hdf5", "energies"));
+	S.save(arma::hdf5_name(dir + filename + ".hdf5", "entropy", arma::hdf5_opts::append));
+    
+        
+    #ifdef ARMA_USE_SUPERLU
+        arma::Mat<element_type> V;
+        if(this->ch) V = this->ptr_to_model->get_eigenvectors();
+        else         V = this->ptr_to_model->get_eigenvectors().submat(0, this->ptr_to_model->E_av_idx - 50, dim - 1, this->ptr_to_model->E_av_idx + 50);
+    #else
+        arma::Mat<element_type> V = this->ptr_to_model->get_eigenvectors().submat(0, this->ptr_to_model->E_av_idx - 50, dim - 1, this->ptr_to_model->E_av_idx + 50);
+    #endif
+    V.save(arma::hdf5_name(dir + filename + ".hdf5", "eigenvectors",arma::hdf5_opts::append));
 }

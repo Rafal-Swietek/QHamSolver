@@ -19,6 +19,7 @@ void ui::make_sim(){
 		diagonalize(); 
 		break;
 	case 1:
+		std::cout << "Got here" << std::endl;
 		spectral_form_factor();
 		break;
 	case 2:
@@ -200,7 +201,7 @@ ui::ui(int argc, char **argv)
 void ui::parse_cmd_options(int argc, std::vector<std::string> argv)
 {
     //<! set all general UI parameters
-    user_interface<QuantumSun>::parse_cmd_options(argc, argv);
+    user_interface_dis<QuantumSun>::parse_cmd_options(argc, argv);
 
     //<! set the remaining UI parameters
 	std::string choosen_option = "";	
@@ -237,7 +238,7 @@ void ui::parse_cmd_options(int argc, std::vector<std::string> argv)
 
 /// @brief 
 void ui::set_default(){
-    user_interface<QuantumSun>::set_default();
+    user_interface_dis<QuantumSun>::set_default();
     this->J = 1.0;
 	this->Js = 0.0;
 	this->Jn = 1;
@@ -263,7 +264,7 @@ void ui::set_default(){
 
 /// @brief 
 void ui::print_help() const {
-    user_interface<QuantumSun>::print_help();
+    user_interface_dis<QuantumSun>::print_help();
     
     printf(" Flags for Quantum Sun model:\n");
     printSeparated(std::cout, "\t", 20, true, "-J", "(double)", "coupling strength");
@@ -291,7 +292,7 @@ void ui::print_help() const {
 
 /// @brief 
 void ui::printAllOptions() const{
-    user_interface<QuantumSun>::printAllOptions();
+    user_interface_dis<QuantumSun>::printAllOptions();
     std::cout << "QUANTUM SUN:\n\t\t" << "H = \u03B3R + J \u03A3_i \u03B1^{u_i} S^x_i S^x_i+1 + \u03A3_i h_i S^z_i" << std::endl << std::endl;
 	std::cout << "u_i \u03B5 [j - \u03B6, j + \u03B6]"  << std::endl;
 	std::cout << "h_i \u03B5 [h - w, h + w]" << std::endl;

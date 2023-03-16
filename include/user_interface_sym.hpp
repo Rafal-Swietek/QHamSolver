@@ -22,9 +22,10 @@ public:
 	// ------------------------------------------------- MAIN ROUTINES
 	
 
+	virtual void diagonalize() 				override;
 	virtual void spectral_form_factor() 	override {};
 	virtual void average_sff() 				override {};
-	virtual void eigenstate_entanglement() 	override ;
+	virtual void eigenstate_entanglement() 	override;
 	virtual void analyze_spectra() 			override;
 };
 

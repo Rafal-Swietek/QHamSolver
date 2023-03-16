@@ -2,6 +2,7 @@
 
 
 // -------------------------------------------------------------------------------------------------------------------------------------
+
 // ---------------------------------------------------------------------------------------------------------------- IMPLEMENTATION OF UI
 
 /// @brief Get value of option in UI from command line
@@ -117,7 +118,6 @@ void user_interface<Hamiltonian>::set_default(){
 	this->Ls = 1;
 	this->Ln = 1;
 
-	this->realisations = 100;
 	this->site = 0;
 	this->op = 0;
 	this->fun = INT_MAX;
@@ -130,9 +130,6 @@ void user_interface<Hamiltonian>::set_default(){
 	this->thread_number = 1;
 
 	this->ch = false;
-
-	this->seed = static_cast<long unsigned int>(87178291199L);
-	this->jobid = 0;
 	this->num_of_points = 5000;
 }
 
@@ -153,18 +150,14 @@ void user_interface<Hamiltonian>::printAllOptions() const {
 		  << "operator = " << opName << std::endl
 		  << "bucket size = " << this->mu << std::endl
 		  << "boolean value = " << this->ch << std::endl
-		  << "realisations = " << this->realisations << std::endl
-		  << "jobid = " << this->jobid << std::endl
-		  << "seed = " << this->seed << std::endl
 		  << "q_ipr = " << this->q_ipr << std::endl
 		  << "\u03B2 = " << this->beta << std::endl;
 
-	std::cout << "---------------------------------------------------------------------------------\n\n";
 	#ifdef PRINT_HELP
-		user_interface<Hamiltonian>::print_help();
+		std::cout << "---------------------------------------------------------------------------------\n\n";
+		this->print_help();
 		std::cout << "---------------------------------------------------------------------------------\n\n";
 	#endif
-	std::cout << "------------------------------CHOSEN MODEL:" << std::endl;
 }
 
 /// @brief Sets model parameters from values in command line
@@ -210,14 +203,6 @@ void user_interface<Hamiltonian>::parse_cmd_options(int argc, std::vector<std::s
 	choosen_option = "-ch";
 	this->set_option(this->ch, argv, choosen_option, true);
 	
-	// disorder
-	choosen_option = "-jobid";
-	this->set_option(this->jobid, argv, choosen_option, true);
-	choosen_option = "-seed";
-	this->set_option(this->seed, argv, choosen_option, true);
-	choosen_option = "-r";
-	this->set_option(this->realisations, argv, choosen_option, true);
-
 	//choose dimensionality
 	choosen_option = "-beta";
 	this->set_option(this->beta, argv, choosen_option);
@@ -261,52 +246,6 @@ void user_interface<Hamiltonian>::parse_cmd_options(int argc, std::vector<std::s
 // -------------------------------------------------------------------------------------------------------------------------------
 
 // ---------------------------------------------------------------------------------------------------------------- MAIN ROUTINES
-
-/// @brief Diagonalize model hamiltonian and save spectrum to .hdf5 file
-/// @tparam Hamiltonian template parameter for current used model
-template <class Hamiltonian>
-void user_interface<Hamiltonian>::diagonalize(){
-	clk::time_point start = std::chrono::system_clock::now();
-	std::string dir = this->saving_dir + "DIAGONALIZATION" + kPSep;
-	createDirs(dir);
-
-#pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
-	for(int realis = 0; realis < this->realisations; realis++)	
-	{
-		int real = realis + this->jobid;
-		std::string _suffix = "_real=" + std::to_string(real);
-		#ifdef USE_SYMMETRIES
-			//<! no suffix for symmetric model
-			_suffix = "";
-		#endif
-		std::string info = this->set_info({});
-		std::cout << "\n\t\t--> finished creating model for " << info + _suffix << " - in time : " << tim_s(start) << "s" << std::endl;
-		
-		if(realis > 0)
-			ptr_to_model->generate_hamiltonian();
-		ptr_to_model->diagonalization();
-		arma::vec eigenvalues = ptr_to_model->get_eigenvalues();
-		
-		std::cout << "\t\t	--> finished diagonalizing for " << info + _suffix << " - in time : " << tim_s(start) << "s" << std::endl;
-		
-		//std::cout << eigenvalues.t() << std::endl;
-
-		std::string name = dir + info + _suffix + ".hdf5";
-		eigenvalues.save(arma::hdf5_name(name, "eigenvalues", arma::hdf5_opts::append));
-		std::cout << "\t\t	--> finished saving eigenvalues for " << info + _suffix << " - in time : " << tim_s(start) << "s" << std::endl;
-		if(this->ch){
-			auto H = ptr_to_model->get_dense_hamiltonian();
-			H.save(arma::hdf5_name(name, "hamiltonian", arma::hdf5_opts::append));
-			std::cout << "\t\t	--> finished saving Hamiltonian for " << info << " - in time : " << tim_s(start) << "s" << std::endl;
-
-			auto V = ptr_to_model->get_eigenvectors();
-			V.save(arma::hdf5_name(name, "eigenvectors", arma::hdf5_opts::append));
-			std::cout << "\t\t	--> finished saving eigenvectors for " << info << " - in time : " << tim_s(start) << "s" << std::endl;
-		}
-	};
-	
-}
-
 
 /// @brief Get eigenvalues from .hdf5 file if present else diagonalize model
 /// @tparam Hamiltonian template parameter for current used model

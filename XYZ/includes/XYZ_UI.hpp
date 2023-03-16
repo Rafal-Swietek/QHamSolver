@@ -4,14 +4,17 @@
 #define UI
 
 #include "config.hpp"
-#include "../../include/user_interface.hpp"
-#include "XYZ.hpp"
-#include "XYZ_sym.hpp"
 
 #ifdef USE_SYMMETRIES
-    #define XYZUIparent user_interface<XYZsym>
+    #include "../../include/user_interface_sym.hpp"
+    #include "XYZ.hpp"
+    #include "XYZ_sym.hpp"
+    #define XYZUIparent user_interface_sym<XYZsym>
 #else
-    #define XYZUIparent user_interface<XYZ>
+    #include "../../include/user_interface_dis.hpp"
+    #include "XYZ.hpp"
+    #include "XYZ_sym.hpp"
+    #define XYZUIparent user_interface_dis<XYZ>
 #endif
 // ----------------------------------------------------------------------------- UI QUANTUM SUN -----------------------------------------------------------------------------
 
@@ -79,8 +82,6 @@ namespace XYZ_UI{
         void compare_energies();
         void compare_hamiltonian();
         void check_symmetry_generators();
-
-	    virtual void eigenstate_entanglement() override;
 
         template <
 			typename callable, 

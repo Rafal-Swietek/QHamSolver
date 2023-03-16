@@ -54,9 +54,6 @@ protected:
 
     unsigned int L, Ls, Ln;								// lattice params
     bool ch;											// boolean values
-    int realisations;									// number of realisations to average on for disordered case - symmetries got 1
-    size_t seed;										// radnom seed for random generator
-    int jobid;											// unique _id given to current job
 
     double q_ipr;										// q for participation ratio calculation
     double beta;										// inverse temperature
@@ -99,8 +96,8 @@ public:
 
 	// ------------------------------------------------- MAIN ROUTINES
 
-	virtual arma::vec get_eigenvalues(std::string _suffix = "", bool diag_if_empty = true);
-	virtual void diagonalize();
+	arma::vec get_eigenvalues(std::string _suffix = "", bool diag_if_empty = true);
+	virtual void diagonalize() = 0;
 	virtual void analyze_spectra() = 0;
 
 	virtual void spectral_form_factor() = 0;

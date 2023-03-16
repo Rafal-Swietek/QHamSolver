@@ -21,6 +21,10 @@ public:
 
 	virtual void make_sim() override = 0;			//<! main simulation funciton
 
+	virtual void set_default() override;			
+	virtual void parse_cmd_options(int argc, std::vector<std::string> argv) override;		// the function to parse the command line
+
+	virtual void printAllOptions() const override;
 	// ------------------------------------------------- MAIN ROUTINES
 	template <
 		typename callable,	//<! callable lambda function
@@ -39,6 +43,7 @@ public:
 		}
     };
 
+	virtual void diagonalize() 				override;
 	virtual void spectral_form_factor() 	override;
 	virtual void average_sff() 				override;
 	virtual void eigenstate_entanglement() 	override;

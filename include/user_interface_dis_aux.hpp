@@ -1,6 +1,51 @@
 #pragma once
 
 
+/// @brief Diagonalize model hamiltonian and save spectrum to .hdf5 file
+/// @tparam Hamiltonian template parameter for current used model
+template <class Hamiltonian>
+void user_interface_dis<Hamiltonian>::diagonalize(){
+	clk::time_point start = std::chrono::system_clock::now();
+	std::string dir = this->saving_dir + "DIAGONALIZATION" + kPSep;
+	createDirs(dir);
+
+#pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
+	for(int realis = 0; realis < this->realisations; realis++)	
+	{
+		int real = realis + this->jobid;
+		std::string _suffix = "_real=" + std::to_string(real);
+		#ifdef USE_SYMMETRIES
+			//<! no suffix for symmetric model
+			_suffix = "";
+		#endif
+		std::string info = this->set_info({});
+		std::cout << "\n\t\t--> finished creating model for " << info + _suffix << " - in time : " << tim_s(start) << "s" << std::endl;
+		
+		if(realis > 0)
+			this->ptr_to_model->generate_hamiltonian();
+		this->ptr_to_model->diagonalization();
+		arma::vec eigenvalues = this->ptr_to_model->get_eigenvalues();
+		
+		std::cout << "\t\t	--> finished diagonalizing for " << info + _suffix << " - in time : " << tim_s(start) << "s" << std::endl;
+		
+		//std::cout << eigenvalues.t() << std::endl;
+
+		std::string name = dir + info + _suffix + ".hdf5";
+		eigenvalues.save(arma::hdf5_name(name, "eigenvalues", arma::hdf5_opts::append));
+		std::cout << "\t\t	--> finished saving eigenvalues for " << info + _suffix << " - in time : " << tim_s(start) << "s" << std::endl;
+		if(this->ch){
+			auto H = this->ptr_to_model->get_dense_hamiltonian();
+			H.save(arma::hdf5_name(name, "hamiltonian", arma::hdf5_opts::append));
+			std::cout << "\t\t	--> finished saving Hamiltonian for " << info << " - in time : " << tim_s(start) << "s" << std::endl;
+
+			auto V = this->ptr_to_model->get_eigenvectors();
+			V.save(arma::hdf5_name(name, "eigenvectors", arma::hdf5_opts::append));
+			std::cout << "\t\t	--> finished saving eigenvectors for " << info << " - in time : " << tim_s(start) << "s" << std::endl;
+		}
+	};
+	
+}
+
 /// @brief Calculate spectral form factor
 /// @tparam Hamiltonian template parameter for current used model
 template <class Hamiltonian>
@@ -12,6 +57,7 @@ void user_interface_dis<Hamiltonian>::spectral_form_factor(){
 		dir += "beta=" + to_string_prec(this->beta) + kPSep;
 	}
 	createDirs(dir);
+	
 	//------- PREAMBLE
 	std::string info = this->set_info();
 
@@ -33,13 +79,14 @@ void user_interface_dis<Hamiltonian>::spectral_form_factor(){
 	double wH_mean = 0.0;
 	double wH_typ  = 0.0;
 	
-#pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
+//#pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
 	for(int realis = 0; realis < this->realisations; realis++)
 	{
 		std::string suffix = "_real=" + std::to_string(realis + this->jobid);
 		if(realis > 0)
 			this->ptr_to_model->generate_hamiltonian();
 		arma::vec eigenvalues = this->get_eigenvalues(suffix);
+		
 		
 		if(this->fun == 1) std::cout << "\t\t	--> finished loading eigenvalues for " << info + suffix << " - in time : " << tim_s(start) << "s" << std::endl;
 		if(eigenvalues.empty()) continue;
@@ -440,3 +487,58 @@ void user_interface_dis<Hamiltonian>::eigenstate_entanglement()
 	entropies.save(arma::hdf5_name(dir + filename + ".hdf5", "entropy", arma::hdf5_opts::append));
     std::cout << " - - - - - - FINISHED ENTROPY CALCULATION IN : " << tim_s(start) << " seconds - - - - - - " << std::endl; // simulation end
 }
+
+// -------------------------------------------------------------------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------------------------------------------- IMPLEMENTATION OF UI
+
+/// @brief Sets model parameters from values in command line
+/// @tparam Hamiltonian Hamiltonian template parameter for current used model
+template <class Hamiltonian>
+void user_interface_dis<Hamiltonian>::parse_cmd_options(int argc, std::vector<std::string> argv)
+{
+	//<! set all general UI parameters
+    user_interface<Hamiltonian>::parse_cmd_options(argc, argv);
+
+	std::string choosen_option = "";																// current choosen option
+
+	//---------- SIMULATION PARAMETERS
+	
+	// disorder
+	choosen_option = "-jobid";
+	this->set_option(this->jobid, argv, choosen_option, true);
+	choosen_option = "-seed";
+	this->set_option(this->seed, argv, choosen_option, true);
+	choosen_option = "-r";
+	this->set_option(this->realisations, argv, choosen_option, true);
+}
+
+
+/// @brief Sets all UI parameters to default values
+/// @tparam Hamiltonian Hamiltonian template parameter for current used model
+template <class Hamiltonian>
+void user_interface_dis<Hamiltonian>::set_default(){
+	
+	user_interface<Hamiltonian>::set_default();
+	
+	this->realisations = 1;
+	this->seed = static_cast<long unsigned int>(87178291199L);
+	this->jobid = 0;
+}
+
+
+/// @brief Prints all general UI option values
+/// @tparam Hamiltonian Hamiltonian template parameter for current used model
+template <class Hamiltonian>
+void user_interface_dis<Hamiltonian>::printAllOptions() const {
+	
+	user_interface<Hamiltonian>::printAllOptions();
+	std::cout << std::endl;
+	std::cout << "realisations = " << this->realisations << std::endl
+		  << "jobid = " << this->jobid << std::endl
+		  << "seed = " << this->seed << std::endl << std::endl;
+
+	std::cout << "---------------------------------------CHOSEN MODEL:" << std::endl;
+}
+
+
