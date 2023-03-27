@@ -244,7 +244,10 @@ void ui::set_default(){
 	this->Jn = 1;
 
 	this->zeta = 0.2;
+	
 	this->gamma = 1.0;
+	this->gammas = 0.2;
+	this->gamman = 1;
 
 	this->h = 0.0;
 	this->hs = 0.1;

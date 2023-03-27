@@ -8,9 +8,94 @@ namespace XYZ_UI{
 void ui::make_sim(){
     printAllOptions();
     
-    check_symmetry_generators();
-    //compare_hamiltonian();
-    //compare_energies();
+    //check_symmetry_generators();
+//     compare_hamiltonian();
+//     compare_energies();
+
+
+    int k_sec = this->L % 2 == 0? this->L/2 : 0;
+
+    std::vector<op::genOp> sym_gen;
+    sym_gen.emplace_back(op::_parity_symmetry(this->L, this->syms.p_sym));
+    auto _hilbert_space = point_symmetric( this->L, 
+                                            sym_gen, 
+                                            this->boundary_conditions,
+                                            k_sec,
+                                            0
+                                            );
+                  
+    double dzeta = this->eta1;
+    double Jz = (dzeta * dzeta - 1) / 2.;
+    auto model = std::make_unique<QHamSolver<XYZ>>(this->boundary_conditions, this->L, this->J1, 0.0, this->delta1, this->delta2, this->eta1, this->eta2,
+                                                    this->hx, this->hz, this->add_parity_breaking, this->w, this->seed);
+                                                    
+    auto H = model->get_dense_hamiltonian();
+    auto dim = model->get_hilbert_size();
+    auto hilbert = model->get_model_ref().get_hilbert_space();
+    arma::vec E1 = arma::eig_sym(H);
+    
+    int b = this->boundary_conditions;
+    E1 = - E1 + (this->L - b) * (3 + dzeta * dzeta) / 8. + b * (1 + 3 * dzeta * dzeta) / 4;
+    E1 = arma::sort(E1);
+
+    std::cout << dim << "\t\t" << E1(0) << std::endl << std::endl;
+
+    auto make_supercharge = [&](int L, bool reversed = false) 
+        -> arma::cx_mat
+    {
+        u64 dim = hilbert.get_hilbert_space_size();
+        arma::cx_mat supercharge(2 * dim, dim, arma::fill::zeros);
+        for(u64 k = 0; k < dim; k++){
+            u64 base_state = hilbert(k);
+            if(checkBit(k, 0) == reversed){
+                u64 new_idx = base_state + dim + 1;
+                auto [idx, sym_eig] = get_SEC_etc(k, new_idx, hilbert);
+                if(reversed){
+                    supercharge(k, k) -= 1;
+                    supercharge(idx, k) += dzeta * sym_eig;
+                } else {
+                    supercharge(idx, k) -= sym_eig;
+                    supercharge(k, k) += dzeta;
+                }
+            }
+            double sign = 1;
+            for(int j = 0; j < L; j++){
+                if(checkBit(k, L - j - 1) == reversed){
+                    // first term
+                    const u64 right = base_state % ULLPOW(L - j);
+                    const u64 left = base_state - right;
+                    const u64 _add = 3 * ULLPOW(L - j - 1);
+                    const u64 idx1 = 2 * left + right + _add;
+                    const u64 idx2 = 2 * left + right;
+                    
+                    auto [new_idx1, sym_eig1] = get_SEC_etc(k, idx1, hilbert);
+                    auto [new_idx2, sym_eig2] = get_SEC_etc(k, idx2, hilbert);
+                    if(reversed){
+                        supercharge(new_idx1, k) -= sign * dzeta * sym_eig1;
+                        supercharge(new_idx2, k) += sign * sym_eig2;
+                    } else {
+                        supercharge(new_idx1, k) += sign * sym_eig1;
+                        supercharge(new_idx2, k) -= sign * dzeta * sym_eig2;
+                    }
+                    
+                }
+                sign *= -1;
+            }
+        }
+        return supercharge * std::sqrt(L / (L + 1.0));
+    };
+
+    auto supercharge = make_supercharge(L);
+    auto supercharge2 = make_supercharge(L, true);
+    auto H2 = supercharge2.t() * supercharge;
+    arma::vec E2 = arma::eig_sym(H2);
+
+    for(long k = 0; k < dim; k++)
+        printSeparated(std::cout, "\t", 14, true, E1(k), E2(k), std::abs(E1(k) - E2(k)));
+    
+
+
+
     return;
 //
     this->ptr_to_model = create_new_model_pointer();
@@ -64,8 +149,8 @@ void ui::make_sim(){
                                                                     this->syms.zz_sym = zz;
                                                                     
                                                                     this->reset_model_pointer();
-                                                                    //this->diagonalize();
-                                                                    this->eigenstate_entanglement();
+                                                                    this->diagonalize();
+                                                                    //this->eigenstate_entanglement();
 
                                                                 };
                                         loopSymmetrySectors(kernel);

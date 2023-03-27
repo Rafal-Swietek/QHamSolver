@@ -56,10 +56,11 @@ def calculate_cost_function(data):
     """
     Calculate cost function for given rescaled data
     """
-    cost_func = 0
-    for i in range(0, len(data) - 1):
-        cost_func = cost_func + abs(data[i + 1] - data[i])
-    return cost_func / ( max(data) - min(data) ) - 1
+    return np.sum(np.abs(np.diff(data))) / ( max(data) - min(data) ) - 1
+    # cost_func = 0
+    # for i in range(0, len(data) - 1):
+        # cost_func = cost_func + abs(data[i + 1] - data[i])
+    # return cost_func / ( max(data) - min(data) ) - 1
 
 
 # FUNCTION TO BE MINIMIZED
@@ -106,9 +107,9 @@ def minimization_function(params, xvals, y, sizes, scaling_ansatz, crit_function
     fulldata = []
     final_func = None
     if scaling_ansatz == 'spacing':   
-        final_func = lambda params, i, j : rescale_fun(xvals[i][j], sizes[i], crit_fun, *crit_pars) * wH[i][j]**(-1. / params[0])
+        final_func = lambda params, ii, j : rescale_fun(xvals[i][j], sizes, ii, crit_fun, *crit_pars) * wH[i][j]**(-1. / params[0])
     else:                               
-        final_func = lambda params, i, j : rescale_fun(xvals[i][j], sizes[i], crit_fun, params[0], *crit_pars)
+        final_func = lambda params, ii, j : rescale_fun(xvals[i][j], sizes, ii, crit_fun, params[0], *crit_pars)
 
     center_of_range = []
     for i in range(0, len(sizes)):
@@ -125,9 +126,10 @@ def minimization_function(params, xvals, y, sizes, scaling_ansatz, crit_function
     # constraint
     """
     If rescaled datapoints for any system size exceed the rest of
-    the data the constrint is not satisfied. In other words, the center of each range has to be inside the other ranges.
+    the data the constraint is not satisfied. In other words, the center of each range has to be inside the other ranges.
     """
     constraint_satisfied = True
+    
     for center in center_of_range:
         for i in range(len(sizes)):
             if center < final_func(params, i, 0) or center > final_func(params, i, len(xvals[i])-1):
@@ -181,7 +183,7 @@ def cost_func_minization(x, y, sizes, bnds,
                     args=(x, y, sizes, scale_func, crit_func, wH),
                     popsize=int(population_size), 
                     maxiter=int(maxiterarions), 
-                    workers=workers, atol=1e-4,
+                    workers=workers, atol=1e-2,
                     seed=seed
             )
     optimal_res = np.array(result.x)
@@ -265,8 +267,8 @@ def get_crit_points(x, y, vals, crit_fun='free', scaling_ansatz = 'classic', see
                                     scale_func=scaling_ansatz, 
                                     crit_func=crit_fun,
                                     bnds=bounds,
-                                    population_size=1e3,
-                                    maxiterarions=1e4, workers=10,
+                                    population_size=1e2,
+                                    maxiterarions=1e3, workers=10,
                                     seed = seed,
                                     wH = wH
                                 )
