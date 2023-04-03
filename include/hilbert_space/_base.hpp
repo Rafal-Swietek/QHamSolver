@@ -24,8 +24,8 @@ class hilbert_space_base {
         auto get_mapping() const { return this->mapping; }
         virtual void create_basis() = 0;
         
-        virtual u64 operator()(u64 idx)  = 0;
-        virtual u64 find(u64 idx)        = 0;
+        virtual u64 operator()(u64 idx) const = 0;
+        virtual u64 find(u64 idx)       const = 0;
 };
 
 //hilbert_space_base::~hilbert_space_base(){}
@@ -47,8 +47,8 @@ class full_hilbert_space : public hilbert_space_base{
             this->init();
         }
         
-        virtual u64 operator()(u64 idx) override { return idx; };
-        virtual u64 find(u64 idx)       override { return idx; };
+        virtual u64 operator()(u64 idx) const override { return idx; };
+        virtual u64 find(u64 idx)       const override { return idx; };
         virtual void create_basis() override 
             { std::cout << "AIN'T DO NOTHING! Hilbert space is created as full." << std::endl; }
 };

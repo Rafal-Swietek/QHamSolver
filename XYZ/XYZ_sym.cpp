@@ -43,7 +43,7 @@ void XYZsym::init()
 /// @param zxsym spin flip in X symemtry sector
 /// @param zzsym spin flip in Z symmetry sector
 XYZsym::XYZsym(int _BC, unsigned int L, double J1, double J2, double delta1, double delta2, double eta1, double eta2,
-            double hx, double hz, int ksym, int psym, int zxsym, int zzsym)
+            double hx, double hz, int ksym, int psym, int zzsym, int zxsym)
 { 
     CONSTRUCTOR_CALL;
 
@@ -85,10 +85,10 @@ void XYZsym::set_symmetry_generators()
     this->symmetry_generators.emplace_back(op::_parity_symmetry(this->system_size, this->syms.p_sym));
 
     // spin flips (only for even L both can be used)
-    if(this->_hz == 0)
-        this->symmetry_generators.emplace_back(op::_spin_flip_x_symmetry(this->system_size, this->syms.zx_sym));
-    if(this->_hx == 0 && (this->system_size % 2 == 0 || this->_hz != 0)) // for odd system sizes enter only if previous symmetry not taken
+    if(this->_hx == 0)
         this->symmetry_generators.emplace_back(op::_spin_flip_z_symmetry(this->system_size, this->syms.zz_sym));
+    if(this->_hz == 0 && (this->system_size % 2 == 0 || this->_hx != 0)) // for odd system sizes enter only if previous symmetry not taken
+        this->symmetry_generators.emplace_back(op::_spin_flip_x_symmetry(this->system_size, this->syms.zx_sym));
 
 }
 
@@ -103,19 +103,20 @@ void XYZsym::set_hamiltonian_elements(u64 k, elem_ty value, u64 new_idx)
     elem_ty sym_eig;
 
     try {
-        //<! Look for index in reduced basis (maybe its the SEC already)
-        idx = this->_hilbert_space.find(new_idx);
-        if (idx < dim)	std::tie(state, sym_eig) = std::make_pair(idx, this->_hilbert_space.get_norm(idx) / this->_hilbert_space.get_norm(k));
+        // //<! Look for index in reduced basis (maybe its the SEC already)
+        // idx = this->_hilbert_space.find(new_idx);
+        // if (idx < dim)	std::tie(state, sym_eig) = std::make_pair(idx, this->_hilbert_space.get_norm(idx) / this->_hilbert_space.get_norm(k));
         
-        //<! find SEC for input state
-        auto [min, sym_eig] = this->_hilbert_space.find_SEC_representative(new_idx);
-        idx = this->_hilbert_space.find(min);
-        #ifndef USE_REAL_SECTORS
-            sym_eig = std::conj(sym_eig);
-        #endif
-        if (idx < dim)	std::tie(state, sym_eig) = std::make_pair(idx, this->_hilbert_space.get_norm(idx) / this->_hilbert_space.get_norm(k) * sym_eig);
-        else			std::tie(state, sym_eig) = std::make_pair(0, 0.0);
+        // //<! find SEC for input state
+        // auto [min, sym_eig] = this->_hilbert_space.find_SEC_representative(new_idx);
+        // idx = this->_hilbert_space.find(min);
+        // #ifndef USE_REAL_SECTORS
+        //     sym_eig = std::conj(sym_eig);
+        // #endif
+        // if (idx < dim)	std::tie(state, sym_eig) = std::make_pair(idx, this->_hilbert_space.get_norm(idx) / this->_hilbert_space.get_norm(k) * sym_eig);
+        // else			std::tie(state, sym_eig) = std::make_pair(0, 0.0);
         
+        std::tie(state, sym_eig) = this->_hilbert_space.find_matrix_element(new_idx, this->_hilbert_space.get_norm(k));
         #ifdef USE_REAL_SECTORS
             H(state, k) += std::real(value * sym_eig);
         #else

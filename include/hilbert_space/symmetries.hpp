@@ -39,10 +39,11 @@ public:
     
     virtual void create_basis() override;
 
-	virtual u64 operator()(u64 idx) override;
-	virtual u64 find(u64 element) override;
+	virtual u64 operator()(u64 idx) const override;
+	virtual u64 find(u64 element) const override;
 
 	return_type find_SEC_representative(u64 base_idx) const;
+	return_type find_matrix_element(u64 new_state, elem_ty norm) const;
 
 	auto get_symmetry_group() const { return this-> _symmetry_group; }
 	auto get_normalisation()  const { return this-> _normalisation; }
@@ -95,6 +96,10 @@ point_symmetric::generate_symmetry_goup(const v_1d<op::genOp>& sym_gen_in)
 		sym_gen.erase(sym_gen.begin() + this->_pos_of_parity);
 	}
 
+	//<! collect all sectors (Z2 sectors are +-1)
+	for(auto& G : sym_gen)
+		this->_sectors.emplace_back((int)std::real(chi(G)));
+
 	// add neutral element
 	this->_symmetry_group.push_back(op::genOp(this->system_size));
 	
@@ -114,9 +119,6 @@ point_symmetric::generate_symmetry_goup(const v_1d<op::genOp>& sym_gen_in)
         } while (std::prev_permutation(bitmask.begin(), bitmask.end())); // loop over all combinations with bitmask
 	}
 
-	//<! collect all sectors (Z2 sectors are +-1)
-	for(auto& G : sym_gen)
-		this->_sectors.emplace_back((int)std::real(chi(G)));
 	
 	// set combination of all syms with all translations
 	if (this->_boundary_cond == 0) {
@@ -208,6 +210,34 @@ point_symmetric::symmetry_rotation() const
 	return U;
 }
 
+
+/// @brief Find symmetry generator returning to SEC state
+/// @param new_state input state
+/// @return tuple with SEC state and symmetry return value
+inline
+point_symmetric::return_type 
+point_symmetric::find_matrix_element(u64 new_state, elem_ty norm) const
+{
+	//<! Look for index in reduced basis (maybe its the SEC already)
+	u64 idx = this->find(new_state);
+	if (idx < this->dim)	
+		return std::make_pair(idx, this->_normalisation[idx] / norm);
+	
+	//<! find SEC for input state
+	auto [min, sym_eig] = this->find_SEC_representative(new_state);
+	idx = this->find(min);
+
+	#ifndef USE_REAL_SECTORS
+		sym_eig = std::conj(sym_eig);
+	#endif
+	
+	// input norm, cause can be used between sectors
+	//	return std::make_pair(idx, this->_normalisation[idx] / this->_normalisation[base] * sym_eig);
+	if (idx < dim)	return std::make_pair(idx, this->_normalisation[idx] / norm * sym_eig);
+	else			return std::make_pair(0, 0.0);
+        
+}
+
 //<! ------------------------------------------------------------------------------------------ BASIS CONSTRUCTION
 /// @brief Creates hilbert space basis with given point symmetries
 inline
@@ -264,7 +294,7 @@ void point_symmetric::create_basis()
 /// @return Element of hilbert space at position 'index'
 inline
 u64 
-point_symmetric::operator()(u64 idx)
+point_symmetric::operator()(u64 idx) const
 { 
 	_assert_((idx < this->dim), OUT_OF_MAP);
     return this->mapping[idx]; 
@@ -276,7 +306,7 @@ point_symmetric::operator()(u64 idx)
 /// @return index of element 'element'
 inline
 u64 
-point_symmetric::find(u64 element)
+point_symmetric::find(u64 element) const
 	{ return binary_search(this->mapping, 0, this->dim - 1, element); }
 
 

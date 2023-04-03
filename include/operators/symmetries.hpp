@@ -21,11 +21,12 @@ namespace op{
     /// @param sector symmetry sector (int) --> quasimomentum sector is calculated within
     /// @return translation geerator
     inline
-    auto _translation_symmetry(unsigned int L, int sector)
+    auto _translation_symmetry(unsigned int L, int sector, bool inverse = false)
     { 
         _assert_((sector >= 0 && sector < L), NOT_ALLOWED_SYM_SECTOR);
         const double ksym = two_pi * (double)sector / L;
-        return symmetry(L, __builtin_operators::T, std::exp(-im * ksym));
+        if(inverse) return symmetry(L, __builtin_operators::Tinv, std::exp(im * ksym));
+        else        return symmetry(L, __builtin_operators::T,    std::exp(-im * ksym));
     }
 
     /// @brief Creates parity generator for given sector and hilbert space

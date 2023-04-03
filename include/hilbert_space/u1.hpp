@@ -120,7 +120,7 @@ public:
     /// @param idx Index of element in hilbert space
     /// @return Element of hilbert space at position 'index'
     virtual
-    u64 operator()(u64 idx) override
+    u64 operator()(u64 idx) const override
         { _assert_((idx < this->dim), OUT_OF_MAP);
             return this->mapping[idx]; }
 
@@ -129,6 +129,6 @@ public:
     /// @param element element to find its index
     /// @return index of element 'element'
     virtual 
-    u64 find(u64 element) override
+    u64 find(u64 element) const override
         { return binary_search(this->mapping, 0, this->dim - 1, element); }
 };

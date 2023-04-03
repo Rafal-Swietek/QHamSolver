@@ -192,8 +192,22 @@ std::ostream& operator<<(
 	const std::vector<_type>& vec	//<! vector to print
 ) {
 	if (vec.size() != 0) {
-		std::copy(vec.begin(), vec.end() - 1, std::ostream_iterator<_type>(os, "\n"));
+		std::copy(vec.begin(), vec.end() - 1, std::ostream_iterator<_type>(os, " "));
 		os << vec.back() << '\n';
+	}
+	else
+		os << "Empty container!" << std::endl;
+	return os;
+}
+template <> 
+inline 
+std::ostream& operator<<(
+	std::ostream& os,				//<! output stream
+	const std::vector<bool>& vec	//<! vector to print
+) {
+	if (vec.size() != 0) {
+		for(auto elem : vec)
+			std::cout << elem;
 	}
 	else
 		os << "Empty container!" << std::endl;

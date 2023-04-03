@@ -11,6 +11,7 @@ namespace op {
 		Zy,		  // global spin flip in Y
 		Zz,		  // global spin flip in Z
 		T,		  // translation
+		Tinv,	  // inverse translation
 		digit,	  // check digit at specified position
 		Z_i,	  // flip spin locally
 	};	// built-in operators
@@ -78,9 +79,9 @@ namespace op {
 			};
 		
 
-		//! translation generator: shift order of binary/octal/.. string to the left, i.e->binary-> T * |010111> = |101110>
+		//! inverse translation generator: shift order of binary/octal/.. string to the left, i.e->binary-> T * |010111> = |101110>
 		inline
-		auto translation(unsigned int L) -> _global_fun
+		auto translation_inv(unsigned int L) -> _global_fun
 		{
 			return [L](u64 n)
 					{
@@ -95,7 +96,22 @@ namespace op {
 						return std::make_pair(final_state, 1.0);
 					};
 		};
-
+		
+		//! translation generator: shift order of binary/octal/.. string to the left, i.e->binary-> T * |010111> = |101110>
+		inline
+		auto translation(unsigned int L) -> _global_fun
+		{
+			return [L](u64 n)
+					{
+						u64 rotate = block_size * (L - 1ULL);		// shift generator of all blocks of bits except the first one
+						u64 first_digit = n & (u64(config - 1ULL)); // conjuction of 11.. and the first digit in binary
+						u64 other_digit = n - first_digit;			// remaining digits
+						u64 final_state = (other_digit >> block_size)
+							| (first_digit << rotate);				// first part rotates the remaining digits (or block of bits) by right shift by 'blocks' positions\
+																							(equivalent to one position in binary code), while the latter shifts the first digit to the end
+						return std::make_pair(final_state, 1.0);
+					};
+		};
 
 		//! ---------------------------------------------- OTHER BIT OEPRATIONS
 		//! checks the digit at the current position
@@ -130,6 +146,7 @@ namespace op {
 	{
 		switch(sym){
 			case __builtin_operators::T: 		return __builtins::translation(L);
+			case __builtin_operators::Tinv: 	return __builtins::translation_inv(L);
 			case __builtin_operators::P: 		return __builtins::parity(L);
 			case __builtin_operators::Zx: 		return __builtins::spin_flip_x(L);
 			case __builtin_operators::Zy: 		return __builtins::spin_flip_y(L);

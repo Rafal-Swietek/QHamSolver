@@ -50,7 +50,7 @@ public:
     XYZsym() = default;
     XYZsym(std::istream& os);
     XYZsym(int _BC, unsigned int L, double J1, double J2, double delta1, double delta2, double eta1, double eta2,
-            double hx, double hz, int ksym, int psym, int zxsym = 1, int zzsym = 1);
+            double hx, double hz, int ksym, int psym, int zzsym = 1, int zxsym = 1);
 
     //<! ----------------------------------------------------- HAMILTONIAN BUILDERS
     virtual void create_hamiltonian() override;
