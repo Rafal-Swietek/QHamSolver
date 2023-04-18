@@ -31,6 +31,7 @@ private:
     
     bool _add_parity_breaking = 0;          // add parity breaking term on edge
     bool _use_disorder = 0;                 // use disordered XYZ model
+    bool _add_edge_fields = false;          // add additional edge fields needed for SUSY in OBC
 
     //<! ----------------------------------------------------- INITIALIZE MODEL
     virtual void init() override
@@ -52,7 +53,7 @@ public:
     XYZ() = default;
     XYZ(std::istream& os);
     XYZ(int _BC, unsigned int L, double J1, double J2, double delta1, double delta2, double eta1, double eta2,
-            double hx, double hz, bool add_parity_breaking = false, double w = 0, const u64 seed = std::random_device{}());
+            double hx, double hz, bool add_parity_breaking = false, bool add_edge_fields = false);//double w = 0, const u64 seed = std::random_device{}());
 
     //<! ----------------------------------------------------- HAMILTONIAN BUILDERS
     virtual void create_hamiltonian() override;

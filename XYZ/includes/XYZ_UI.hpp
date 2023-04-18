@@ -26,10 +26,10 @@ namespace XYZ_UI{
         double J2, J2s;
         double delta1, delta1s;
         double delta2, delta2s;
-        double eta1, eta2;
+        double eta1, eta2, eta1s, eta2s;
         double hx, hxs, hz, hzs;
         double w, ws;
-        int J1n, J2n, delta1n, delta2n, hxn, hzn, wn;
+        int J1n, J2n, delta1n, delta2n, eta1n, eta2n, hxn, hzn, wn;
         
         struct {
             int k_sym;
@@ -38,6 +38,9 @@ namespace XYZ_UI{
             int zz_sym;
         } syms;
         
+        bool add_edge_fields;
+        bool add_parity_breaking;
+
         /// @brief 
         /// @param ks 
         /// @return 
@@ -45,13 +48,12 @@ namespace XYZ_UI{
         
         /// @brief 
         /// @return 
-        bool use_flip_X() const { return ( this->hz == 0 ); }
+        bool use_flip_X() const { return ( this->hz == 0 && !this->add_edge_fields) && (this->L % 2 == 0 || this->hx != 0) ; }
 
         /// @brief 
         /// @return 
-        bool use_flip_Z() const { return ( this->hx == 0 && (this->L % 2 == 0 || this->hz != 0) ); }
+        bool use_flip_Z() const { return ( this->hx == 0 ); }
 
-        bool add_parity_breaking;
         
         typedef typename XYZUIparent::model_pointer model_pointer;
         typedef typename XYZUIparent::element_type element_type;

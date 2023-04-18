@@ -48,6 +48,7 @@ public:
 	virtual void average_sff() 				override;
 	virtual void eigenstate_entanglement() 	override;
 	virtual void analyze_spectra() 			override;
+	virtual void diagonal_matrix_elements() override;
 };
 
 // include definitions 

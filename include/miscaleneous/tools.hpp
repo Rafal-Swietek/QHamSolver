@@ -95,9 +95,10 @@ int order_of_magnitude(const _ty a_value) {
 template <typename _type> 
 inline 
 std::string to_string_prec(
-	const _type a_value,
+	_type a_value,
 	int n = -1
 ) {
+	if(std::abs(a_value) < 1e-10) a_value = _type(0);
 	if(n < 0)	
 		n = order_of_magnitude(a_value);
 	std::ostringstream outie;

@@ -33,6 +33,8 @@ private:
     double _eta1 = 0.55;                    // nearest neighbour anisotropy in XY
     double _eta2 = 0.0;                     // next-nearest neighbour anisotropy in XY
 
+    bool _add_edge_fields = false;          // add additional edge fields needed for SUSY in OBC
+
     //<! Symmetry contained in struct
     struct {
         int k_sym;                          // quasimomentum symmetry sector
@@ -50,7 +52,7 @@ public:
     XYZsym() = default;
     XYZsym(std::istream& os);
     XYZsym(int _BC, unsigned int L, double J1, double J2, double delta1, double delta2, double eta1, double eta2,
-            double hx, double hz, int ksym, int psym, int zzsym = 1, int zxsym = 1);
+            double hx, double hz, int ksym, int psym, int zzsym = 1, int zxsym = 1, bool add_edge_fields = false);
 
     //<! ----------------------------------------------------- HAMILTONIAN BUILDERS
     virtual void create_hamiltonian() override;

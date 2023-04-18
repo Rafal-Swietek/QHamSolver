@@ -21,10 +21,9 @@
 /// @param hx transverse magnetic field
 /// @param hz longitudinal magnetic field
 /// @param add_parity_breaking add edge term to break parity (if no disorder present)
-/// @param w uniformly distributed disorder
-/// @param seed random seed for disorder
+/// @param add_edge_fields add edge fields to keep supersymmetry for OBC
 XYZ::XYZ(int _BC, unsigned int L, double J1, double J2, double delta1, double delta2, double eta1, double eta2,
-            double hx, double hz, bool add_parity_breaking, double w, const u64 seed)
+            double hx, double hz, bool add_parity_breaking, bool add_edge_fields)//double w, const u64 seed)
 { 
     CONSTRUCTOR_CALL;
 
@@ -40,14 +39,19 @@ XYZ::XYZ(int _BC, unsigned int L, double J1, double J2, double delta1, double de
     this->_hz = hz;
     this->_hx = hx;
     this->_add_parity_breaking = add_parity_breaking;
-    
-    //<! disorder terms
-    if(w > 0){
-        this->_use_disorder = true;
-        this->_w = w;
-        this->_seed = seed;
+
+    if(this->_boundary_condition)   // only for OBC
+        this->_add_edge_fields = add_edge_fields;
+
+    if(this->_add_edge_fields)
         this->_add_parity_breaking = false;
-    }
+    //<! disorder terms
+    // if(w > 0){
+    //     this->_use_disorder = true;
+    //     this->_w = w;
+    //     this->_seed = seed;
+    //     this->_add_parity_breaking = false;
+    // }
     init(); 
 }
 
@@ -79,14 +83,19 @@ void XYZ::set_hamiltonian_elements(u64 k, double value, u64 new_idx)
 void XYZ::create_hamiltonian()
 {
     this->H = sparse_matrix(this->dim, this->dim);
-    if(this->_use_disorder){
-        this->_seed = std::abs(2 * (long)this->_seed - 10000) % ULONG_MAX;
-        disorder_generator = disorder<double>(this->_seed);
-        this->_disorder = disorder_generator.uniform(system_size, this->_hz, this->_hz + this->_w); 
+    // if(this->_use_disorder){
+    //     this->_seed = std::abs(2 * (long)this->_seed - 10000) % ULONG_MAX;
+    //     disorder_generator = disorder<double>(this->_seed);
+    //     this->_disorder = disorder_generator.uniform(system_size, this->_hz, this->_hz + this->_w); 
+    // }
+    // if(this->_add_parity_breaking && !this->_use_disorder)
+    //     this->_disorder(0) = 0.1;
+
+    double Jz = (this->_eta1 * this->_eta1 - 1) / 2.;
+    if(this->_add_edge_fields){
+        this->_disorder(0)                      = Jz / 2;
+        this->_disorder(this->system_size - 1)  = Jz / 2;
     }
-    if(this->_add_parity_breaking && !this->_use_disorder)
-        this->_disorder(0) = 0.1;
-    
     std::vector<std::vector<double>> parameters = { { this->_J1 * (1 - this->_eta1), this->_J1 * (1 + this->_eta1), this->_J1 * this->_delta1},
                                                     { this->_J2 * (1 - this->_eta2), this->_J2 * (1 + this->_eta2), this->_J2 * this->_delta2}
                                                 };
@@ -96,7 +105,7 @@ void XYZ::create_hamiltonian()
     std::vector<int> neighbor_distance = {1, 2};
 
     for (size_t k = 0; k < this->dim; k++) {
-		int base_state = this->_hilbert_space(k);
+		size_t base_state = this->_hilbert_space(k);
 	    for (int j = 0; j < this->system_size; j++) {
             cpx val = 0.0;
             u64 op_k;
@@ -124,6 +133,11 @@ void XYZ::create_hamiltonian()
             }
 	    }
 	}
+
+    // add SUSY ground state energy (const shift) and invert (minus sign in front of hamiltonian)
+    this->H = -this->H + this->_J1 * (this->system_size - int(this->_boundary_condition)) * (2 + Jz) / 4. * arma::eye(this->dim, this->dim);
+    if(this->_boundary_condition)
+        this->H = this->H + this->_J1 * (1 + 3 * this->_eta1 * this->_eta1) / 4.0 * arma::eye(this->dim, this->dim);
 }
 
 

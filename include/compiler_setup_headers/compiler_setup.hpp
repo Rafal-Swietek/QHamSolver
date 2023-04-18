@@ -1,11 +1,5 @@
 #pragma once
 
-//<! for generic lambda input: has to be a callable
-#if defined(HAS_CXX20)
-	#define callable_type std::invocable
-#else
-	#define callable_type typename
-#endif
 
 #if !defined(FUN_SIGNATURE)
 	#if defined (__GNUG__)
@@ -17,14 +11,6 @@
 	#else 
 		#define FUN_SIGNATURE  __func__
 	#endif
-#endif
-
-//! ---------------------------------------------------- define builtin functions
-#ifdef _MSC_VER
-#include <intrin.h>
-#include <nmmintrin.h>
-#define __builtin_popcount __popcnt
-#define __builtin_popcountll _mm_popcnt_u64
 #endif
 
 
@@ -57,7 +43,7 @@
 	#define stringize(x) #x
 	#include <iostream>
 	//<! DEFINE USER ASSERT
-	#ifndef NDEBUG
+	#ifndef NODEBUG
 		#define _assert_(Expr, Msg) \
 			__M_Assert(stringize(Expr), Expr, __FILE__, __LINE__, FUN_SIGNATURE, Msg)
 	#else
@@ -111,4 +97,26 @@
 	#pragma message ("--> Compiling with c++17 compiler. Failed to use type_traits and concepts in metaprogramming")
 #else
 	#pragma message ("--> Ensuring correct types in metaprogramming disabled.\n Check user types against usage in code to omit program failure.")
+#endif
+
+
+//! ---------------------------------------------------- define builtin functions
+#ifdef _MSC_VER
+#include <intrin.h>
+#include <nmmintrin.h>
+#define __builtin_popcount __popcnt
+#define __builtin_popcountll _mm_popcnt_u64
+#endif
+
+// #ifdef HAS_CXX20 && !defined( __clang__ )
+// 	#define __builtin_popcountll std::popcount
+// #else
+// 	#define __builtin_popcountll __builtin_popcountll
+// #endif
+
+//<! for generic lambda input: has to be a callable
+#if defined(HAS_CXX20)
+	#define callable_type typename//std::invocable
+#else
+	#define callable_type typename
 #endif

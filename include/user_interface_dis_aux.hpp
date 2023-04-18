@@ -468,10 +468,12 @@ void user_interface_dis<Hamiltonian>::eigenstate_entanglement()
 			}
     		std::cout << " - - - - - - finished entropy size LA: " << LA << " in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
 		}
-		std::string dir_realis = dir + "realisation=" + std::to_string(this->jobid + realis) + kPSep;
-		createDirs(dir_realis);
-		E.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "energies"));
-		S.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "entropy", arma::hdf5_opts::append));
+		if(this->realisations > 1){
+			std::string dir_realis = dir + "realisation=" + std::to_string(this->jobid + realis) + kPSep;
+			createDirs(dir_realis);
+			E.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "energies"));
+			S.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "entropy", arma::hdf5_opts::append));
+		}
 		entropies += S;
 		energies += E;
 		
@@ -483,9 +485,106 @@ void user_interface_dis<Hamiltonian>::eigenstate_entanglement()
 	energies /= double(counter);
 	entropies /= double(counter);
 
+	filename += "_jobid=" + std::to_string(this->jobid);
     energies.save(arma::hdf5_name(dir + filename + ".hdf5", "energies"));
 	entropies.save(arma::hdf5_name(dir + filename + ".hdf5", "entropy", arma::hdf5_opts::append));
     std::cout << " - - - - - - FINISHED ENTROPY CALCULATION IN : " << tim_s(start) << " seconds - - - - - - " << std::endl; // simulation end
+}
+
+/// @brief Calculate diagonal matrix elements of local operators
+/// @tparam Hamiltonian template parameter for current used model 
+template <class Hamiltonian>
+void user_interface_dis<Hamiltonian>::diagonal_matrix_elements()
+{
+	clk::time_point start = std::chrono::system_clock::now();
+	
+	std::string dir = this->saving_dir + "DiagMatElem" + kPSep;
+	createDirs(dir);
+	
+	size_t dim = this->ptr_to_model->get_hilbert_size();
+	#ifdef ARMA_USE_SUPERLU
+        const int size = this->ch? 500 : dim;
+    #else
+        const int size = dim;
+    #endif
+	std::string info = this->set_info();
+	std::string filename = info;
+
+	arma::cx_vec sigX_mat(size, arma::fill::zeros);
+	arma::cx_vec sigZ_mat(size, arma::fill::zeros);
+	arma::vec energies(size, arma::fill::zeros);
+
+	int Ll = this->L;
+	auto kernel1 = [Ll](u64 state){ auto [val, num] = operators::sigma_x(state, Ll, std::vector<int>({Ll / 2}) ); return std::make_pair(num, val); };
+	auto SigmaX_op = op::generic_operator<>(this->L, std::move(kernel1), 1.0);
+	auto SigmaX = SigmaX_op.create_matrix(dim);
+
+	auto kernel2 = [Ll](u64 state){ auto [val, num] = operators::sigma_z(state, Ll, std::vector<int>({Ll / 2}) ); return std::make_pair(num, val); };
+	auto SigmaZ_op = op::generic_operator<>(this->L, std::move(kernel2), 1.0);
+	auto SigmaZ = SigmaZ_op.create_matrix(dim);
+
+	int counter = 0;
+#pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
+	for(int realis = 0; realis < this->realisations; realis++)
+	{
+		if(realis > 0)
+			this->ptr_to_model->generate_hamiltonian();
+		start = std::chrono::system_clock::now();
+    #ifdef ARMA_USE_SUPERLU
+        if(this->ch){
+            this->ptr_to_model->hamiltonian();
+            this->ptr_to_model->diag_sparse(true);
+        } else
+            this->ptr_to_model->diagonalization();
+    
+    #else
+        this->ptr_to_model->diagonalization();
+    #endif
+
+		std::cout << " - - - - - - finished diagonalization in : " << tim_s(start) << " s for realis = " << realis << " - - - - - - " << std::endl; // simulation end
+		
+		const arma::vec E = this->ptr_to_model->get_eigenvalues();
+
+		arma::cx_vec sigX(size, arma::fill::zeros);
+		arma::cx_vec sigZ(size, arma::fill::zeros);
+
+		outer_threads = this->thread_number;
+		omp_set_num_threads(1);
+		std::cout << outer_threads << "\t\t" << omp_get_num_threads() << std::endl;
+		
+		start = std::chrono::system_clock::now();
+	#pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
+		for(int n = 0; n < size; n++){
+			arma::Col<element_type> state = this->ptr_to_model->get_eigenState(n);
+			sigX(n) = dot_prod(state, arma::cx_vec(SigmaX * state));
+			sigZ(n) = dot_prod(state, arma::cx_vec(SigmaZ * state));
+		}
+    	std::cout << " - - - - - - finished matrix elemnts in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
+		if(this->realisations > 1){
+			std::string dir_realis = dir + "realisation=" + std::to_string(this->jobid + realis) + kPSep;
+			createDirs(dir_realis);
+			E.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "energies"));
+			sigX.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "sigmaX_L_2", arma::hdf5_opts::append));
+			sigZ.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "sigmaZ_L_2", arma::hdf5_opts::append));
+		}
+		sigX_mat += sigX;
+		sigZ_mat += sigZ;
+		energies += E;
+		
+		counter++;
+
+		std::cout << " - - - - - - finished realisation realis = " << realis << " in : " << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
+	}
+    
+	energies /= double(counter);
+	sigX_mat /= double(counter);
+	sigZ_mat /= double(counter);
+
+	filename += "_jobid=" + std::to_string(this->jobid);
+    energies.save(arma::hdf5_name(dir + filename + ".hdf5", "energies"));
+	sigX_mat.save(arma::hdf5_name(dir + filename + ".hdf5", "sigmaX_L_2", arma::hdf5_opts::append));
+	sigZ_mat.save(arma::hdf5_name(dir + filename + ".hdf5", "sigmaZ_L_2", arma::hdf5_opts::append));
+    std::cout << " - - - - - - FINISHED CALCULATION IN : " << tim_s(start) << " seconds - - - - - - " << std::endl; // simulation end
 }
 
 // -------------------------------------------------------------------------------------------------------------------------------------

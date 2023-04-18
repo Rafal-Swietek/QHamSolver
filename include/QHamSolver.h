@@ -39,10 +39,10 @@
 
 #include "gcem/include/gcem.hpp"        //<! constexpr library for math functinos
 
-#include "operators/operator_base.h"
-#include "hilbert_space/_base.hpp"
-
 #include "SpinOperators.hpp"
+#include "hilbert_space/_base.hpp"
+#include "operators/operator_base.h"
+
 #include "Hamiltonian/_base.hpp"
 #include "QhamSolver_aux.hpp"
 

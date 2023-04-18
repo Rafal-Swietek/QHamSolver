@@ -43,7 +43,7 @@ void XYZsym::init()
 /// @param zxsym spin flip in X symemtry sector
 /// @param zzsym spin flip in Z symmetry sector
 XYZsym::XYZsym(int _BC, unsigned int L, double J1, double J2, double delta1, double delta2, double eta1, double eta2,
-            double hx, double hz, int ksym, int psym, int zzsym, int zxsym)
+            double hx, double hz, int ksym, int psym, int zzsym, int zxsym, bool add_edge_fields)
 { 
     CONSTRUCTOR_CALL;
 
@@ -59,6 +59,10 @@ XYZsym::XYZsym(int _BC, unsigned int L, double J1, double J2, double delta1, dou
     this->_hz = hz;
     this->_hx = hx;
     
+    if(this->_boundary_condition)   // only for OBC
+        this->_add_edge_fields = add_edge_fields;
+
+
     //<! symmetries
     this->syms.k_sym = ksym;
     this->syms.p_sym = psym;
@@ -87,8 +91,10 @@ void XYZsym::set_symmetry_generators()
     // spin flips (only for even L both can be used)
     if(this->_hx == 0)
         this->symmetry_generators.emplace_back(op::_spin_flip_z_symmetry(this->system_size, this->syms.zz_sym));
-    if(this->_hz == 0 && (this->system_size % 2 == 0 || this->_hx != 0)) // for odd system sizes enter only if previous symmetry not taken
-        this->symmetry_generators.emplace_back(op::_spin_flip_x_symmetry(this->system_size, this->syms.zx_sym));
+    
+    if(this->_hz == 0 && !this->_add_edge_fields)
+        if(this->system_size % 2 == 0 || this->_hx != 0) // for odd system sizes enter only if previous symmetry not taken
+            this->symmetry_generators.emplace_back(op::_spin_flip_x_symmetry(this->system_size, this->syms.zx_sym));
 
 }
 
@@ -135,6 +141,7 @@ void XYZsym::create_hamiltonian()
 {
     this->H = sparse_matrix(this->dim, this->dim);
     
+    double Jz = (this->_eta1 * this->_eta1 - 1) / 2.;
     std::vector<std::vector<double>> parameters = { { this->_J1 * (1 - this->_eta1), this->_J1 * (1 + this->_eta1), this->_J1 * this->_delta1},
                                                     { this->_J2 * (1 - this->_eta2), this->_J2 * (1 + this->_eta2), this->_J2 * this->_delta2}
                                                 };
@@ -148,8 +155,12 @@ void XYZsym::create_hamiltonian()
 	    for (int j = 0; j < this->system_size; j++) {
             cpx val = 0.0;
             u64 op_k;
+
+            double fieldZ = this->_hz;
+            if(this->_add_edge_fields && (j == 0 || j == this->system_size - 1))
+                fieldZ -= Jz / 2.0;
             std::tie(val, op_k) = operators::sigma_z(base_state, this->system_size, { j });
-            this->set_hamiltonian_elements(k, this->_hz * real(val), op_k);
+            this->set_hamiltonian_elements(k, fieldZ * real(val), op_k);
 	    	
             std::tie(val, op_k) = operators::sigma_x(base_state, this->system_size, { j });			
             this->set_hamiltonian_elements(k, this->_hx * real(val), op_k);
@@ -171,6 +182,11 @@ void XYZsym::create_hamiltonian()
             }
 	    }
 	}
+
+    // add SUSY ground state energy (const shift) and invert (minus sign in front of hamiltonian)
+    this->H = -this->H + this->_J1 * (this->system_size - int(this->_boundary_condition)) * (2 + Jz) / 4. * arma::eye(this->dim, this->dim);
+    if(this->_boundary_condition)
+        this->H = this->H + this->_J1 * (1 + 3 * this->_eta1 * this->_eta1) / 4.0 * arma::eye(this->dim, this->dim);
 }
 
 
