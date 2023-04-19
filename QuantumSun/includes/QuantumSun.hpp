@@ -2,6 +2,11 @@
 #ifndef _QUANTUM_SUN
 #define _QUANTUM_SUN
 
+#ifndef ENSEMBLE
+    #define ENSEMBLE GOE
+    #pragma message ("--> Using implicit random matrix ensemble: i.e., Gaussian Orthogonal Ensemble")
+#endif
+
 /// @brief Model for EBT, QuantumSun model
 class QuantumSun : 
     public hamiltonian_base<double, full_hilbert_space>
@@ -13,10 +18,13 @@ class QuantumSun :
     //<! ----------------------------------------------------- MODEL PARAMETERS
 private:
     disorder<double> disorder_generator;    // generator for random disorder and couplings
+    disorder<int> neighbor_generator;       // generator for random neighbor in interaction term 
     
     arma::vec _long_range_couplings;        // random coupling, i.e. distance of spins to grain
     arma::vec _disorder;                    // disorder array on Z field
     
+    ENSEMBLE grain;                         // ergodic grain drawn from some ensemble
+
     double _w = 0.5;                        // disorder value on top of uniform field
     double _J = 1.;                         // coupling amplitude
     double _hz = 1.0;                       // longitudinal uniform field
@@ -26,9 +34,10 @@ private:
     double _gamma = 1.0;                    // prefactor to ergodic grain (controls ergodicity)
     u64 _seed = std::random_device{}();     // seed for random generator
     
+    int num_of_spins;                       // number of localised spins
     int grain_size = 3;                     // ergodic grain size
     bool _initiate_avalanche = 1;           // start first coupling with =1.0 . (i.e. exponent u_0 = 0)
-    bool _norm_grain = 0;                   // normalize grain to unit hilbert-schmidt norm?
+    bool _norm_grain = 1;                   // normalize grain to unit hilbert-schmidt norm?
     
     //<! ----------------------------------------------------- INITIALIZE MODEL
     virtual void init() override
@@ -38,7 +47,9 @@ private:
         this->dim = this->_hilbert_space.get_hilbert_space_size();
 
         // initialize disorder
-        disorder_generator = disorder<double>(this->_seed);
+        this->disorder_generator = disorder<double>(this->_seed);
+        this->neighbor_generator = disorder<int>(this->_seed);
+	    this->grain = ENSEMBLE(this->_seed);
 
         // create hamiltonian
         this->create_hamiltonian();
@@ -50,7 +61,7 @@ public:
     QuantumSun(std::istream& os);
     QuantumSun(int L, double J, double alfa, double gamma,
             double w, double hz, const u64 seed = std::random_device{}(), 
-            int M = 3, double zeta = 0.2, bool initiate_avalanche = false, bool normalize_grain = false);
+            int M = 3, double zeta = 0.2, bool initiate_avalanche = true, bool normalize_grain = true);
 
     //<! ----------------------------------------------------- HAMILTONIAN BUILDERS
     virtual void create_hamiltonian() override;

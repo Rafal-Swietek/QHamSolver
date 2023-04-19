@@ -19,7 +19,6 @@ void ui::make_sim(){
 		diagonalize(); 
 		break;
 	case 1:
-		std::cout << "Got here" << std::endl;
 		spectral_form_factor();
 		break;
 	case 2:
@@ -34,13 +33,13 @@ void ui::make_sim(){
 		auto w_list = generate_scaling_array(w);
 		auto gamma_list = generate_scaling_array(gamma);
 
-		for (auto& system_size : L_list){
+		for (auto& L_loc : L_list){
 			for (auto& alfax : alfa_list){
 				for (auto& hx : h_list){
 					for(auto& Jx : J_list){
 						for(auto& wx : w_list){
 							for(auto& gammax : gamma_list){
-								this->L = system_size;
+								this->L = L_loc;
 								this->alfa = alfax;
 								this->h = hx;
 								this->J = Jx;
@@ -65,7 +64,7 @@ void ui::make_sim(){
 
 
 
-
+/// @brief 
 void ui::diagonal_matrix_elements(){
 	
 	std::string dir = this->saving_dir + "DiagonalMatrixElements" + kPSep + "SigmaZ" + kPSep;
@@ -206,22 +205,21 @@ void ui::parse_cmd_options(int argc, std::vector<std::string> argv)
     //<! set the remaining UI parameters
 	std::string choosen_option = "";	
 
-	#define set_param(name) choosen_option = "-" #name;                                 \
-	                        this->set_option(this->name, argv, choosen_option);         \
+	#define _set_param_(name, g_eq0) choosen_option = "-" #name;                               \
+	                        this->set_option(this->name, argv, choosen_option, g_eq0);         \
                                                                                         \
 	                        choosen_option = "-" #name "s";                             \
-	                        this->set_option(this->name##s, argv, choosen_option);      \
+	                        this->set_option(this->name##s, argv, choosen_option, g_eq0);      \
                                                                                         \
 	                        choosen_option = "-" #name "n";                             \
 	                        this->set_option(this->name##n, argv, choosen_option, true);
-    set_param(J);
-    set_param(alfa);
+	#define set_param(name) _set_param_(name, false);
+    
+	set_param(J);
     set_param(h);
     set_param(w);
     set_param(gamma);
-
-    //choosen_option = "-gamma";
-    //this->set_option(this->gamma, argv, choosen_option);
+    _set_param_(alfa, true); // set always positive
 
     choosen_option = "-zeta";
     this->set_option(this->zeta, argv, choosen_option);
@@ -229,7 +227,7 @@ void ui::parse_cmd_options(int argc, std::vector<std::string> argv)
     choosen_option = "-ini_ave";
     this->set_option(this->initiate_avalanche, argv, choosen_option);
 
-    choosen_option = "-M";
+    choosen_option = "-N";
     this->set_option(this->grain_size, argv, choosen_option);
 
     this->saving_dir = "." + kPSep + "results" + kPSep;
@@ -270,6 +268,7 @@ void ui::print_help() const {
     user_interface_dis<QuantumSun>::print_help();
     
     printf(" Flags for Quantum Sun model:\n");
+    printSeparated(std::cout, "\t", 20, true, "-L", "(int)", "number of localised spins (override above)");
     printSeparated(std::cout, "\t", 20, true, "-J", "(double)", "coupling strength");
     printSeparated(std::cout, "\t", 20, true, "-Js", "(double)", "step in coupling strength sweep");
     printSeparated(std::cout, "\t", 20, true, "-Jn", "(int)", "number of couplings in the sweep");
@@ -288,7 +287,7 @@ void ui::print_help() const {
     printSeparated(std::cout, "\t", 20, true, "-wn", "(int)", "number of disorder in the sweep");
 
     printSeparated(std::cout, "\t", 20, true, "-zeta", "(double)", "randomness in position for coupling to grain");
-    printSeparated(std::cout, "\t", 20, true, "-M", "(int)", "size of random grain (number of spins inside grain)");
+    printSeparated(std::cout, "\t", 20, true, "-N", "(int)", "size of random grain (number of spins inside grain)");
     printSeparated(std::cout, "\t", 20, true, "-ini_ave", "(boolean)", "initiate avalanche by hand");
 	std::cout << std::endl;
 }
@@ -327,14 +326,15 @@ void ui::printAllOptions() const{
 std::string ui::set_info(std::vector<std::string> skip, std::string sep) const
 {
         std::string name = "L=" + std::to_string(this->L) + \
-            ",M=" + std::to_string(this->grain_size) + \
+            ",N=" + std::to_string(this->grain_size) + \
             ",J=" + to_string_prec(this->J) + \
-            ",g=" + to_string_prec(this->gamma) + \
-            ",zeta=" + to_string_prec(this->zeta) + \
-            ",alfa=" + to_string_prec(this->alfa) + \
+            ",g=" + to_string_prec(this->gamma);
+        if(this->alfa >= 1.0) ",zeta=" + to_string_prec(this->zeta);
+        
+		name += ",alfa=" + to_string_prec(this->alfa) + \
             ",h=" + to_string_prec(this->h) + \
-            ",w=" + to_string_prec(this->w) + \
-            ",ini_ave=" + std::to_string((int)this->initiate_avalanche);
+            ",w=" + to_string_prec(this->w);
+        if(this->initiate_avalanche) name += ",ini_ave";
 
 		auto tmp = split_str(name, ",");
 		std::string tmp_str = sep;

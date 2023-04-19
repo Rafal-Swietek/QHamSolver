@@ -517,11 +517,11 @@ void user_interface_dis<Hamiltonian>::diagonal_matrix_elements()
 	int Ll = this->L;
 	auto kernel1 = [Ll](u64 state){ auto [val, num] = operators::sigma_x(state, Ll, std::vector<int>({Ll / 2}) ); return std::make_pair(num, val); };
 	auto SigmaX_op = op::generic_operator<>(this->L, std::move(kernel1), 1.0);
-	auto SigmaX = SigmaX_op.create_matrix(dim);
+	auto SigmaX = SigmaX_op.to_matrix(dim);
 
 	auto kernel2 = [Ll](u64 state){ auto [val, num] = operators::sigma_z(state, Ll, std::vector<int>({Ll / 2}) ); return std::make_pair(num, val); };
 	auto SigmaZ_op = op::generic_operator<>(this->L, std::move(kernel2), 1.0);
-	auto SigmaZ = SigmaZ_op.create_matrix(dim);
+	auto SigmaZ = SigmaZ_op.to_matrix(dim);
 
 	int counter = 0;
 #pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
