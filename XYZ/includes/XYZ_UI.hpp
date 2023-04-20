@@ -97,10 +97,16 @@ namespace XYZ_UI{
 			const int k_end = (this->boundary_conditions) ? 1 : this->L;
 			v_1d<int> zxsec = (this->use_flip_X())? v_1d<int>({-1, 1}) : v_1d<int>({1});
 			v_1d<int> zzsec = (this->use_flip_Z())? v_1d<int>({-1, 1}) : v_1d<int>({1});
+            std::cout << this->L << "\t\t" << this->hx << "\t\t" << zxsec << std::endl;
+            std::cout << this->L << "\t\t" << this->hz << "\t\t" << zzsec << std::endl;
 		#pragma omp parallel for num_threads(outer_threads)// schedule(dynamic)
+        #ifdef USE_REAL_SECTORS
+            for(int ks : (this->L%2? v_1d<int>({0}) : v_1d<int>({0, (int)this->L/2})) ){
+        #else
 			for (int ks = 0; ks < k_end; ks++) {
+        #endif
 				v_1d<int> psec = k_real_sec(ks)? v_1d<int>({-1, 1}) : v_1d<int>({1});
-                std::cout << psec << std::endl;
+                std::cout << ks << "\t\t" << psec << std::endl;
                 for(auto& ps : psec){
                     for(auto& zxs : zxsec){
                         for(auto& zzs : zzsec){

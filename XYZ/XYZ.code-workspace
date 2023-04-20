@@ -102,7 +102,8 @@
 			"utility": "cpp",
 			"stop_token": "cpp",
 			"thread": "cpp",
-			"cinttypes": "cpp"
+			"cinttypes": "cpp",
+			"armadillo": "cpp"
 		}
 	}
 }

@@ -329,7 +329,7 @@ std::string ui::set_info(std::vector<std::string> skip, std::string sep) const
             ",N=" + std::to_string(this->grain_size) + \
             ",J=" + to_string_prec(this->J) + \
             ",g=" + to_string_prec(this->gamma);
-        if(this->alfa >= 1.0) ",zeta=" + to_string_prec(this->zeta);
+        if(this->alfa < 1.0) name += ",zeta=" + to_string_prec(this->zeta);
         
 		name += ",alfa=" + to_string_prec(this->alfa) + \
             ",h=" + to_string_prec(this->h) + \

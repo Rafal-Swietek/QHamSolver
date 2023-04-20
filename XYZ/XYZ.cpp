@@ -93,8 +93,8 @@ void XYZ::create_hamiltonian()
 
     double Jz = (this->_eta1 * this->_eta1 - 1) / 2.;
     if(this->_add_edge_fields){
-        this->_disorder(0)                      = Jz / 2;
-        this->_disorder(this->system_size - 1)  = Jz / 2;
+        this->_disorder(0)                      = -Jz / 2;
+        this->_disorder(this->system_size - 1)  = -Jz / 2;
     }
     std::vector<std::vector<double>> parameters = { { this->_J1 * (1 - this->_eta1), this->_J1 * (1 + this->_eta1), this->_J1 * this->_delta1},
                                                     { this->_J2 * (1 - this->_eta2), this->_J2 * (1 + this->_eta2), this->_J2 * this->_delta2}

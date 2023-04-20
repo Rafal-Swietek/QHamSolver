@@ -70,7 +70,8 @@ point_symmetric::point_symmetric(unsigned int L, const v_1d<op::genOp>& sym_gen,
 	this->_boundary_cond = _BC;
 	if(this->_boundary_cond == 0){ // if PBC
 		this->k_sector = k_sec;
-		this->_real_k_sector = (this->k_sector == 0) || (this->k_sector  == this->system_size / 2.);
+		bool is_pi_sector = L % 2? false : this->k_sector  == int(this->system_size / 2);
+		this->_real_k_sector = (this->k_sector == 0) || is_pi_sector;
 	}
 	
 	// set position of parity symmetry in list of generators
@@ -199,15 +200,15 @@ point_symmetric::symmetry_rotation() const
 		
 		#ifdef USE_REAL_SECTORS
 			if(idx < dim_tot) // only if exists in sector
-				U(idx, k) += std::real(sym_eig / (this->_normalisation[k] * std::sqrt(this->_symmetry_group.size())));
+				U(idx, k) += std::real(sym_eig / (this->_normalisation[k]) );
 		#else
 			if(idx < dim_tot) // only if exists in sector
-				U(idx, k) += std::conj(sym_eig / (this->_normalisation[k] * std::sqrt(this->_symmetry_group.size())));
+				U(idx, k) += std::conj(sym_eig / (this->_normalisation[k]) );
 		#endif
 			// CONJUNGATE YOU MORON CAUSE YOU RETURN TO FULL STATE, I.E. INVERSE MAPPING!!!!!! 
 		}
 	}
-	return U;
+	return U / std::sqrt(this->_symmetry_group.size());
 }
 
 
