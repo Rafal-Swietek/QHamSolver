@@ -177,12 +177,12 @@ void user_interface_sym<Hamiltonian>::eigenstate_entanglement()
 	S.save(arma::hdf5_name(dir + filename + ".hdf5", "entropy", arma::hdf5_opts::append));
     
         
-    #ifdef ARMA_USE_SUPERLU
-        arma::Mat<element_type> V;
-        if(this->ch) V = this->ptr_to_model->get_eigenvectors();
-        else         V = this->ptr_to_model->get_eigenvectors().submat(0, this->ptr_to_model->E_av_idx - 50, dim - 1, this->ptr_to_model->E_av_idx + 50);
-    #else
-        arma::Mat<element_type> V = this->ptr_to_model->get_eigenvectors().submat(0, this->ptr_to_model->E_av_idx - 50, dim - 1, this->ptr_to_model->E_av_idx + 50);
-    #endif
-    V.save(arma::hdf5_name(dir + filename + ".hdf5", "eigenvectors",arma::hdf5_opts::append));
+    // #ifdef ARMA_USE_SUPERLU
+    //     arma::Mat<element_type> V;
+    //     if(this->ch) V = this->ptr_to_model->get_eigenvectors();
+    //     else         V = this->ptr_to_model->get_eigenvectors().submat(0, this->ptr_to_model->E_av_idx - 50, dim - 1, this->ptr_to_model->E_av_idx + 50);
+    // #else
+    //     arma::Mat<element_type> V = this->ptr_to_model->get_eigenvectors().submat(0, this->ptr_to_model->E_av_idx - 50, dim - 1, this->ptr_to_model->E_av_idx + 50);
+    // #endif
+    // V.save(arma::hdf5_name(dir + filename + ".hdf5", "eigenvectors",arma::hdf5_opts::append));
 }
