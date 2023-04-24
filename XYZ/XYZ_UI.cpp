@@ -19,6 +19,16 @@ std::string to_binary(u64 num, int size){
     return bin_num;
 }
 
+ /* Overloading * operator */
+std::string operator*(std::string a, int b) 
+{
+    string output = "";
+    while (b--) {
+        output += a;
+    }
+    return output;
+};
+
 namespace XYZ_UI{
 
 void ui::make_sim(){
@@ -36,12 +46,23 @@ void ui::make_sim(){
     double dzeta = this->eta1;
     double Jz = (dzeta * dzeta - 1) / 2.;
     
+    clk::time_point starter = std::chrono::system_clock::now();
+
     auto model = std::make_unique<QHamSolver<XYZsym>>(this->boundary_conditions, this->L, this->J1, 0.0, Jz, this->delta2, this->eta1, this->eta2, 0, 0,
                                                                  k_sec, this->syms.p_sym, this->syms.zx_sym, this->syms.zz_sym, this->add_edge_fields);
     //auto model = std::make_unique<QHamSolver<XYZ>>(this->boundary_conditions, this->L, this->J1, 0.0, Jz, this->delta2, this->eta1, this->eta2, 0.0, 0.0, this->add_parity_breaking, this->add_edge_fields); 
+    model->diagonalization();
+    std::cout << " - - - - - - FINISHED DIAGONALIZATION IN : " << tim_s(starter) << " seconds - - - - - - " << std::endl; // simulation end
+    starter = std::chrono::system_clock::now();
+
     arma::mat H = arma::real(model->get_dense_hamiltonian());
+    auto Urot = model->get_model_ref().get_hilbert_space().symmetry_rotation();
     auto dim = model->get_hilbert_size();
-    arma::vec E1 = arma::eig_sym(H);
+    arma::vec E1 = model->get_eigenvalues();
+    arma::mat V = (model->get_eigenvectors());
+    
+    //arma::eig_sym(E1, V, H);
+
     int b = this->boundary_conditions;
     // E1 = -E1 + this->J1 * (this->L - b) * (2 + Jz) / 4. + b * this->J1 * (1 + 3 * dzeta * dzeta) / 4;
     // E1 = arma::sort(E1);
@@ -50,123 +71,202 @@ void ui::make_sim(){
 
     arma::vec up(2); up(0) = 1;
     arma::vec down(2); down(1) = 1;
+    arma::mat e = arma::eye(2, 2);
     
-    auto make_supercharge = [&](int size, arma::mat q, int p_sym, int zz_sym) 
-        -> arma::cx_mat
+    auto make_supercharge = [&](int size, arma::mat q, int p_sym, int zz_sym_in, int zz_sym_out) 
+        -> arma::mat
     {
         
-        arma::cx_mat supercharge(ULLPOW(size + 1), ULLPOW(size), arma::fill::zeros);
-        arma::cx_mat e(2,2);   e(0,0) = 1.0;   e(1,1) = 1.0;
+        auto check_spin = op::__builtins::get_digit(size);
+        const u64 dim1 = ULLPOW(size);
+        const u64 dim2 = ULLPOW(size + 1);
+
+        arma::mat supercharge(dim2, dim1, arma::fill::zeros);
         for(int j = 0; j < size; j++){
             u64 dim_left = ULLPOW(j);
             u64 dim_right = ULLPOW(size - j - 1);
-            arma::cx_mat ham = arma::kron(arma::kron(arma::eye<arma::cx_mat>(dim_left, dim_left), q), arma::eye<arma::cx_mat>(dim_right, dim_right));
+            arma::mat ham = arma::kron(arma::eye<arma::mat>(dim_right, dim_right), arma::kron(q, arma::eye<arma::mat>(dim_left, dim_left)));
             supercharge += (j % 2 == 0)? -ham : ham;
-        } 
+        }
+        // for(long k = 0; k < dim1; k++){
+        //     auto base_state = k;
+        //     for(int j = 0; j <= size; j++){
+        //         int site = j;
+        //         int sign = j % 2 == 1? 1 : -1;
+        //         if(j == size){
+        //             site = size - 1;
+        //             sign = (size % 2 == 0)? -1 : 1;
+        //         }
+        //         arma::vec spin = check_spin(base_state, site)? up : down;
+        //         arma::vec state = q * spin;
+                
+        //         for(int ii = 0; ii < state.size(); ii++){
+        //             if(std::abs(state(ii)) > 0)
+        //             {
+        //                 const u64 right = base_state % ULLPOW(size - site);
+        //                 const u64 left = base_state - right;
+
+        //                 const u64 _add = ii * ULLPOW(size - site - 1);
+
+        //                 u64 new_idx = 2 * left + right + _add;
+        //                 if(j == size){
+        //                     new_idx = std::get<0>( T_op(new_idx) );
+        //                 }
+
+        //                 printSeparated(std::cout, "\t", 16, true, to_binary(base_state, size), site, left, right, _add, to_binary(new_idx, size + 1));
+                        
+        //                 supercharge(new_idx, k) += state(ii) * double(sign); // define in same basis as other charge
+        //             }
+        //         }
+        //     }
+        // }
         if(this->boundary_conditions){
             return supercharge;
         } else {
             int k_sec = size % 2 == 0? size / 2 : 0;
+            arma::sp_mat T = arma::real(op::_translation_symmetry(size + 1, 0).to_matrix(dim2));
+
             std::vector<op::genOp> sym_gen;
             sym_gen.emplace_back(op::_parity_symmetry(size, p_sym));
-            sym_gen.emplace_back(op::_spin_flip_z_symmetry(size, zz_sym));
+            sym_gen.emplace_back(op::_spin_flip_z_symmetry(size, zz_sym_in));
             
             auto _hilbert_space_1 = point_symmetric(size, sym_gen, this->boundary_conditions, k_sec, 0);
-            auto U1 = _hilbert_space_1.symmetry_rotation();
-            auto T = op::_translation_symmetry(size + 1, k_sec).to_matrix((u64)ULLPOW(size + 1));
+            auto U1 = (_hilbert_space_1.symmetry_rotation());
 
             sym_gen = std::vector<op::genOp>();
             sym_gen.emplace_back(op::_parity_symmetry(size + 1, size % 2 == 0? -p_sym : p_sym));
-            sym_gen.emplace_back(op::_spin_flip_z_symmetry(size + 1, zz_sym));
+            sym_gen.emplace_back(op::_spin_flip_z_symmetry(size + 1, zz_sym_out));
             
             k_sec = (size + 1) % 2 == 0? (size + 1) / 2 : 0;
             auto _hilbert_space_2 = point_symmetric(size + 1, sym_gen, this->boundary_conditions, k_sec, 0);
-            auto U2 = _hilbert_space_2.symmetry_rotation();
+            auto U2 = (_hilbert_space_2.symmetry_rotation());
             
             u64 dim_rest = ULLPOW(size - 1);
-            supercharge += T * arma::kron(arma::eye<arma::cx_mat>(dim_rest, dim_rest), q) * ( (size % 2 == 0)? -1.0 : 1.0);
+            arma::mat Q0 = arma::kron(arma::eye<arma::mat>(dim_rest, dim_rest), q);
+            supercharge += T * Q0 * ( (size % 2 == 0)? -1.0 : 1.0);
+
             return std::sqrt(size / (size + 1.0)) * U2.t() * supercharge * U1 / std::sqrt(2);
         }
     };
-    auto make_hamil = [&](int size, arma::mat q, int p_sym) 
-        -> arma::sp_cx_mat
-    {
 
-        u64 dim = ULLPOW(size);
-        arma::sp_cx_mat H(dim, dim);
-        arma::cx_mat e(2,2);   e(0,0) = 1.0;   e(1,1) = 1.0;
-        arma::cx_mat ham;
-        for(int j = 0; j < size - 1; j++){
-            ham = -arma::kron(e, q.t()) * arma::kron(q, e) - arma::kron(q.t(), e) * arma::kron(e, q) 
-                                + q*q.t() + 1. / 2. * (arma::kron(e, q.t() * q) + arma::kron(q.t() * q, e));
-            u64 dim_left = ULLPOW(j);
-            u64 dim_right = ULLPOW(size - j - 2);
-            ham = arma::kron(arma::kron(arma::eye<arma::cx_mat>(dim_left, dim_left), ham), arma::eye<arma::cx_mat>(dim_right, dim_right));
-            H += ham;
-        }
-        if(this->boundary_conditions){
-            u64 dim_rest = ULLPOW(size - 1);
-            ham = 1. / 2. * ( arma::kron(arma::eye<arma::cx_mat>(dim_rest, dim_rest), q.t() * q) + arma::kron(q.t() * q, arma::eye<arma::cx_mat>(dim_rest, dim_rest)) );
-            return (H + arma::sp_cx_mat(ham)) / 2.0;
-        } else {
-            int k_sec = size % 2 == 0? size / 2 : 0;
-            std::vector<op::genOp> sym_gen;
-            sym_gen.emplace_back(op::_parity_symmetry(size, p_sym));
-            sym_gen.emplace_back(op::_spin_flip_z_symmetry(size, this->syms.zz_sym));
-            
-            if(this->hz == 0 && !this->add_edge_fields)
-                if(size % 2 == 0 || this->hx != 0) // for odd system sizes enter only if previous symmetry not taken
-                    sym_gen.emplace_back(op::_spin_flip_x_symmetry(size, this->syms.zx_sym));
-
-            auto _hilbert_space = point_symmetric(size, sym_gen, this->boundary_conditions, k_sec);
-            auto U = _hilbert_space.symmetry_rotation();
-            auto T = op::_translation_symmetry(size, k_sec).to_matrix(dim);
-            H += T * ham * T.t();
-            return U.t() * H * U / 2.0;// * std::sqrt(double(size) / double(size + 1.0));
-        }
-    };
-
-    arma::mat e = arma::eye(2, 2);
     arma::mat q(4, 2);   q(0, 1) = 1;            q(3, 1) = dzeta;
     arma::mat q2(4, 2);  q2(0, 0) = dzeta;       q2(3, 0) = 1;
     arma::mat qobc = q;  qobc(1, 0) = -dzeta;    qobc(2, 0) = -dzeta;    q(3, 1) = -dzeta;
-    std::cout << up << std::endl;
-    std::cout << down << std::endl;
-    std::cout << q << std::endl;
-    std::cout << q2 << std::endl;
-    std::cout << qobc << std::endl;
-    std::cout << e << std::endl;
 
-    auto q_in = this->boundary_conditions? qobc : q;
-    auto supercharge = make_supercharge(this->L, q_in, this->syms.p_sym, this->syms.zz_sym);
-    std::cout << supercharge.n_cols << "," << supercharge.n_rows << std::endl << std::endl;
 
-    auto supercharge2 = make_supercharge(this->L - 1, q_in, this->L % 2 == 0? this->syms.p_sym : -this->syms.p_sym, this->syms.zz_sym);
-    std::cout << supercharge2.n_cols << "," << supercharge2 .n_rows << std::endl << std::endl;
+    auto q_in = this->boundary_conditions? qobc : q2;
+    auto Q = make_supercharge(this->L, q_in, this->syms.p_sym, this->syms.zz_sym, -this->syms.zz_sym);
+    std::cout << Q.n_cols << "," << Q.n_rows << std::endl << std::endl;
 
-    arma::cx_mat H1 = supercharge.t() * supercharge;
-    arma::cx_mat H2 = supercharge2 * supercharge2.t();
-    arma::cx_mat H_q = (H1 + H2);
-    arma::mat H_q2 = arma::mat(arma::real(make_hamil(this->L, q_in, this->syms.p_sym)));
+    auto Q2 = make_supercharge(this->L - 1, q_in, this->L % 2 == 0? this->syms.p_sym : -this->syms.p_sym, -this->syms.zz_sym, this->syms.zz_sym);
+    std::cout << " - - - - - - FINISHED CREATING SUPERCHARGES IN : " << tim_s(starter) << " seconds - - - - - - " << std::endl; // simulation end
+    starter = std::chrono::system_clock::now();
+
+    // auto Qbar = make_supercharge(this->L, q, this->syms.p_sym, -this->syms.zz_sym, -this->syms.zz_sym);
+    // auto Qbar2 = make_supercharge(this->L - 1, q, this->L % 2 == 0? this->syms.p_sym : -this->syms.p_sym, -this->syms.zz_sym, -this->syms.zz_sym);
+    std::cout << Q2.n_cols << "," << Q2 .n_rows << std::endl << std::endl;
+    arma::mat H1 = Q.t() * Q;
+    arma::mat H2 = Q2 * Q2.t();
+    arma::mat H_q = (H1 + H2);
     
-    std::cout << arma::real(H1) << std::endl;
-    std::cout << arma::real(H2) << std::endl;
-    std::cout << H_q << std::endl;
-    std::cout << H << std::endl;
-    std::cout << H_q2 << std::endl;
+    std::string m  = "ANIHILATED  ";
+    for(long k = 0; k < dim; k++){
+        arma::vec state = arma::real(V.col(k));
+        state.elem(arma::find( arma::abs(state) < 1e-13) ).zeros();
+        printSeparated(std::cout, "\t", 16, true, E1(k), state.t());
+    }
+    std::vector<std::string> states_info(dim, "degenerate");
+    std::cout << "--------------------- Q|X> ------------------------------\n" << std::endl;
+    for(long k = 0; k < dim; k++){
+        arma::vec state = arma::real(Q * V.col(k));
+        state.elem(arma::find( arma::abs(state) < 1e-12) ).zeros();
+        if(state.is_zero()) {
+            states_info[k] = m + " Q ";
+            printSeparated(std::cout, "\t", 16, true, E1(k), m * int(dim / 2));
+        } else 
+            printSeparated(std::cout, "\t", 16, true, E1(k), state.t());
+    }
     
+    std::cout << "--------------------- Q†|X> ------------------------------\n" << std::endl;
+    for(long k = 0; k < dim; k++){
+        arma::vec state = arma::real(Q2.t() * V.col(k));
+        state.elem(arma::find( arma::abs(state) < 1e-12) ).zeros();
+        if(state.is_zero()) {
+            states_info[k] = m + " Q+";
+            printSeparated(std::cout, "\t", 16, true, E1(k), m * int(dim / 2));
+        } else 
+            printSeparated(std::cout, "\t", 16, true, E1(k), state.t());
+    }
+    std::cout << "----------------------------------------------------------\n" << std::endl;
+    for(long k = 0; k < dim; k++)
+        printSeparated(std::cout, "\t", 16, true, E1(k), states_info[k]);
+    
+    std::cout << " - - - - - - FINISHED ANIHILATION IN : " << tim_s(starter) << " seconds - - - - - - " << std::endl; // simulation end
+    starter = std::chrono::system_clock::now();
+
+    // states_info = std::vector<std::string>(dim, "degenerate");
+    // std::cout << "--------------------- Qbar|X> ------------------------------\n" << std::endl;
+    // for(long k = 0; k < dim; k++){
+    //     arma::vec state = arma::real(Qbar * V.col(k));
+    //     state.elem(arma::find( arma::abs(state) < 1e-13) ).zeros();
+    //     if(state.is_zero()) {
+    //         states_info[k] = m + " Q+";
+    //         printSeparated(std::cout, "\t", 16, true, E1(k), m * int(dim / 2));
+    //     } else 
+    //         printSeparated(std::cout, "\t", 16, true, E1(k), state.t());
+    // }
+    // std::cout << "--------------------- Qbar†|X> ------------------------------\n" << std::endl;
+    // for(long k = 0; k < dim; k++){
+    //     arma::vec state = arma::real(Qbar2.t() * V.col(k));
+    //     state.elem(arma::find( arma::abs(state) < 1e-13) ).zeros();
+    //     if(state.is_zero()) {
+    //         states_info[k] = m + " Q+";
+    //         printSeparated(std::cout, "\t", 16, true, E1(k), m * int(dim / 2));
+    //     } else 
+    //         printSeparated(std::cout, "\t", 16, true, E1(k), state.t());
+    // }
+    // std::cout << "----------------------------------------------------------\n" << std::endl;
+    // for(long k = 0; k < dim; k++)
+    //     printSeparated(std::cout, "\t", 16, true, E1(k), states_info[k]);
+
+    // states_info = std::vector<std::string>(dim, "degenerate");
+    // std::cout << "--------------------- C_L|X> ------------------------------\n" << std::endl;
+    // for(long k = 0; k < dim; k++){
+    //     arma::vec state = arma::real(Qbar.t() * Q * V.col(k));
+    //     state.elem(arma::find( arma::abs(state) < 1e-13) ).zeros();
+    //     if(state.is_zero()) {
+    //         states_info[k] = m + " Q+";
+    //         printSeparated(std::cout, "\t", 16, true, E1(k), m * int(dim / 2));
+    //     } else 
+    //         printSeparated(std::cout, "\t", 16, true, E1(k), state.t());
+    // }
+    // std::cout << "--------------------- C_L†|X> ------------------------------\n" << std::endl;
+    // for(long k = 0; k < dim; k++){
+    //     arma::vec state = arma::real((Qbar.t() * Q).t() * V.col(k));
+    //     state.elem(arma::find( arma::abs(state) < 1e-13) ).zeros();
+    //     if(state.is_zero()) {
+    //         states_info[k] = m + " Q+";
+    //         printSeparated(std::cout, "\t", 16, true, E1(k), m * int(dim / 2));
+    //     } else 
+    //         printSeparated(std::cout, "\t", 16, true, E1(k), state.t());
+    // }
+    // std::cout << "----------------------------------------------------------\n" << std::endl;
+    // for(long k = 0; k < dim; k++)
+    //     printSeparated(std::cout, "\t", 16, true, E1(k), states_info[k]);
+        
     arma::vec E2 = arma::eig_sym(H_q);
     arma::vec E2_1 = arma::eig_sym(H1);
     arma::vec E2_2 = arma::eig_sym(H2);
-    arma::vec E3 = arma::eig_sym(H_q2);
 
+    printSeparated(std::cout, "\t", 14, true, "H", "QQ† + Q†Q", "diff", "\t", "QQ†", "Q†Q");//, "\t---------", "\t", "H", "H_q", "diff", "\n");
     for(long k = 0; k < dim; k++)
-        printSeparated(std::cout, "\t", 14, true, E1(k), E2(k), std::abs(E1(k) - E2(k)), E2_1(k), E2_2(k), "\t---------", "\t", E1(k), E3(k), std::abs(E1(k) - E3(k)), "\n");
+        printSeparated(std::cout, "\t", 14, true, E1(k), E2(k), std::abs(E1(k) - E2(k)), "\t", E2_1(k), E2_2(k));//, "\t---------", "\t", E1(k), E3(k), std::abs(E1(k) - E3(k)));
     
     
 
 
 
+    std::cout << " - - - - - - FINISHED DIAGONALIZATION OF SUPERHAMILTONIAN IN : " << tim_s(starter) << " seconds - - - - - - " << std::endl; // simulation end
     return;
 //
     this->ptr_to_model = create_new_model_pointer();
@@ -646,9 +746,64 @@ void ui::printAllOptions() const{
 
 
 
+    // arma::vec empty;
+    // empty.save(arma::hdf5_name(this->saving_dir + this->set_info({"k", "p", "zx", "zz"}) + ".hdf5", "(empty)"));
+    // auto kernel = [&](int k, int p, int zx, int zz)
+    // {
+    //     auto symmetric_model = std::make_unique<QHamSolver<XYZsym>>(this->boundary_conditions, this->L, this->J1, this->J2, this->delta1, this->delta2, this->eta1, this->eta2,
+    //                                                                     this->hx, this->hz, k, p, zz, zx, this->add_edge_fields);
+    //     symmetric_model->diagonalization();
+    //     arma::vec E = (symmetric_model->get_eigenvalues());
+    //     arma::cx_mat V = symmetric_model->get_eigenvectors();
+    //     std::string _suff = "_k=" + std::to_string(k) + "_p=" + std::to_string(p) + "_zx=" + std::to_string(zx) + "_zz=" + std::to_string(zz);
+    //     E.save(arma::hdf5_name(this->saving_dir + this->set_info({"k", "p", "zx", "zz"}) + ".hdf5", "energies/" + _suff, arma::hdf5_opts::append));
+    //     V.save(arma::hdf5_name(this->saving_dir + this->set_info({"k", "p", "zx", "zz"}) + ".hdf5", "eigenstates/" + _suff, arma::hdf5_opts::append));
+    //     //symmetric_model->get_dense_hamiltonian().save(arma::hdf5_name(this->saving_dir + this->set_info({"k", "p", "zx", "zz"}) + ".hdf5", "Hamiltonian/" + _suff));
+    // };
+    // loopSymmetrySectors(kernel);
+
+    // return;
 
 
 
 
+
+    // auto make_hamil = [&](int size, arma::mat q, int p_sym) 
+    //     -> arma::sp_mat
+    // {
+
+    //     u64 dim = ULLPOW(size);
+    //     arma::sp_mat H(dim, dim);
+    //     arma::cx_mat e(2,2);   e(0,0) = 1.0;   e(1,1) = 1.0;
+    //     arma::cx_mat ham;
+    //     for(int j = 0; j < size - 1; j++){
+    //         ham = -arma::kron(e, q.t()) * arma::kron(q, e) - arma::kron(q.t(), e) * arma::kron(e, q) 
+    //                             + q*q.t() + 1. / 2. * (arma::kron(e, q.t() * q) + arma::kron(q.t() * q, e));
+    //         u64 dim_left = ULLPOW(j);
+    //         u64 dim_right = ULLPOW(size - j - 2);
+    //         ham = arma::kron(arma::kron(arma::eye<arma::cx_mat>(dim_left, dim_left), ham), arma::eye<arma::cx_mat>(dim_right, dim_right));
+    //         H += ham;
+    //     }
+    //     if(this->boundary_conditions){
+    //         u64 dim_rest = ULLPOW(size - 1);
+    //         ham = 1. / 2. * ( arma::kron(arma::eye<arma::cx_mat>(dim_rest, dim_rest), q.t() * q) + arma::kron(q.t() * q, arma::eye<arma::cx_mat>(dim_rest, dim_rest)) );
+    //         return (H + arma::sp_cx_mat(ham)) / 2.0;
+    //     } else {
+    //         int k_sec = size % 2 == 0? size / 2 : 0;
+    //         std::vector<op::genOp> sym_gen;
+    //         sym_gen.emplace_back(op::_parity_symmetry(size, p_sym));
+    //         sym_gen.emplace_back(op::_spin_flip_z_symmetry(size, this->syms.zz_sym));
+            
+    //         // if(this->hz == 0 && !this->add_edge_fields)
+    //         //     if(size % 2 == 0 || this->hx != 0) // for odd system sizes enter only if previous symmetry not taken
+    //         //         sym_gen.emplace_back(op::_spin_flip_x_symmetry(size, this->syms.zx_sym));
+
+    //         auto _hilbert_space = point_symmetric(size, sym_gen, this->boundary_conditions, k_sec);
+    //         auto U = _hilbert_space.symmetry_rotation();
+    //         auto T = op::_translation_symmetry(size, k_sec, true).to_matrix(dim);
+    //         H += T * ham * T.t();
+    //         return U.t() * H * U / 2.0;// * std::sqrt(double(size) / double(size + 1.0));
+    //     }
+    // };
 
 };
