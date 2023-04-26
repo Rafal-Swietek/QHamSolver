@@ -23,7 +23,7 @@
 #include <thread>
 #include <future>
 
-#include "armaidllo_include.hpp"
+#include "armadillo_include.hpp"
 
 #include "miscaleneous/constants.hpp"
 #include "compiler_setup_headers/typedefs.hpp"

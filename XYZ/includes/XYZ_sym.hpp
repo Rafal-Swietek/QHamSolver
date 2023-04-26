@@ -6,6 +6,7 @@
 #define _XYZ_SYM
 
 #include "../../include/hilbert_space/symmetries.hpp"
+#include "../../include/supersymmetry.hpp"
 #ifdef USE_REAL_SECTORS
     using elem_ty = double;
 #else
@@ -62,6 +63,10 @@ public:
     //<! ----------------------------------------------------- OVERRIDEN OPERATORS
     virtual std::ostream& write(std::ostream&) const override;
     virtual std::istream& read(std::istream&) override;
+
+    //<! ----------------------------------------------------- ADDITIONAL METHODS
+    
+    
 };
 
 

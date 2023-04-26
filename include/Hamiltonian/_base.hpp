@@ -4,7 +4,6 @@ class _hamiltonian {};
 /// @brief Geeneral 
 /// @tparam _ty 
 /// @tparam hilbert 
-/// @tparam ...params_types 
 template <  typename _ty, 
             class hilbert
             >

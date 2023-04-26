@@ -95,7 +95,6 @@ void XYZsym::set_symmetry_generators()
     if(this->_hz == 0 && !this->_add_edge_fields)
         if(this->system_size % 2 == 0 || this->_hx != 0) // for odd system sizes enter only if previous symmetry not taken
             this->symmetry_generators.emplace_back(op::_spin_flip_x_symmetry(this->system_size, this->syms.zx_sym));
-
 }
 
 //<! ------------------------------------------------------------------------------ HAMILTONIAN BUILDERS
@@ -241,3 +240,10 @@ std::ostream& XYZsym::write(std::ostream& os) const
 
     return os;
 }
+
+
+
+//<! ------------------------------------------------------------------------------ ADDITIONAL METHODS FOR SYMMETRIC HAMILTONIAN
+
+
+

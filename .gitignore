@@ -405,5 +405,9 @@ MigrationBackup/
 
 #User folders
 */results/
+*/Jupyter_Python/cost_fun_results/
+*.code-workspace
+*/*.code-workspace
 
 QuantumSun/results/*
+XYZ/results/*

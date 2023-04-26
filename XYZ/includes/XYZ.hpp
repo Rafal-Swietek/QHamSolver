@@ -3,6 +3,33 @@
 #ifndef _XYZ
 #define _XYZ
 
+/// @brief Base class for XYZ model 
+/// @tparam _ty element type of matrix
+/// @tparam hilbert hilbert space (full or symmetric)
+template <  typename _ty, 
+            class hilbert
+            >
+class XYZbase : 
+    public hamiltonian_base<_ty, hilbert>
+{
+protected:
+    double _hz = 0.5;                       // uniform longitudinal field
+    double _hx = 0.5;                       // uniform transverse field
+    double _J1 = 1.0;                       // nearest neighbour coupling amplitude
+    double _J2 = 0.0;                       // next-nearest neighbour coupling amplitude
+    double _delta1 = 0.55;                  // nearest neighbour interaction amplitude
+    double _delta2 = 0.0;                   // next-nearest neighbour interaction amplitude
+    double _eta1 = 0.55;                    // nearest neighbour anisotropy in XY
+    double _eta2 = 0.0;                     // next-nearest neighbour anisotropy in XY
+
+    bool _add_edge_fields = false;          // add additional edge fields needed for SUSY in OBC
+
+public:
+
+    virtual arma::SpMat<_ty> create_supercharge() = 0;
+};
+//! ^^^ might not be necesarry ^^^
+
 /// @brief Fully anisotropic spin chain (XYZ)
 class XYZ : 
     public hamiltonian_base<double, full_hilbert_space>

@@ -16,6 +16,7 @@
     #include "XYZ_sym.hpp"
     #define XYZUIparent user_interface_dis<XYZ>
 #endif
+
 // ----------------------------------------------------------------------------- UI QUANTUM SUN -----------------------------------------------------------------------------
 
 namespace XYZ_UI{
@@ -120,6 +121,11 @@ namespace XYZ_UI{
                 }
 			}
 		}
+    
+        
+        // ----------------------------------- HELPER FUNCTIONS
+        arma::SpMat<element_type> create_supercharge(bool dagger = false);
+    
     };
 }
 

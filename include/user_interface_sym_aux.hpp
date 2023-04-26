@@ -11,7 +11,7 @@ void user_interface_sym<Hamiltonian>::diagonalize(){
     std::string info = this->set_info({});
     std::cout << "\n\t\t--> finished creating model for " << info << " - in time : " << tim_s(start) << "s" << std::endl;
     
-    this->ptr_to_model->diagonalization();
+    this->ptr_to_model->diagonalization(!this->ch);
     arma::vec eigenvalues = this->ptr_to_model->get_eigenvalues();
     
     std::cout << "\t\t	--> finished diagonalizing for " << info << " - in time : " << tim_s(start) << "s" << std::endl;
@@ -150,6 +150,7 @@ void user_interface_sym<Hamiltonian>::eigenstate_entanglement()
                                 { return state; };
     #endif
     std::cout << " - - - - - - FINISHED CREATING SYMMETRY TRANSFORMATION IN : " << tim_s(start) << " seconds - - - - - - " << std::endl; // simulation end
+    start = std::chrono::system_clock::now();
 
     arma::mat S(size, this->L / 2 + 1, arma::fill::zeros);
     int th_num = this->thread_number;
@@ -158,18 +159,14 @@ void user_interface_sym<Hamiltonian>::eigenstate_entanglement()
     
     auto subsystem_sizes = arma::conv_to<arma::Col<int>>::from(arma::linspace(0, this->L / 2, this->L / 2 + 1));
     std::cout << subsystem_sizes.t() << std::endl;
-    for(auto& LA : subsystem_sizes){
-        start = std::chrono::system_clock::now();
-    #pragma omp parallel for num_threads(th_num) schedule(dynamic)
-        for(int n = 0; n < size; n++){
-            auto eigenstate = this->ptr_to_model->get_eigenState(n);
-            
-            arma::Col<element_type> state = transform(eigenstate);
+        // auto start_LA = std::chrono::system_clock::now();
+#pragma omp parallel for num_threads(th_num) schedule(dynamic)
+    for(int n = 0; n < size; n++){
+        auto eigenstate = this->ptr_to_model->get_eigenState(n);
+        arma::Col<element_type> state = transform(eigenstate);
+        
+        for(auto& LA : subsystem_sizes)
             S(n, LA) = entropy::schmidt_decomposition(state, LA, this->L);
-            //double entro = entropy::vonNeumann(state, LA, this->L);
-            //if(std::abs(entro - S(n)) > 1e-14)
-            //printSeparated(std::cout, "\t", 16, true, E(n), entro, S(n), std::abs(entro - S(n)));
-        }
     }
     std::cout << " - - - - - - FINISHED ENTROPY CALCULATION IN : " << tim_s(start) << " seconds - - - - - - " << std::endl; // simulation end
     

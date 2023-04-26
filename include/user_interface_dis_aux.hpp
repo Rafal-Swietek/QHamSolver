@@ -23,7 +23,7 @@ void user_interface_dis<Hamiltonian>::diagonalize(){
 		
 		if(realis > 0)
 			this->ptr_to_model->generate_hamiltonian();
-		this->ptr_to_model->diagonalization();
+		this->ptr_to_model->diagonalization(!this->ch);
 		arma::vec eigenvalues = this->ptr_to_model->get_eigenvalues();
 		
 		std::cout << "\t\t	--> finished diagonalizing for " << info + _suffix << " - in time : " << tim_s(start) << "s" << std::endl;
@@ -459,14 +459,14 @@ void user_interface_dis<Hamiltonian>::eigenstate_entanglement()
 		std::cout << outer_threads << "\t\t" << omp_get_num_threads() << std::endl;
 		
 		for(auto& LA : subsystem_sizes){
-			start = std::chrono::system_clock::now();
+			auto start_LA = std::chrono::system_clock::now();
 		#pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
 			for(int n = 0; n < size; n++){
 				
 				arma::Col<element_type> state = this->ptr_to_model->get_eigenState(n);
 				S(n, LA) = entropy::schmidt_decomposition(state, LA, this->L);
 			}
-    		std::cout << " - - - - - - finished entropy size LA: " << LA << " in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
+    		std::cout << " - - - - - - finished entropy size LA: " << LA << " in time:" << tim_s(start_LA) << " s - - - - - - " << std::endl; // simulation end
 		}
 		if(this->realisations > 1){
 			std::string dir_realis = dir + "realisation=" + std::to_string(this->jobid + realis) + kPSep;
