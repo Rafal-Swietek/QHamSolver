@@ -478,6 +478,7 @@ void user_interface_dis<Hamiltonian>::eigenstate_entanglement()
 		energies += E;
 		
 		counter++;
+    	omp_set_num_threads(this->thread_number);
 
 		std::cout << " - - - - - - finished realisation realis = " << realis << " in : " << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
 	}
@@ -572,7 +573,7 @@ void user_interface_dis<Hamiltonian>::diagonal_matrix_elements()
 		energies += E;
 		
 		counter++;
-
+    	omp_set_num_threads(this->thread_number);
 		std::cout << " - - - - - - finished realisation realis = " << realis << " in : " << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
 	}
     

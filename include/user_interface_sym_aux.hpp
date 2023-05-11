@@ -170,6 +170,8 @@ void user_interface_sym<Hamiltonian>::eigenstate_entanglement()
     }
     std::cout << " - - - - - - FINISHED ENTROPY CALCULATION IN : " << tim_s(start) << " seconds - - - - - - " << std::endl; // simulation end
     
+    omp_set_num_threads(this->thread_number);
+    
     E.save(arma::hdf5_name(dir + filename + ".hdf5", "energies"));
 	S.save(arma::hdf5_name(dir + filename + ".hdf5", "entropy", arma::hdf5_opts::append));
     
