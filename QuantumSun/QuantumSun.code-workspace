@@ -15,7 +15,7 @@
 			"**/CVS": true,
 			"**/.DS_Store": true,
 			"**/Thumbs.db": true,
-			"./results/": true
+			"results/": true
 		},
 		"files.associations": {
 			"*.txt": "swift",

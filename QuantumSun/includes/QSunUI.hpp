@@ -17,6 +17,7 @@ namespace QSunUI{
         double w, ws;
         double zeta;
         int Jn, alfan, hn, wn, gamman;
+        int L_loc;
         
         int grain_size;
         bool initiate_avalanche;

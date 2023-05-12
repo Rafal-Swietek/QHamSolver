@@ -33,13 +33,13 @@ void ui::make_sim(){
 		auto w_list = generate_scaling_array(w);
 		auto gamma_list = generate_scaling_array(gamma);
 
-		for (auto& L_loc : L_list){
+		for (auto& L_locx : L_list){
 			for (auto& alfax : alfa_list){
 				for (auto& hx : h_list){
 					for(auto& Jx : J_list){
 						for(auto& wx : w_list){
 							for(auto& gammax : gamma_list){
-								this->L = L_loc;
+								this->L_loc = L_locx;
 								this->alfa = alfax;
 								this->h = hx;
 								this->J = Jx;
@@ -168,13 +168,13 @@ void ui::diagonal_matrix_elements(){
 
 /// @brief Create unique pointer to model with current parameters in class
 typename ui::model_pointer ui::create_new_model_pointer(){
-    return std::make_unique<QHamSolver<QuantumSun>>(this->L, this->J, this->alfa, this->gamma, this->w, this->h, 
+    return std::make_unique<QHamSolver<QuantumSun>>(this->L_loc, this->J, this->alfa, this->gamma, this->w, this->h, 
 																	this->seed, this->grain_size, this->zeta, this->initiate_avalanche, normalize_grain); 
 }
 
 /// @brief Reset member unique pointer to model with current parameters in class
 void ui::reset_model_pointer(){
-    this->ptr_to_model.reset(new QHamSolver<QuantumSun>(this->L, this->J, this->alfa, this->gamma, this->w, this->h, 
+    this->ptr_to_model.reset(new QHamSolver<QuantumSun>(this->L_loc, this->J, this->alfa, this->gamma, this->w, this->h, 
 																	this->seed, this->grain_size, this->zeta, this->initiate_avalanche, normalize_grain)); 
 }
 
@@ -226,10 +226,14 @@ void ui::parse_cmd_options(int argc, std::vector<std::string> argv)
     
     choosen_option = "-ini_ave";
     this->set_option(this->initiate_avalanche, argv, choosen_option);
+    
+	choosen_option = "-L";
+    this->set_option(this->L_loc, argv, choosen_option, true);
 
     choosen_option = "-N";
-    this->set_option(this->grain_size, argv, choosen_option);
+    this->set_option(this->grain_size, argv, choosen_option, true);
 
+	this->L = this->L_loc + this->grain_size;
     this->saving_dir = "." + kPSep + "results" + kPSep;
 }
 
@@ -258,8 +262,11 @@ void ui::set_default(){
 	this->alfa = 1.0;
 	this->alfas = 0.02;
 	this->alfan = 1;
-
+	
+	this->L_loc = 1;
 	this->grain_size = 1;
+	this->L = this->L_loc + this->grain_size;
+	
     this->initiate_avalanche = 0;
 }
 
@@ -301,6 +308,7 @@ void ui::printAllOptions() const{
 
 	std::cout << "------------------------------ CHOSEN QuantumSun OPTIONS:" << std::endl;
     std::cout 
+		  << "num of spins = " << this->L_loc << std::endl
 		  << "grain size = " << this->grain_size << std::endl
 		  << "J  = " << this->J << std::endl
 		  << "Jn = " << this->Jn << std::endl
@@ -325,7 +333,7 @@ void ui::printAllOptions() const{
 /// @return 
 std::string ui::set_info(std::vector<std::string> skip, std::string sep) const
 {
-        std::string name = "L=" + std::to_string(this->L) + \
+        std::string name = "L=" + std::to_string(this->L_loc) + \
             ",N=" + std::to_string(this->grain_size) + \
             ",J=" + to_string_prec(this->J) + \
             ",g=" + to_string_prec(this->gamma);

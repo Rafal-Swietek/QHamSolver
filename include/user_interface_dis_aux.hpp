@@ -414,7 +414,6 @@ void user_interface_dis<Hamiltonian>::eigenstate_entanglement()
 	std::string dir = this->saving_dir + "Entropy" + kPSep + "Eigenstate" + kPSep;
 	createDirs(dir);
 	
-    int LA = this->site;
 	size_t dim = this->ptr_to_model->get_hilbert_size();
 	#ifdef ARMA_USE_SUPERLU
         const int size = this->ch? 500 : dim;
@@ -460,11 +459,19 @@ void user_interface_dis<Hamiltonian>::eigenstate_entanglement()
 		
 		for(auto& LA : subsystem_sizes){
 			auto start_LA = std::chrono::system_clock::now();
-		#pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
+		//#pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
 			for(int n = 0; n < size; n++){
 				
 				arma::Col<element_type> state = this->ptr_to_model->get_eigenState(n);
+				
 				S(n, LA) = entropy::schmidt_decomposition(state, LA, this->L);
+				// auto S2 = entropy::vonNeumann(state, this->L - LA, this->L);	// somehow needs L-LA (investigate one day whyh, now works fine)
+				// #pragma omp critical
+				// {
+				// 	double x = S2 - S(n, LA);
+				// 	if(std::abs(x) > 1e-13)
+				// 		printSeparated(std::cout, "\t", 16, true, LA, E(n), S2, S(n, LA), x);
+				// }
 			}
     		std::cout << " - - - - - - finished entropy size LA: " << LA << " in time:" << tim_s(start_LA) << " s - - - - - - " << std::endl; // simulation end
 		}

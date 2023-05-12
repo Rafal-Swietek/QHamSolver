@@ -152,21 +152,30 @@ void user_interface_sym<Hamiltonian>::eigenstate_entanglement()
     std::cout << " - - - - - - FINISHED CREATING SYMMETRY TRANSFORMATION IN : " << tim_s(start) << " seconds - - - - - - " << std::endl; // simulation end
     start = std::chrono::system_clock::now();
 
-    arma::mat S(size, this->L / 2 + 1, arma::fill::zeros);
+    auto subsystem_sizes = arma::conv_to<arma::Col<int>>::from(arma::linspace(0, this->L / 2, this->L / 2 + 1));
+    std::cout << subsystem_sizes.t() << std::endl;
+
+    arma::mat S(size, subsystem_sizes.size(), arma::fill::zeros);
     int th_num = this->thread_number;
     omp_set_num_threads(1);
     std::cout << th_num << "\t\t" << omp_get_num_threads() << std::endl;
     
-    auto subsystem_sizes = arma::conv_to<arma::Col<int>>::from(arma::linspace(0, this->L / 2, this->L / 2 + 1));
-    std::cout << subsystem_sizes.t() << std::endl;
         // auto start_LA = std::chrono::system_clock::now();
 #pragma omp parallel for num_threads(th_num) schedule(dynamic)
     for(int n = 0; n < size; n++){
         auto eigenstate = this->ptr_to_model->get_eigenState(n);
         arma::Col<element_type> state = transform(eigenstate);
         
-        for(auto& LA : subsystem_sizes)
+        for(auto& LA : subsystem_sizes){
             S(n, LA) = entropy::schmidt_decomposition(state, LA, this->L);
+            // auto S2 = entropy::vonNeumann(state, LA, this->L);
+            // #pragma omp critical
+            // {
+            //     double x = S2 - S(n, LA);
+            //     //if(std::abs(x) > 1e-14)
+            //     printSeparated(std::cout, "\t", 16, true, LA, E(n), S2, S(n, LA), x);
+            // }
+        }
     }
     std::cout << " - - - - - - FINISHED ENTROPY CALCULATION IN : " << tim_s(start) << " seconds - - - - - - " << std::endl; // simulation end
     
