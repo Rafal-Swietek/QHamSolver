@@ -464,8 +464,11 @@ void user_interface_dis<Hamiltonian>::eigenstate_entanglement()
 				
 				arma::Col<element_type> state = this->ptr_to_model->get_eigenState(n);
 				
-				S(n, LA) = entropy::schmidt_decomposition(state, LA, this->L);
-				// auto S2 = entropy::vonNeumann(state, this->L - LA, this->L);	// somehow needs L-LA (investigate one day whyh, now works fine)
+				//	implement single particle entropy, use translation to transform state, make translation generator with shift l <==> T^l
+				//	make rho with mask (bitwise) and compare
+				S(n, LA) = entropy::schmidt_decomposition(state, this->L - LA, this->L);
+
+				// auto S2 = entropy::vonNeumann(state, LA, this->L);	// somehow needs L-LA (investigate one day whyh, now works fine)
 				// #pragma omp critical
 				// {
 				// 	double x = S2 - S(n, LA);
