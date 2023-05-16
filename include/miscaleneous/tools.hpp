@@ -10,6 +10,40 @@ double tim_s(clk::time_point start) {
 }
 //-------------------------------------------------------------------------------------------------------------- OPERATION ON STRINGS
 
+
+/// @brief Finds bit representation of number
+/// @param num input number
+/// @param size number of bits
+/// @return bit representation
+inline
+std::string to_binary(u64 num, int size){
+    std::string bin_num = "";
+    while (num > 0)
+    {
+        int bin = num % 2;
+        bin_num += std::to_string(bin);
+        num /= 2;
+    }
+    std::reverse(bin_num.begin(), bin_num.end());
+    if(bin_num.size() < size){
+        bin_num = std::string(size - bin_num.size(), '0') + bin_num;
+    }
+    return bin_num;
+}
+
+/// @brief Transforms bit representation (as string) to decimal
+/// @param bit_mask string bit represented number
+/// @return decimal representation
+inline
+u64 to_int(std::string bit_mask){
+	u64 bit_mask_num = 0;
+	int L = bit_mask.size();
+	for(int i = 0; i < L; i++)
+		if(bit_mask[i] == '1')
+			bit_mask_num += ULLPOW(L - 1 - i);
+	return bit_mask_num;
+}
+
 /// @brief checking if string is a number
 /// @param str 
 /// @return 

@@ -14,6 +14,7 @@ namespace op {
 		Tinv,	  // inverse translation
 		digit,	  // check digit at specified position
 		Z_i,	  // flip spin locally
+		perm,	  // permutation operator
 	};	// built-in operators
 
 	// namespace holding builtin function generators
@@ -31,6 +32,29 @@ namespace op {
 			return powers;
 		};
 
+		//! ---------------------------------------------- OTHER BIT OEPRATIONS
+		//! checks the digit at the current position
+		inline
+		auto get_digit(unsigned int L) -> _ifun
+		{
+			return [L](u64 n, int bit_pos)
+					{
+						short int pos = L - bit_pos - 1;
+						return (n & (u64(config - 1ULL) << block_size * pos) ) / powers[pos];
+					};
+		};
+
+		//! flips a bit at the specified position
+		inline
+		auto flip(unsigned int L) -> _local_fun
+		{
+			return [L](u64 n, int bit_pos)
+				{
+					u64 result = (u64(config - 1ULL)
+						<< (block_size * (L - bit_pos - 1)) ) ^ n;				// XOR the digit at bit_pos 
+					return std::make_pair(result, 1.0);
+				};
+		};
 
 		//! ---------------------------------------------- SYMMETRY GENERATORS
 		//! 
@@ -81,16 +105,16 @@ namespace op {
 
 		//! inverse translation generator: shift order of binary/octal/.. string to the left, i.e->binary-> T * |010111> = |101110>
 		inline
-		auto translation_inv(unsigned int L) -> _global_fun
+		auto translation_inv(unsigned int L, int shift = 1) -> _global_fun
 		{
-			return [L](u64 n)
+			return [L, shift](u64 n)
 					{
-						u64 rotate = block_size * (L - 1ULL);		// shift generator of all blocks of bits except the first one
+						u64 rotate = block_size * (L - 1ULL * shift);		// shift generator of all blocks of bits except the first one
 						u64 first_digit = n &
-							(u64(config - 1ULL)
+							(u64( ULLPOW(shift * block_size) - 1ULL)
 								<< rotate);						// conjuction of 11.. and the first digit in binary (11.. is shifted to the position of the first digit)
 						u64 other_digit = n - first_digit;		// remaining digits
-						u64 final_state = (other_digit << block_size)
+						u64 final_state = (other_digit << (shift * block_size) )
 							| (first_digit >> rotate);			// first part rotates the remaining digits (or block of bits) by left_shift by 'blocks' positions\
 																							(equivalent to one position in octal code), while the latter shifts the first digit to the end
 						return std::make_pair(final_state, 1.0);
@@ -99,54 +123,50 @@ namespace op {
 		
 		//! translation generator: shift order of binary/octal/.. string to the left, i.e->binary-> T * |010111> = |101110>
 		inline
-		auto translation(unsigned int L) -> _global_fun
+		auto translation(unsigned int L, int shift = 1) -> _global_fun
 		{
-			return [L](u64 n)
+			return [L, shift](u64 n)
 					{
-						u64 rotate = block_size * (L - 1ULL);		// shift generator of all blocks of bits except the first one
-						u64 first_digit = n & (u64(config - 1ULL)); // conjuction of 11.. and the first digit in binary
+						u64 rotate = block_size * (L - 1ULL * shift);		// shift generator of all blocks of bits except the first one
+						u64 first_digit = n & (u64(ULLPOW(shift * block_size) - 1ULL)); // conjuction of 11.. and the first digit in binary
 						u64 other_digit = n - first_digit;			// remaining digits
-						u64 final_state = (other_digit >> block_size)
+						u64 final_state = (other_digit >> (shift * block_size))
 							| (first_digit << rotate);				// first part rotates the remaining digits (or block of bits) by right shift by 'blocks' positions\
 																							(equivalent to one position in binary code), while the latter shifts the first digit to the end
 						return std::make_pair(final_state, 1.0);
 					};
 		};
 
-		//! ---------------------------------------------- OTHER BIT OEPRATIONS
-		//! checks the digit at the current position
-		inline
-		auto get_digit(unsigned int L) -> _ifun
+		///
+		inline 
+		auto permutation(unsigned int L, std::vector<int> p) -> _global_fun
 		{
-			return [L](u64 n, int bit_pos)
+			auto bit = get_digit(L);
+			return [bit, L, p](u64 n)
 					{
-						short int pos = L - bit_pos - 1;
-						return (n & (u64(config - 1ULL) << block_size * pos) ) / powers[pos];
+						u64 new_state = 0;
+						for(int j = 0; j < L; j++)
+							new_state += bit(n, j) * ULLPOW(L - p[j] - 1);
+						return std::make_pair(new_state, 1.0);
 					};
 		};
-
-		//! flips a bit at the specified position
-		inline
-		auto flip(unsigned int L) -> _local_fun
-		{
-			return [L](u64 n, int bit_pos)
-				{
-					u64 result = (u64(config - 1ULL)
-						<< (block_size * (L - bit_pos - 1)) ) ^ n;				// XOR the digit at bit_pos 
-					return std::make_pair(result, 1.0);
-				};
-		};
+		
 
 	};
 
 
+	/// @brief Choose symmetry generator from builtin ones
+	/// @param sym enum deciding symmetry generator
+	/// @param L system size
+	/// @param arg additional argument, some generators might use (is not necessary)
+	/// @return chosen symmetry generator
 	inline
 	auto
-	choose_symmetry(__builtin_operators sym, unsigned int L)
+	choose_symmetry(__builtin_operators sym, unsigned int L, int arg = 1)
 	{
 		switch(sym){
-			case __builtin_operators::T: 		return __builtins::translation(L);
-			case __builtin_operators::Tinv: 	return __builtins::translation_inv(L);
+			case __builtin_operators::T: 		return __builtins::translation(L, arg);
+			case __builtin_operators::Tinv: 	return __builtins::translation_inv(L, arg);
 			case __builtin_operators::P: 		return __builtins::parity(L);
 			case __builtin_operators::Zx: 		return __builtins::spin_flip_x(L);
 			case __builtin_operators::Zy: 		return __builtins::spin_flip_y(L);

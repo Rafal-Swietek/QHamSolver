@@ -7,12 +7,13 @@ namespace op{
     /// @param L system size (defines hilbert space)
     /// @param gen choose among fixed __builtin generators
     /// @param sym_eig_val symmetry eigenvalue (defined through sector)
+    /// @param arg additional parameter for symmetry generator (is not necessary), ie translation has shift size
     /// @return symmetry generator
     inline
     generic_operator<>
-    symmetry(unsigned int L, __builtin_operators gen, cpx sym_eig_val)
+    symmetry(unsigned int L, __builtin_operators gen, cpx sym_eig_val, int arg = 1)
     { 
-        auto _kernel = choose_symmetry(gen, L); 
+        auto _kernel = choose_symmetry(gen, L, arg); 
         return generic_operator<>(L, _kernel, sym_eig_val);
     }
 
@@ -21,12 +22,12 @@ namespace op{
     /// @param sector symmetry sector (int) --> quasimomentum sector is calculated within
     /// @return translation geerator
     inline
-    auto _translation_symmetry(unsigned int L, int sector, bool inverse = false)
+    auto _translation_symmetry(unsigned int L, int sector, bool inverse = false, int shift = 1)
     { 
         _assert_((sector >= 0 && sector < L), NOT_ALLOWED_SYM_SECTOR);
-        const double ksym = two_pi * (double)sector / L;
-        if(inverse) return symmetry(L, __builtin_operators::Tinv, std::exp(im * ksym));
-        else        return symmetry(L, __builtin_operators::T,    std::exp(-im * ksym));
+        const double ksym = two_pi * (double)sector / L * double(shift);    // eigenvalue of T^l is e^(-ikl) with l = shift
+        if(inverse) return symmetry(L, __builtin_operators::Tinv, std::exp(im * ksym), arg);
+        else        return symmetry(L, __builtin_operators::T,    std::exp(-im * ksym), arg);
     }
 
     /// @brief Creates parity generator for given sector and hilbert space

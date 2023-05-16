@@ -22,40 +22,40 @@ namespace op{
 		return matrix;
 	}
 
-	/// @brief 
-	/// @tparam ..._ty 
-	/// @param hilbert_space1 
-	/// @param hilbert_space2 
-	/// @return 
-	template <typename... _ty>
-    template <typename _hilbert>
-	inline 
-	arma::sp_cx_mat 
-	generic_operator<_ty...>::
-		to_matrix(const _hilbert& hilbert_space, _ty... args
-					)
-	{
+	// /// @brief 
+	// /// @tparam ..._ty 
+	// /// @param hilbert_space1 
+	// /// @param hilbert_space2 
+	// /// @return 
+	// template <typename... _ty>
+    // template <typename _hilbert>
+	// inline 
+	// arma::sp_cx_mat 
+	// generic_operator<_ty...>::
+	// 	to_matrix(const _hilbert& hilbert_space, _ty... args
+	// 				)
+	// {
 		
-	}
+	// }
 
-	/// @brief 
-	/// @tparam _hilbert1 
-	/// @tparam _hilbert2 
-	/// @param hilbert_space1 
-	/// @param hilbert_space2 
-	/// @param ...args 
-	/// @return 
-	template <typename... _ty>
-    template <typename _hilbert1, typename _hilbert2>
-	inline 
-	arma::sp_cx_mat 
-	generic_operator<_ty...>::
-		to_matrix(const _hilbert1& hilbert_space1, 
-						const _hilbert2& hilbert_space2, _ty... args
-					)
-    {
+	// /// @brief 
+	// /// @tparam _hilbert1 
+	// /// @tparam _hilbert2 
+	// /// @param hilbert_space1 
+	// /// @param hilbert_space2 
+	// /// @param ...args 
+	// /// @return 
+	// template <typename... _ty>
+    // template <typename _hilbert1, typename _hilbert2>
+	// inline 
+	// arma::sp_cx_mat 
+	// generic_operator<_ty...>::
+	// 	to_matrix(const _hilbert1& hilbert_space1, 
+	// 					const _hilbert2& hilbert_space2, _ty... args
+	// 				)
+    // {
 
-    }
+    // }
 
 
 

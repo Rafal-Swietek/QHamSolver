@@ -34,4 +34,6 @@ namespace op {
 //#include "symmetries.hpp"
 
 #include "compiler_setup/typedef_operators.h"
+#include "generic_operator_generators.hpp"
+
 #endif
