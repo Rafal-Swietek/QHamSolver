@@ -464,16 +464,17 @@ void user_interface_dis<Hamiltonian>::eigenstate_entanglement()
 		{
 			auto start_LA = std::chrono::system_clock::now();
 			std::vector<int> p(this->L);
-			p[0] = LA % this->L;
-			for(int l = 1; l < this->L; l++)
-				p[l] = (l <= (LA % this->L) )? l - 1 : l;
+			p[LA % this->L] = 0;
+			for(int l = 0; l < this->L; l++)
+				if(l != LA % this->L)
+					p[l] = (l < (LA % this->L) )? l + 1 : l;
 			std::cout << p << std::endl;
 			auto permutation = op::_permutation_generator(this->L, p);
 			arma::sp_mat P = arma::real(permutation.to_matrix( size ));
 
 			std::cout << " - - - - - - set permutation matrix for LA = " << LA << " in : " << tim_s(start) << " s for realis = " << realis << " - - - - - - " << std::endl;
 			start_LA = std::chrono::system_clock::now();
-		//#pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
+		#pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
 			for(int n = 0; n < size; n++){
 				
 				arma::Col<element_type> state = this->ptr_to_model->get_eigenState(n);
