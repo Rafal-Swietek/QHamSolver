@@ -34,7 +34,7 @@ namespace entaglement{
         const arma::Col<_ty>& state,
         int A_size,
         unsigned int L,
-        op::generic_operator<> permutation
+        op::generic_operator<> permutation = op::generic_operator<>()
         ) 
         -> arma::Mat<_ty> 
         {
@@ -81,9 +81,7 @@ namespace entaglement{
     // 	const long long dimB = (ULLPOW( (block_size * (L - A_size)) ));
     //     const long long full_dim = dimA * dimB;
     //     const long long N = full_map.size();
-
     //     auto find_index = [&](u64 index){   return binary_search(full_map, 0, N - 1, index);  };
-
     // 	arma::Mat<_ty> rho(dimA, dimA, arma::fill::zeros);
     // 	for (long long n = 0; n < N; n++) {						// loop over configurational basis
     // 		long long counter = 0;

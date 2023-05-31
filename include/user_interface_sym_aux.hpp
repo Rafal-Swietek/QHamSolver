@@ -141,14 +141,8 @@ void user_interface_sym<Hamiltonian>::eigenstate_entanglement()
     start = std::chrono::system_clock::now();
     const arma::vec E = this->ptr_to_model->get_eigenvalues();
     
-    #ifdef USE_SYMMETRIES
-        const auto U = this->ptr_to_model->get_model_ref().get_hilbert_space().symmetry_rotation();
-        auto transform = [&](const auto& state)
-                                { return U * state; };
-    #else
-        auto transform = [&](const auto& state)
-                                { return state; };
-    #endif
+    const auto U = this->ptr_to_model->get_model_ref().get_hilbert_space().symmetry_rotation();
+    
     std::cout << " - - - - - - FINISHED CREATING SYMMETRY TRANSFORMATION IN : " << tim_s(start) << " seconds - - - - - - " << std::endl; // simulation end
     start = std::chrono::system_clock::now();
 
@@ -164,7 +158,7 @@ void user_interface_sym<Hamiltonian>::eigenstate_entanglement()
 #pragma omp parallel for num_threads(th_num) schedule(dynamic)
     for(int n = 0; n < size; n++){
         auto eigenstate = this->ptr_to_model->get_eigenState(n);
-        arma::Col<element_type> state = transform(eigenstate);
+        arma::Col<element_type> state = U * eigenstate;
         
         for(auto& LA : subsystem_sizes){
             S(n, LA) = entropy::schmidt_decomposition(state, LA, this->L);
@@ -180,10 +174,10 @@ void user_interface_sym<Hamiltonian>::eigenstate_entanglement()
     std::cout << " - - - - - - FINISHED ENTROPY CALCULATION IN : " << tim_s(start) << " seconds - - - - - - " << std::endl; // simulation end
     
     omp_set_num_threads(this->thread_number);
+    th_num = 1;
     
     E.save(arma::hdf5_name(dir + filename + ".hdf5", "energies"));
 	S.save(arma::hdf5_name(dir + filename + ".hdf5", "entropy", arma::hdf5_opts::append));
-    
         
     // #ifdef ARMA_USE_SUPERLU
     //     arma::Mat<element_type> V;

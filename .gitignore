@@ -411,3 +411,6 @@ MigrationBackup/
 
 QuantumSun/results/*
 XYZ/results/*
+
+QuantumSun/Jupyter_Python/RESULTS/*
+XYZ/Jupyter_Python/RESULTS/*

@@ -26,8 +26,8 @@ namespace op{
     { 
         _assert_((sector >= 0 && sector < L), NOT_ALLOWED_SYM_SECTOR);
         const double ksym = two_pi * (double)sector / L * double(shift);    // eigenvalue of T^l is e^(-ikl) with l = shift
-        if(inverse) return symmetry(L, __builtin_operators::Tinv, std::exp(im * ksym), arg);
-        else        return symmetry(L, __builtin_operators::T,    std::exp(-im * ksym), arg);
+        if(inverse) return symmetry(L, __builtin_operators::Tinv, std::exp(im * ksym), shift);
+        else        return symmetry(L, __builtin_operators::T,    std::exp(-im * ksym), shift);
     }
 
     /// @brief Creates parity generator for given sector and hilbert space

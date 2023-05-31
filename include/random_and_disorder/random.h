@@ -91,6 +91,13 @@ int
 
 template <> 
 inline 
+unsigned long long int 
+	randomGen::random_uni<unsigned long long int>(
+		double _min, double _max)
+	{ return randomInt_uni(_min, _max); }
+
+template <> 
+inline 
 std::complex<double> 
 	randomGen::random_uni<std::complex<double>>(
 		double _min, double _max)

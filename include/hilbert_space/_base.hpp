@@ -15,7 +15,7 @@ class hilbert_space_base {
         //variadic_struct<constraints...> sectors;
 
         std::vector<u64> mapping;
-        unsigned int system_size;
+        int system_size;
         u64 dim;
         virtual void init() = 0;
     public:
