@@ -9,24 +9,24 @@ namespace entanglement{
     /// @param filling filling fraction (probability for bit to be set); for filling < 0 the canonical ensemble is chosen
     /// @return 
     inline
-    std::vector<std::string> mb_configurations(u64 num_of_states, long int volume, disorder<double>& random_gen, double filling = 0.5)
+    std::vector<std::vector<bool>> mb_configurations(u64 num_of_states, long int volume, disorder<double>& random_gen, double filling = 0.5)
     {
-        std::vector<std::string> mb_states;
+        std::vector<std::vector<bool>> mb_states;
     #pragma omp parallel for
         for(u64 id = 0; id < num_of_states; id++){
             long num_up = int(volume * filling);
             long num_down = volume - num_up;
 
-            std::string state = "";
+            std::vector<bool> state;
             for(long j = 0; j < volume; j++){
                 float p = random_gen.random_uni<double>(0.0, 1.0);
 
                 if(num_down == 0 || (p <= double(num_up) / double(num_down) && num_up > 0)){
                     num_up--;
-                    state += "1";
+                    state.push_back(1);
                 } else {
                     num_down--;
-                    state += "0";
+                    state.push_back(0);
                 }
             }
             #pragma omp critical
@@ -34,6 +34,7 @@ namespace entanglement{
                 mb_states.emplace_back(state);
             }
         }
+        auto it = std::unique(mb_states.begin(), mb_states.end());
         return mb_states;
     }
 
