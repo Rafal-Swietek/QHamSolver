@@ -62,16 +62,17 @@ void ui::eigenstate_entanglement()
 	std::string info = this->set_info();
 	std::string filename = info;// + "_subsize=" + std::to_string(VA);
 
-	u64 num_states = ULLPOW(16);
+	u64 num_states = 10000;//ULLPOW(14);
+
+	auto subsystem_sizes = arma::conv_to<arma::Col<int>>::from(arma::linspace(0, this->V / 2 - 1, this->V / 2));
+	std::cout << subsystem_sizes[0] << "...\t" << subsystem_sizes[subsystem_sizes.size() - 1] << std::endl;
 
 	arma::vec energies(num_states, arma::fill::zeros);
-	arma::vec entropies(this->V, arma::fill::zeros);
-	arma::vec single_site_entropy(this->V, arma::fill::zeros);
+	arma::vec entropies(subsystem_sizes.size(), arma::fill::zeros);
+	arma::vec single_site_entropy(subsystem_sizes.size(), arma::fill::zeros);
 
 	int counter = 0;
 
-	auto subsystem_sizes = arma::conv_to<arma::Col<int>>::from(arma::linspace(0, this->V - 1, this->V));
-	std::cout << subsystem_sizes.t() << std::endl;
 	
 	disorder<double> random_generator(this->seed);
 
@@ -97,8 +98,8 @@ void ui::eigenstate_entanglement()
 		const arma::vec single_particle_energy 	= this->ptr_to_model->get_eigenvalues();
 		const arma::mat orbitals 				= this->ptr_to_model->get_eigenvectors();
 
-		arma::vec S(this->V, arma::fill::zeros);
-		arma::vec S_site(this->V, arma::fill::zeros);
+		arma::vec S(subsystem_sizes.size(), arma::fill::zeros);
+		arma::vec S_site(subsystem_sizes.size(), arma::fill::zeros);
 
 		auto mb_states = entanglement::mb_configurations(num_states, this->V, random_generator);
 
@@ -123,7 +124,7 @@ void ui::eigenstate_entanglement()
 			for(u64 n = 0; n < mb_states.size(); n++){
 				E(n) = 0;
 				double lambda = 0;
-				arma::mat rho(VA, VA, arma::fill::zeros);
+				// arma::mat rho(VA, VA, arma::fill::zeros);
 				for(int q = 0; q < this->V; q++){
 					double n_q = int(mb_states[n][q]);
 					double c_q = 2 * n_q - 1;
@@ -143,21 +144,21 @@ void ui::eigenstate_entanglement()
 					entropy_single_site += entanglement::entropy::vonNeumann_helper(lambda);
 				}
 			}
-			std::cout << entropy_single_site << "\t\t" << double(mb_states.size()) << std::endl;
 			S(VA) 		= entropy / (double)mb_states.size();				// entanglement of subsystem VA
 			S_site(VA) 	= entropy_single_site / double(mb_states.size());	// single site entanglement at site VA
 
     		std::cout << " - - - - - - finished entropy size VA: " << VA << " in time:" << tim_s(start_VA) << " s - - - - - - " << std::endl; // simuVAtion end
 		}
 
+		E = arma::sort(E);
 		if(this->realisations > 1){
 			std::string dir_realis = dir + "realisation=" + std::to_string(this->jobid + realis) + kPSep;
 			createDirs(dir_realis);
-			E.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "energy"));
-			S.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "entropy", arma::hdf5_opts::append));
+			// E.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "energy"));
+			S.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "entropy"));
 			S_site.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "single_site_entropy", arma::hdf5_opts::append));
 		}
-		energies += arma::sort(E);
+		energies += E;
 		entropies += S;
 		single_site_entropy += S_site;
 		
@@ -177,7 +178,6 @@ void ui::eigenstate_entanglement()
 	single_site_entropy.save(arma::hdf5_name(dir + filename + ".hdf5", "single_site_entropy", arma::hdf5_opts::append));
     std::cout << " - - - - - - FINISHED ENTROPY CALCUVATION IN : " << tim_s(start) << " seconds - - - - - - " << std::endl; // simuVAtion end
 }
-
 
 // -------------------------------------------------------------------------------------------------------------------------------------
 // ---------------------------------------------------------------------------------------------------------------- IMPLEMENTATION OF UI
