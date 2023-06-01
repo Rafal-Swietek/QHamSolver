@@ -26,8 +26,8 @@ def set_plot_elements(axis, xlim =[None, None], ylim=[None, None], xlabel = None
 
     if xlabel is not None: axis.set_xlabel(xlabel, rotation=0, fontsize=font_size+2, labelpad=font_size-8)
     if ylabel is not None: axis.set_ylabel(ylabel, rotation=90, fontsize=font_size+2)
-    if xscale is not None: axis.set_yscale(xscale)
-    if yscale is not None: axis.set_xscale(yscale)
+    if xscale is not None: axis.set_xscale(xscale)
+    if yscale is not None: axis.set_yscale(yscale)
 
     axis.set_axisbelow(True)
     axis.tick_params(axis='both', which='major', direction="in",length=6, labelsize=font_size, bottom=True, top=True, left=True, right=True)
