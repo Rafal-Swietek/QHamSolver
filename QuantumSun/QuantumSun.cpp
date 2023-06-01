@@ -72,11 +72,16 @@ void QuantumSun::create_hamiltonian()
     // this->_seed = std::abs(2 * (long)this->_seed - 10000) % ULONG_MAX;
     // disorder_generator = disorder<double>(this->_seed);
 
-    this->H = sparse_matrix(this->dim, this->dim);
-    this->_disorder = disorder_generator.uniform(this->num_of_spins, this->_hz - this->_w, this->_hz + this->_w); 
-    
     const size_t dim_loc = ULLPOW( (this->num_of_spins) );
 	const size_t dim_erg = ULLPOW( (this->grain_size) );
+
+    this->H = sparse_matrix(this->dim, this->dim);
+    #if CONF_DISORDER == 1
+        this->_disorder = disorder_generator.uniform(dim_loc, this->_hz - this->_w, this->_hz + this->_w);
+    #else
+        this->_disorder = disorder_generator.uniform(this->num_of_spins, this->_hz - this->_w, this->_hz + this->_w);
+    #endif
+    
 	
     /* Create random neighbours for coupling hamiltonian */
     auto random_neigh = this->neighbor_generator.uniform(this->num_of_spins, 0, this->grain_size - 1);
@@ -120,8 +125,10 @@ void QuantumSun::create_hamiltonian()
             int pos_in_array = j - this->grain_size;                // array index of localised spin
 
 			/* disorder on localised spins */
-            auto [val, Sz_k] = operators::sigma_z(base_state, this->system_size, { j });
-			this->set_hamiltonian_elements(k, this->_disorder(pos_in_array) * real(val), Sz_k);
+            #if CONF_DISORDER == 0
+                auto [val, Sz_k] = operators::sigma_z(base_state, this->system_size, { j });
+			    this->set_hamiltonian_elements(k, this->_disorder(pos_in_array) * real(val), Sz_k);
+            #endif
 
 			/* coupling of localised spins to GOE grain */
 			int nei = random_neigh(pos_in_array);
@@ -130,6 +137,10 @@ void QuantumSun::create_hamiltonian()
 			this->set_hamiltonian_elements(k, this->_J * this->_long_range_couplings(pos_in_array) * real(val1 * val2), SxSx_k);
 		}
 	}
+    #if CONF_DISORDER == 1
+        arma::mat H_loc = arma::kron(arma::eye(dim_erg, dim_erg), arma::mat(arma::diagmat(this->_disorder)));
+        this->H = this->H + H_loc;
+    #endif
 	this->H = this->H + arma::kron(H_grain, arma::eye(dim_loc, dim_loc));
 }
 

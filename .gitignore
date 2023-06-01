@@ -38,6 +38,9 @@
 
 # User-specific files
 *.DS_Store
+*/.DS_Store
+*/*/.DS_Store
+
 *.rsuser
 *.suo
 *.user

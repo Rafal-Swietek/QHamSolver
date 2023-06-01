@@ -234,7 +234,11 @@ void ui::parse_cmd_options(int argc, std::vector<std::string> argv)
     this->set_option(this->grain_size, argv, choosen_option, true);
 
 	this->L = this->L_loc + this->grain_size;
-    this->saving_dir = "." + kPSep + "results" + kPSep;
+	#if CONF_DISORDER == 1
+    	this->saving_dir = "." + kPSep + "results_conf_dis" + kPSep;
+	#else
+    	this->saving_dir = "." + kPSep + "results" + kPSep;
+	#endif
 }
 
 

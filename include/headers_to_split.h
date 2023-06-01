@@ -148,9 +148,20 @@ inline std::function<u64(u64, int)> multiply_operators(const std::function<u64(u
 }
 
 inline u64 binomial(int n, int k) {
-	if (k == 0 || k == n)
-		return 1;
-	return binomial(n - 1, k - 1) + binomial(n - 1, k);
+	float res = 1;
+ 
+    // Since C(n, k) = C(n, n-k)
+    if (k > n - k)
+        k = n - k;
+ 
+    // Calculate value of
+    // [n * (n-1) *---* (n-k+1)] / [k * (k-1) *----* 1]
+    for (int i = 0; i < k; ++i) {
+        res *= (n - i);
+        res /= (i + 1);
+    }
+ 
+    return (u64)res;
 }
 // ----------------------------------------------------------------------------- VECTORS HANDLING ----------------------------------------------------------------------------- 
 /// <summary>

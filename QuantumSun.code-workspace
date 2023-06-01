@@ -81,7 +81,21 @@
 			"armadillo": "cpp",
 			"algorithm": "cpp",
 			"_base.hpp": "c",
-			"iterator": "cpp"
+			"iterator": "cpp",
+			"array": "cpp",
+			"bit": "cpp",
+			"codecvt": "cpp",
+			"condition_variable": "cpp",
+			"numbers": "cpp",
+			"queue": "cpp",
+			"semaphore": "cpp",
+			"*.tcc": "cpp",
+			"functional": "cpp",
+			"memory_resource": "cpp",
+			"utility": "cpp",
+			"stop_token": "cpp",
+			"thread": "cpp",
+			"cinttypes": "cpp"
 		}
 	}
 }
