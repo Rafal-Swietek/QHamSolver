@@ -19,7 +19,7 @@ template <typename _type>
 inline
 std::complex<_type> my_conjungate(std::complex<_type> x) { return std::conj(x); }
 
-namespace entaglement{
+namespace entanglement{
 
     /// @brief Calculate the reduced density matrix of a subsystem with set size
     /// @tparam _ty template element type
@@ -118,7 +118,7 @@ namespace entropy{
         unsigned int L,
         op::generic_operator<> permutation = op::generic_operator<>()
         ){
-    	arma::Mat<_ty> rho = entaglement::reduced_density_matrix(state, A_size, L, permutation);
+    	arma::Mat<_ty> rho = entanglement::reduced_density_matrix(state, A_size, L, permutation);
                                                  //full_map.empty()?  : entaglement::reduced_density_matrix_sym(state, A_size, L, full_map);
     	arma::vec probabilities;
     	arma::eig_sym(probabilities, rho); //diagonalize to find probabilities and calculate trace in rho's eigenbasis
@@ -173,7 +173,7 @@ namespace entropy{
         op::generic_operator<> permutation
         ) {
         assert(alfa > 1 && "Only alfa>=2 powers are possible");
-    	arma::Mat<_ty> rho = entaglement::reduced_density_matrix(state, A_size, L, permutation);
+    	arma::Mat<_ty> rho = entanglement::reduced_density_matrix(state, A_size, L, permutation);
                                                  //full_map.empty()?  : entaglement::reduced_density_matrix_sym(state, A_size, L, full_map);
         rho = arma::powmat(rho, alfa);
         return log2(real(arma::trace(rho))) / (1.0 - alfa);
@@ -199,7 +199,7 @@ namespace entropy{
         unsigned int L,
         op::generic_operator<> permutation
         ) {
-    	arma::Mat<_ty> rho = entaglement::reduced_density_matrix(state, A_size, L, permutation);
+    	arma::Mat<_ty> rho = entanglement::reduced_density_matrix(state, A_size, L, permutation);
                                                  //full_map.empty()?  : entaglement::reduced_density_matrix_sym(state, A_size, L, full_map);
         arma::vec probabilities;
         arma::eig_sym(probabilities, rho); //diagonalize to find probabilities and calculate trace in rho's eigenbasis

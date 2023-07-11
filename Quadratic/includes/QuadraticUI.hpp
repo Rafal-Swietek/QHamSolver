@@ -4,23 +4,21 @@
 #define UI
 
 #include "config.hpp"
-#include "../../include/user_interface_dis.hpp"
+#include "../../include/user_interface_quadratic.hpp"
 #include "../../include/hilbert_space/u1.hpp"
 #include "Quadratic.hpp"
 
-#include "../../include/single_particle/entanglement.hpp"
 // ----------------------------------------------------------------------------- UI QUANTUM SUN -----------------------------------------------------------------------------
 
 namespace QuadraticUI{
-    class ui : public user_interface_dis<Quadratic>{
+    class ui : public user_interface_quadratic<Quadratic>{
     protected:
         double J, Js;
         double w, ws;
         int Jn, wn;
-        int V;
 
-        typedef typename user_interface_dis<Quadratic>::model_pointer model_pointer;
-        typedef typename user_interface_dis<Quadratic>::element_type element_type;
+        typedef typename user_interface_quadratic<Quadratic>::model_pointer model_pointer;
+        typedef typename user_interface_quadratic<Quadratic>::element_type element_type;
     public:
 		// ----------------------------------- CONSTRUCTORS
 		ui() = default;
@@ -46,7 +44,7 @@ namespace QuadraticUI{
 										std::string sep = "_") const override;
 
         // ----------------------------------- OVERLOAD UI FUNCTIONS FOR SPECIFIC MODEL
-	    virtual void eigenstate_entanglement() 	override;
+	    
     };
 }
 
