@@ -20,7 +20,12 @@ def add_subplot_axes(ax,figure,rect):
     subax.yaxis.set_tick_params(labelsize=y_labelsize)
     return subax
 
+from matplotlib.colors import Normalize
 
+class InvertedNormalize(Normalize):
+    def __call__(self, *args, **kwargs):
+        return 1 - super(InvertedNormalize, self).__call__(*args, **kwargs)
+ 
 
 def set_plot_elements(axis, xlim =[None, None], ylim=[None, None], xlabel = None, ylabel = None, xscale = None, yscale = None, set_legend = True, font_size = 10):
 

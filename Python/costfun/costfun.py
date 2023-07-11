@@ -268,7 +268,7 @@ def get_crit_points(x, y, vals, crit_fun='free', scaling_ansatz = 'classic', see
                                     crit_func=crit_fun,
                                     bnds=bounds,
                                     population_size=1e2,
-                                    maxiterarions=1e3, workers=10,
+                                    maxiterarions=1e2, workers=10,
                                     seed = seed,
                                     wH = wH
                                 )

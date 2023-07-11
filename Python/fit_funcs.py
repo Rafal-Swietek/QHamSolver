@@ -72,6 +72,13 @@ def log_fit(x, a, b):
 
     return a + b * np.log(x)
 
+def log_fit2(x, b):
+    """
+    Logarithmic fit function without shift
+    """
+
+    return b * np.log(x)
+
 
 def log_fit_inv(size, a, b):
     """
