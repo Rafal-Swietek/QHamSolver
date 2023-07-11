@@ -33,20 +33,20 @@ class U1_hilbert_space : public hilbert_space_base
         //}
         if constexpr (U1_sym == U1::spin){
             this->max_sector = this->system_size / 2.;
-            this->min_sector = -this->system_size / 2.;
-        } else if constexpr (U1_sym == U1::spin){
+            this->min_sector = -(int)this->system_size / 2.;
+        } else if constexpr (U1_sym == U1::charge){
             this->max_sector = (spinless? 1 : 2) * this->system_size;
             this->min_sector = 0;
         } else {
             this->max_sector = 0;
             this-min_sector = 0;
         }
-        bool allowed_sector = (this->U1_sector < this->max_sector && this->U1_sector > this->min_sector);
+        bool allowed_sector = (this->U1_sector <= this->max_sector && this->U1_sector >= this->min_sector);
         
         if(allowed_sector == false)
-            std::cout << this->U1_sector << "\t\t" << this->min_sector << "\t\t" << this->max_sector << "\t\t" << std::endl;
+            std::cout << "U(1) sector check:\t\t" << this->U1_sector << "\t\t" << this->min_sector << "\t\t" << this->max_sector << "\t\t" << std::endl;
 
-        _assert_( (allowed_sector == false), NOT_ALLOWED_SYMETRY_SECTOR);
+        _assert_( (allowed_sector == true), NOT_ALLOWED_SYMETRY_SECTOR);
 
         //<! create basis for given sector
         this->create_basis();
@@ -57,22 +57,23 @@ class U1_hilbert_space : public hilbert_space_base
     /// @return true or false whether element is allowed
     bool check_if_allowed_element(u64 idx)
     {
-        //switch(U1_sym){
-        //case U1::spin :    return __builtin_popcountll(idx) - this->system_size / 2. == this->U1_sector;
-        //case U1::charge :  return __builtin_popcountll(idx) == this->U1_sector;
-        //default:
-        //    return __builtin_popcountll(idx) - this->system_size / 2. == this->U1_sector;
-        //}
+        // switch(U1_sym){
+        // case U1::spin :    return __builtin_popcountll(idx) == (int)this->U1_sector + this->system_size / 2;
+        // case U1::charge :  return __builtin_popcountll(idx) == (int)this->U1_sector;
+        // default:
+        //    return __builtin_popcountll(idx) == (int)this->U1_sector + this->system_size / 2;
+        // }
+        // return __builtin_popcountll(idx) - this->system_size / 2. == this->U1_sector;
         if constexpr (U1_sym == U1::spin)
-            return __builtin_popcountll(idx) - this->system_size / 2. == this->U1_sector;
-        else if constexpr (U1_sym == U1::spin)
+            return __builtin_popcountll(idx) == this->U1_sector + this->system_size / 2.;
+        else if constexpr (U1_sym == U1::charge)
             return __builtin_popcountll(idx) == this->U1_sector;
         else
             return idx;
     }
 public:
     U1_hilbert_space() = default;
-    U1_hilbert_space(unsigned int L, float sector = 0)
+    U1_hilbert_space(int L, float sector = 0)
     { 
         this->system_size = L; 
         this->U1_sector = sector; 
@@ -88,8 +89,10 @@ public:
         auto mapping_kernel = [this](u64 start, u64 stop, std::vector<u64>& map_threaded)
         {
             for (u64 j = start; j < stop; j++)
-                if (check_if_allowed_element(j)) 
+                if (check_if_allowed_element(j)){
+                    std::cout << j << "\t\t" << to_binary(j, this->system_size) << std::endl;
                     map_threaded.emplace_back(j);
+                }
             //std::cout << map_threaded << std::endl;
         };
         u64 start = 0, stop = ULLPOW(this->system_size);
@@ -111,8 +114,8 @@ public:
 
             for (auto& t : map_threaded)
                 this->mapping.insert(this->mapping.end(), std::make_move_iterator(t.begin()), std::make_move_iterator(t.end()));
-
         }
+        std::cout << mapping << std::endl;
         this->dim = this->mapping.size();
     }
 

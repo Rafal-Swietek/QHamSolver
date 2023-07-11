@@ -107,19 +107,19 @@ point_symmetric::generate_symmetry_goup(const v_1d<op::genOp>& sym_gen_in)
 	// set combinations of available symmetries
     const int NUM_OF_GENERATORS = sym_gen.size();
 	for (int k = 1; k <= NUM_OF_GENERATORS; k++) {  // loop over all product length
-        std::string bitmask(k, 1);              	// K leading 1's
+        std::vector<int> bitmask(k, 1);              	// K leading 1's
         bitmask.resize(NUM_OF_GENERATORS, 0);   	// N - K trailing 0's
-        
+        // std:: cout << k << "\t\t" << bitmask << std::endl;
         do {
             op::genOp sym_temp(this->system_size);
             for (int i = 0; i < NUM_OF_GENERATORS; ++i) // [0..N-1] integers
-                if (bitmask[i])
+                if (bitmask[i] == 1)
                     sym_temp %= sym_gen[i];
+				
             
 			this->_symmetry_group.push_back(sym_temp);
         } while (std::prev_permutation(bitmask.begin(), bitmask.end())); // loop over all combinations with bitmask
 	}
-
 	
 	// set combination of all syms with all translations
 	if (this->_boundary_cond == 0) {

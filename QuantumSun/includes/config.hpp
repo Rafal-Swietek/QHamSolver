@@ -12,5 +12,7 @@
 
 
 //<! ------------------------------------------------- translate macros to variables
-
+#if CONF_DISORDER == 1
+    #pragma message("Using configurational disorder!")
+#endif
 constexpr bool conf_disorder = CONF_DISORDER;

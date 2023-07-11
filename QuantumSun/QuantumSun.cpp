@@ -105,9 +105,11 @@ void QuantumSun::create_hamiltonian()
         } else {
             this->_long_range_couplings = arma::vec(this->num_of_spins, arma::fill::ones);
             //this->_disorder = arma::sort(this->_disorder, "ascend");
-            auto permut = sort_permutation(this->_disorder, [](const double a, const double b)
-								   { return std::abs(a) < std::abs(b); });
-	        apply_permutation(this->_disorder, permut);
+            #if CONF_DISORDER == 0
+                auto permut = sort_permutation(this->_disorder, [](const double a, const double b)
+                                    { return std::abs(a) < std::abs(b); });
+                apply_permutation(this->_disorder, permut);
+            #endif
         }
     }
     #ifdef EXTRA_DEBUG
