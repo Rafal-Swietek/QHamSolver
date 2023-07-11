@@ -46,7 +46,7 @@ Anderson::Anderson(std::istream& os)
 void Anderson::create_hamiltonian()
 {
     this->H = sparse_matrix(this->dim, this->dim);
-    this->_disorder = this->disorder_generator.uniform(this->dim, this->_w);
+    this->_disorder = this->disorder_generator.uniform(this->dim, this->_w / 2.);
     
     for(long int j = 0; j < this->dim; j++){
     
@@ -55,8 +55,8 @@ void Anderson::create_hamiltonian()
     
         for(auto& nei : neis){
             if(nei > 0){
-                this->H(j, nei) = this->_J / 2.;
-                this->H(nei, j) = this->_J / 2.;
+                this->H(j, nei) = this->_J;
+                this->H(nei, j) = this->_J;
             }
         }
     }
@@ -88,7 +88,7 @@ std::istream& Anderson::read(std::istream& os)
 /// @param os input stream to read parameters
 std::ostream& Anderson::write(std::ostream& os) const
 {
-    printSeparated(os, "\t", 16, true, "Model:", "Quantum Sun model - O-dimensional EBT toy model");
+    printSeparated(os, "\t", 16, true, "Model:", "Anderson model - d-dimensional ");
     os << std::endl;
     printSeparated(os, "\t", 16, true, "Hamiltonian:", "H = J\u03A3_<i,j> c^+_i c_j + h.c + \u03A3_i h_i n_i");
     printSeparated(os, "\t", 16, true, "----------------------------------------------------------------------------------------------------");

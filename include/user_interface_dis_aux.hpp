@@ -93,8 +93,8 @@ void user_interface_dis<Hamiltonian>::spectral_form_factor(){
 		dim = eigenvalues.size();
 
 		u64 E_av_idx = spectrals::get_mean_energy_index(eigenvalues);
-		const u64 num = dim < 500? 0.25 * dim : 0.5 * dim;
-		const u64 num2 = dim < 1000? 100 : 500;
+		const u64 num = dim < 1000? 0.25 * dim : 0.5 * dim;
+		const u64 num2 = dim < 2000? 100 : 500;
 
 		// ------------------------------------- calculate level statistics
 			double r1_tmp = 0, r2_tmp = 0, wH_mean_r = 0, wH_typ_r = 0;

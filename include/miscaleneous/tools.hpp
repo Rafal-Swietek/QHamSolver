@@ -248,3 +248,118 @@ std::ostream& operator<<(
 		os << "Empty container!" << std::endl;
 	return os;
 }
+
+// /// @brief 
+// /// @param A 
+// /// @param B 
+// /// @return 
+// inline 
+// std::vector<bool> 
+// operator|(std::vector<bool> A, const std::vector<bool>& B)
+// {
+//     if (A.size() != B.size())
+//         throw std::invalid_argument("differently sized bitwise operands");
+
+//     std::vector<bool>::iterator itA = A.begin();
+//     std::vector<bool>::const_iterator itB = B.begin();
+
+//     // c++ implementation-specific
+//     while (itA < A.end())
+//         *(itA._M_p ++) |= *(itB._M_p ++); // word-at-a-time bitwise operation
+
+//     return A;
+// }
+
+template <typename T, typename Iter>
+inline
+void removeIndicesFromVector(std::vector<T>& v, Iter begin, Iter end) // requires std::is_convertible_v<std::iterator_traits<Iter>::value_type, std::size_t>
+{
+    assert(std::is_sorted(begin, end));
+    auto rm_iter = begin;
+    std::size_t current_index = 0;
+
+    const auto pred = [&](const T&){
+        // any more to remove?
+        if (rm_iter == end) { return false; }
+        // is this one specified?
+        if (*rm_iter == current_index++) { return ++rm_iter, true; }
+        return false;
+    };
+
+    v.erase(std::remove_if(v.begin(), v.end(), pred), v.end());
+}
+
+template <typename T, typename S> // requires std::is_convertible_v<S::value_type, std::size_t>
+inline
+void removeIndicesFromVector(std::vector<T>& v, const S& rm)
+{
+    using std::begin;
+    using std::end;
+    assert(std::is_sorted(begin(rm), end(rm)));
+    return removeIndicesFromVector(v, begin(rm), end(rm));
+}
+
+
+#include<array>
+
+template<int dim>
+struct multi_index_t
+{
+    std::array<int, dim> size_array;
+    template<typename ... Args>
+    multi_index_t(Args&& ... args) : size_array(std::forward<Args>(args) ...) {}
+
+    struct iterator
+    {
+        struct sentinel_t {};
+
+        std::array<int, dim> index_array = {};
+        std::array<int, dim> const& size_array;
+        bool _end = false;
+
+        iterator(std::array<int, dim> const& size_array) : size_array(size_array) {}
+
+        auto& operator++()
+        {
+            for (int i = 0;i < dim;++i)
+            {
+                if (index_array[i] < size_array[i] - 1)
+                {
+                    ++index_array[i];
+                    for (int j = 0;j < i;++j)
+                    {
+                        index_array[j] = 0;
+                    }
+                    return *this;
+                }
+            }
+            _end = true;
+            return *this;
+        }
+        auto& operator*()
+        {
+            return index_array;
+        }
+        bool operator!=(sentinel_t) const
+        {
+            return !_end;
+        }
+    };
+
+    auto begin() const
+    {
+        return iterator{ size_array };
+    }
+    auto end() const
+    {
+        return typename iterator::sentinel_t{};
+    }
+};
+
+template<typename ... index_t>
+auto multi_index(index_t&& ... index)
+{
+    static constexpr int size = sizeof ... (index_t); 
+    auto ar = std::array<int, size>{std::forward<index_t>(index) ...};
+    return multi_index_t<size>(ar);
+}

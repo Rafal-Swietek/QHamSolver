@@ -11,15 +11,15 @@ void user_interface_sym<Hamiltonian>::diagonalize(){
     std::string info = this->set_info({});
     std::cout << "\n\t\t--> finished creating model for " << info << " - in time : " << tim_s(start) << "s" << std::endl;
     
-    this->ptr_to_model->diagonalization(!this->ch);
+    this->ptr_to_model->diagonalization(this->ch);
     arma::vec eigenvalues = this->ptr_to_model->get_eigenvalues();
-    
+    // std::cout << eigenvalues.t() << std::endl;
     std::cout << "\t\t	--> finished diagonalizing for " << info << " - in time : " << tim_s(start) << "s" << std::endl;
     
     //std::cout << eigenvalues.t() << std::endl;
 
     std::string name = dir + info + ".hdf5";
-    eigenvalues.save(arma::hdf5_name(name, "eigenvalues", arma::hdf5_opts::append));
+    eigenvalues.save(arma::hdf5_name(name, "energies"));
     std::cout << "\t\t	--> finished saving eigenvalues for " << info << " - in time : " << tim_s(start) << "s" << std::endl;
     if(this->ch){
         auto H = this->ptr_to_model->get_dense_hamiltonian();

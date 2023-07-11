@@ -6,6 +6,10 @@
 #include "compiler_setup_headers/preprocessor_setup.hpp"
 #include "compiler_setup_headers/compiler_setup.hpp"
 
+// BOOST
+#include "boost/dynamic_bitset.hpp"
+
+// OTHER
 #include <string>
 
 #include <algorithm>
