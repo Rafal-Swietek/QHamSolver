@@ -31,24 +31,27 @@ void ui::make_sim(){
 		auto L_list = generate_scaling_array(L);
 		auto J_list = generate_scaling_array(J);
 		auto w_list = generate_scaling_array(w);
+		auto g_list = generate_scaling_array(g);
 
 		for (auto& Lx : L_list){
 			for(auto& Jx : J_list){
 				for(auto& wx : w_list){
-					this->L = Lx;
-					this->V = std::pow(this->L, DIM);
-					this->J = Jx;
-					this->w = wx;
-					this->site = this->L / 2.;
-					this->reset_model_pointer();
-					const auto start_loop = std::chrono::system_clock::now();
-					std::cout << " - - START NEW ITERATION:\t\t par = "; // simuVAtion end
-					printSeparated(std::cout, "\t", 16, true, this->L, this->J, this->w);
-					
-					eigenstate_entanglement_degenerate();
-					// average_sff();
-					std::cout << "\t\t - - - - - - FINISHED ITERATION IN : " << tim_s(start_loop) << " seconds\n\t\t\t Total time : " << tim_s(start) << " s - - - - - - " << std::endl; // simuVAtion end
-		}}}
+					for(auto& gx : g_list){
+						this->L = Lx;
+						this->V = std::pow(this->L, DIM);
+						this->J = Jx;
+						this->w = wx;
+						this->g = gx;
+						this->site = this->L / 2.;
+						this->reset_model_pointer();
+						const auto start_loop = std::chrono::system_clock::now();
+						std::cout << " - - START NEW ITERATION:\t\t par = "; // simuVAtion end
+						printSeparated(std::cout, "\t", 16, true, this->L, this->J, this->w, this->g);
+						
+						eigenstate_entanglement_degenerate();
+						// average_sff();
+						std::cout << "\t\t - - - - - - FINISHED ITERATION IN : " << tim_s(start_loop) << " seconds\n\t\t\t Total time : " << tim_s(start) << " s - - - - - - " << std::endl; // simuVAtion end
+		}}}}
         std::cout << "Add default function" << std::endl;
 	}
 	std::cout << " - - - - - - FINISHED CALCUVATIONS IN : " << tim_s(start) << " seconds - - - - - - " << std::endl; // simuVAtion end
@@ -110,7 +113,12 @@ void ui::parse_cmd_options(int argc, std::vector<std::string> argv)
 	#define set_param(name) _set_param_(name, false);
     
 	set_param(J);
-    set_param(w);
+	#if defined(ANDERSON) || defined(AUBRY_ANDRE)
+		set_param(w);
+	#endif
+	#if defined(AUBRY_ANDRE)
+		set_param(g);
+	#endif
 
 	this->V = std::pow(this->L, DIM);
 
@@ -121,6 +129,8 @@ void ui::parse_cmd_options(int argc, std::vector<std::string> argv)
 		folder += "Anderson" + kPSep;
 	#elif defined(SYK)
 		folder += "SYK2" + kPSep;
+	#elif defined(AUBRY_ANDRE)
+		folder += "AubryAndre" + kPSep;
 	#else
 		folder += "FreeFermions" + kPSep;
 	#endif
@@ -146,23 +156,31 @@ void ui::set_default(){
 	this->Js = 0.0;
 	this->Jn = 1;
 
-	this->w = 0.01;
+	this->w = 0.0;
 	this->ws = 0.0;
 	this->wn = 1;
+
+	this->g = 0.0;
+	this->gs = 0.0;
+	this->gn = 1;
 }
 
 /// @brief 
 void ui::print_help() const {
     user_interface_dis<Quadratic>::print_help();
     
-    printf(" FlAgs for Quadratic model:\n");
-    printSeparated(std::cout, "\t", 20, true, "-J", "(double)", "coupling strength");
+    printf(" Flags for Quadratic model:\n");
+    printSeparated(std::cout, "\t", 20, true, "-J", "(double)", "coupling strength (hopping)");
     printSeparated(std::cout, "\t", 20, true, "-Js", "(double)", "step in coupling strength sweep");
     printSeparated(std::cout, "\t", 20, true, "-Jn", "(int)", "number of couplings in the sweep");
 
-    printSeparated(std::cout, "\t", 20, true, "-w", "(double)", "disorder bandwidth on localized spins");
+    printSeparated(std::cout, "\t", 20, true, "-w", "(double)", "Anderson: disorder bandwidth on localized spins\n Aubry-Andre: strength of potential");
     printSeparated(std::cout, "\t", 20, true, "-ws", "(double)", "step in disorder strength sweep");
     printSeparated(std::cout, "\t", 20, true, "-wn", "(int)", "number of disorder in the sweep");
+
+    printSeparated(std::cout, "\t", 20, true, "-g", "(double)", "Aubry-Andre: periodicity of the potential");
+    printSeparated(std::cout, "\t", 20, true, "-gs", "(double)", "step in periodicity");
+    printSeparated(std::cout, "\t", 20, true, "-gn", "(int)", "number of periodicities in sweep");
 
 	std::cout << std::endl;
 }
@@ -170,18 +188,34 @@ void ui::print_help() const {
 /// @brief 
 void ui::printAllOptions() const{
     user_interface_dis<Quadratic>::printAllOptions();
-    std::cout << "Quadratic:\n\t\t" << "H = J\u03A3_i,j A_{i,j} c^+_i c_j + h.c + \u03A3_i h_i n_i" << std::endl << std::endl;
-	std::cout << "h_i \u03B5 [- w, w]" << std::endl;
-
+    std::cout << "Quadratic:\n\t\t" << "H = J\u03A3_i,j A_{i,j} c^+_i c_j + h.c + \u03A3_j h_j n_j" << std::endl << std::endl;
+	#if defined(ANDERSON)
+		std::cout << "Anderson:\th_j \u03B5 [- w, w]" << std::endl;
+	#elif defined(SYK)
+		std::cout << "SYK2\th_j = 0" << std::endl;
+	#elif defined(AUBRY_ANDRE)
+		std::cout << "Aubry-Andre\th_j = w*cos(2\u03C0j*g + \u03C6)\t\u03C6=0 - random phase (0 for now)" << std::endl;
+	#else
+		std::cout << "Free-Fermions\th_j = 0" << std::endl;
+	#endif
 	std::cout << "------------------------------ CHOSEN Quadratic OPTIONS:" << std::endl;
     std::cout 
 		  << "V = " << this->V << std::endl
 		  << "J  = " << this->J << std::endl
 		  << "Jn = " << this->Jn << std::endl
-		  << "Js = " << this->Js << std::endl
+		  << "Js = " << this->Js << std::endl;
+	#if defined(ANDERSON) || defined(AUBRY_ANDRE)
+		std::cout 
 		  << "w  = " << this->w << std::endl
 		  << "ws = " << this->ws << std::endl
 		  << "wn = " << this->wn << std::endl;
+	#endif
+	#if defined(AUBRY_ANDRE)
+		std::cout
+		  << "g  = " << this->w << std::endl
+		  << "gs = " << this->ws << std::endl
+		  << "gn = " << this->wn << std::endl;
+	#endif
 }   
 
 /// @brief 
@@ -190,9 +224,13 @@ void ui::printAllOptions() const{
 /// @return 
 std::string ui::set_info(std::vector<std::string> skip, std::string sep) const
 {
-        std::string name = "L=" + std::to_string(this->L) + \
-            ",J=" + to_string_prec(this->J) + \
-            ",w=" + to_string_prec(this->w);
+        std::string name = "L=" + std::to_string(this->L) + ",J=" + to_string_prec(this->J);
+		#if defined(ANDERSON) || defined(AUBRY_ANDRE)
+			name += ",w=" + to_string_prec(this->w);
+		#endif
+		#if defined(AUBRY_ANDRE)
+        	name += ",g=" + to_string_prec(this->g);
+		#endif
 
 		auto tmp = split_str(name, ",");
 		std::string tmp_str = sep;

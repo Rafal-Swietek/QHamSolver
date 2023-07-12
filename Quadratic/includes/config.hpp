@@ -4,12 +4,12 @@
 #define CONFIG 2
 
 #ifndef DIM
-    #define DIM 3
+    #define DIM 1
 #endif
 
 
 #ifndef MODEL
-    #define MODEL 0
+    #define MODEL 2
 #endif
 
 
@@ -19,6 +19,8 @@
     #define ANDERSON
 #elif MODEL == 1
     #define SYK
+#elif MODEL == 2
+    #define AUBRY_ANDRE
 #else
     #define FREE_FERMIONS
 #endif

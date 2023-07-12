@@ -13,10 +13,10 @@
 namespace QuadraticUI{
     class ui : public user_interface_quadratic<Quadratic>{
     protected:
-        double J, Js;
+        double J, Js, g, gs;
         double w, ws;
-        int Jn, wn;
-
+        int Jn, wn, gn;
+        
         typedef typename user_interface_quadratic<Quadratic>::model_pointer model_pointer;
         typedef typename user_interface_quadratic<Quadratic>::element_type element_type;
     public:

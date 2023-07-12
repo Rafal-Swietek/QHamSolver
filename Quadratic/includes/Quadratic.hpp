@@ -30,6 +30,7 @@ private:
     
     double _w = 0.5;                        // disorder value on top of uniform field
     double _J = 1.;
+    double _g = 0.0;                        // periodicity for the Aubry-Andre model
     u64 _seed = std::random_device{}();     // seed for random generator
     
     
@@ -51,7 +52,7 @@ public:
     //<! ----------------------------------------------------- CONSTRUCTORS
     Quadratic() = default;
     Quadratic(std::istream& os);
-    Quadratic(int L, double J, double w = 0, const u64 seed = std::random_device{}());
+    Quadratic(int L, double J, double w = 0, const u64 seed = std::random_device{}(), double g = 0.0);
 
     //<! ----------------------------------------------------- HAMILTONIAN BUILDERS
     virtual void create_hamiltonian() override;

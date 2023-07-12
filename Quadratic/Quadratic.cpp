@@ -7,18 +7,13 @@
 //<! ------------------------------------------------------------------------------------------------------------------------ IMPLEMENTATION
 
 //<! ------------------------------------------------------------------------------ CONSTRUCTORS
-/// @brief Constructor of Quantum Sun model
-/// @param L system size (L = L_loc + M)
-/// @param J coupling of grain to localized spins
-/// @param alfa regulates decay of coupling to furthest spins
-/// @param w bandwidth of disorder on localized spins
-/// @param hz uniform magnetic field
+/// @brief Constructor of Quadratic models
+/// @param L system size (volume is L^d)
+/// @param J coupling (hopping))
+/// @param w stregth of potential: disorder (Anderson), periodic (Aubey-Andre), ...
 /// @param seed random seed
-/// @param N size of ergodic grain
-/// @param zeta random positions for coupling
-/// @param initiate_avalanche boolean value if initiate avalanche by hand (put fisrt coupling without decay)
-/// @param normalize_grain normalize grain to unit hilbert-schmidt norm?
-Quadratic::Quadratic(int L, double J, double w, const u64 seed)
+/// @param g periodicity for Aubry-Andre model
+Quadratic::Quadratic(int L, double J, double w, const u64 seed, double g)
 { 
     CONSTRUCTOR_CALL;
 
@@ -29,6 +24,9 @@ Quadratic::Quadratic(int L, double J, double w, const u64 seed)
     //<! disorder terms
     this->_w = w;
     this->_seed = seed;
+
+    //<! other terms
+    this->_g = g;
 
     init(); 
 }
@@ -63,6 +61,19 @@ void Quadratic::create_hamiltonian()
     #elif defined(SYK)
         this->H = this->random_matrix.generate_matrix(this->dim);
 
+    #elif defined(AUBRY_ANDRE)
+        double phase = 0;//this->disorder_generator.random_uni<double>(0, two_pi);
+        for(long int j = 0; j < this->dim; j++){
+            this->H(j, j) = this->_w * std::cos(two_pi * j * this->_g + phase);
+
+            auto neis = lattice.get_neighbours(j);
+            for(auto& nei : neis){
+                if(nei > 0){
+                    this->H(j, nei) = -this->_J;
+                    this->H(nei, j) = -this->_J;
+                }
+            }
+        }
     #elif defined(FREE_FERMIONS)
         for(long int j = 0; j < this->dim; j++){
             auto neis = lattice.get_neighbours(j);
@@ -81,7 +92,6 @@ void Quadratic::create_hamiltonian()
 
 //<! ------------------------------------------------------------------------------ OVVERRIDEN OPERATORS AND OPERATOR KERNELS
 /// @brief Read model parameters from input stream
-/// @tparam U1_sector U(1) symmetry sector as teamplate input 
 /// @param os input stream to read parameters
 std::istream& Quadratic::read(std::istream& os)
 {
@@ -93,9 +103,9 @@ std::istream& Quadratic::read(std::istream& os)
 /// @param os input stream to read parameters
 std::ostream& Quadratic::write(std::ostream& os) const
 {
-    printSeparated(os, "\t", 16, true, "Model:", "Quantum Sun model - O-dimensional EBT toy model");
+    printSeparated(os, "\t", 16, true, "Model:", "Quadratic mdoel - d-dimensional");
     os << std::endl;
-    printSeparated(os, "\t", 16, true, "Hamiltonian:", "H = J\u03A3_<i,j> c^+_i c_j + h.c + \u03A3_i h_i n_i");
+    printSeparated(os, "\t", 16, true, "Hamiltonian:", "H = J\u03A3_<i,j> A_ij c^+_i c_j + h.c + \u03A3_i h_i n_i");
     printSeparated(os, "\t", 16, true, "----------------------------------------------------------------------------------------------------");
     printSeparated(os, "\t", 16, true, "Parameters:");
     printSeparated(os, "\t", 16, true, "L", this->system_size);
