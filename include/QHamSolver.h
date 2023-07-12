@@ -7,7 +7,7 @@
 #include "compiler_setup_headers/compiler_setup.hpp"
 
 // BOOST
-#include "boost/dynamic_bitset.hpp"
+#include <boost/dynamic_bitset.hpp>
 
 // OTHER
 #include <string>

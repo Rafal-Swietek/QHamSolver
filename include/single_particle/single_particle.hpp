@@ -157,21 +157,33 @@ namespace single_particle{
         /// @param orbitals single particle wavefunctions
         /// @param state many-body eigenstate (configuration -- product state as boost::dynamic_bitset)
         /// @param VA subsystem size (can be whole system)
-        /// @return tuple with the one-body correlation matrix for subsystem VA and one-body correlation 'matrix' for site VA
+        /// @param J_m reference to one-body correlation matrix to add new entries
+        /// @param lambda reference to single-site one-body correlation
+        /// @param prefactor prefactor for correlation matrix (by default = 1.0)
         inline
-        std::pair<arma::cx_mat, double> one_body(const arma::cx_mat& orbitals, const boost::dynamic_bitset<>& state, int VA)
+        void one_body(const arma::cx_mat& orbitals, const boost::dynamic_bitset<>& state, int VA, arma::cx_mat& J_m, cpx& lambda, double prefactor = 1.0)
         {
-            double lambda = 0;
-            arma::cx_mat J_m(VA, VA, arma::fill::zeros);
+            arma::uvec col_idx(long(state.count()));
+            int idx = 0;
             for(int q = 0; q < orbitals.n_cols; q++){
                 double n_q = int(state[q]);
-                lambda += n_q * std::abs(orbitals(q, VA) * std::conj(orbitals(q, VA)));
-                if(VA > 0){
-                    arma::cx_vec orbital = orbitals.col(q).rows(0, VA - 1);
-                    J_m += n_q * orbital * orbital.t();
-                }
+                lambda += prefactor * n_q * std::abs(orbitals(q, VA) * std::conj(orbitals(q, VA)));
+                if(n_q == 1)
+                    col_idx(idx++) = q;
             }
-            return std::make_pair(J_m, lambda);
+            if(VA > 0){
+                arma::uvec row_idx = arma::regspace<arma::uvec>(0, VA-1);
+                auto W = orbitals.submat(row_idx, col_idx);
+                J_m += prefactor * W * W.t();
+            }
+            // for(int q = 0; q < orbitals.n_cols; q++){
+            //     double n_q = int(state[q]);
+            //     lambda += prefactor * n_q * std::abs(orbitals(q, VA) * std::conj(orbitals(q, VA)));
+            //     if(VA > 0){
+            //         auto orbital = orbitals.col(q).rows(0, VA - 1);
+            //         J_m += prefactor * n_q * orbital * orbital.t();
+            //     }
+            // }
         }
     }
 
