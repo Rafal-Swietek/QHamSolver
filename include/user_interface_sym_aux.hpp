@@ -242,12 +242,12 @@ void user_interface_sym<Hamiltonian>::eigenstate_entanglement_degenerate()
     auto seed = std::random_device{}();
 
 	disorder<double> random_generator(seed);
-	COE random_matrix(seed);
+	CUE random_matrix(seed);
         // auto start_LA = std::chrono::system_clock::now();
     for(int gamma_a = 1; gamma_a <= this->num_of_points; gamma_a++)
     {
         double entropy = 0;
-        arma::mat Haar = random_matrix.generate_matrix(gamma_a);
+        arma::cx_mat Haar = random_matrix.generate_matrix(gamma_a);
         // realisations to draw states randomly
         double E = 0;
     #pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
@@ -256,11 +256,11 @@ void user_interface_sym<Hamiltonian>::eigenstate_entanglement_degenerate()
             arma::Col<int> indices = random_generator.create_random_vec<int>(gamma_a, min_idx, max_idx);
             int id = random_generator.random_uni<int>(0, gamma_a-1);
 
-            arma::vec state(U.n_cols, arma::fill::zeros);
-            arma::vec coeff = Haar.col(id) / std::sqrt(arma::cdot(Haar.col(id), Haar.col(id)));
+            arma::cx_vec state(U.n_cols, arma::fill::zeros);
+            arma::cx_vec coeff = Haar.col(id) / std::sqrt(arma::cdot(Haar.col(id), Haar.col(id)));
             long idx = 0;
             for(auto& n : indices){
-                E += this->ptr_to_model->get_eigenValue(n);
+                E += this->ptr_to_model->get_eigenValue(n) - this->ptr_to_model->get_eigenValue(E_av_idx);
                 auto eigenstate = this->ptr_to_model->get_eigenState(n);
                 state += coeff(idx++) * eigenstate;
             }
@@ -273,7 +273,7 @@ void user_interface_sym<Hamiltonian>::eigenstate_entanglement_degenerate()
             }
         }
     }
-    E_av = E_av / double(this->mu) - this->ptr_to_model->get_eigenValue(E_av_idx);
+    E_av = E_av / double(this->mu);
     S /= double(this->mu);
     // std::cout << S.col(this->L / 2 - 1).t() << std::endl;
     
