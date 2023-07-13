@@ -188,3 +188,109 @@ void user_interface_sym<Hamiltonian>::eigenstate_entanglement()
     // #endif
     // V.save(arma::hdf5_name(dir + filename + ".hdf5", "eigenvectors",arma::hdf5_opts::append));
 }
+
+/// @brief Calculate entanglement entropy in randomly mixed eigenstates (mimic degenerate states)
+/// @tparam Hamiltonian template parameter for current used model
+template <class Hamiltonian>
+void user_interface_sym<Hamiltonian>::eigenstate_entanglement_degenerate()
+{
+   clk::time_point start = std::chrono::system_clock::now();
+	
+	std::string dir = this->saving_dir + "Entropy" + kPSep + "Degeneracy" + kPSep;
+	createDirs(dir);
+	
+    int LA = this->site;
+	size_t dim = this->ptr_to_model->get_hilbert_size();
+	
+	std::string info = this->set_info();
+	std::string filename = info;// + "_subsize=" + std::to_string(LA);
+
+    #ifdef ARMA_USE_SUPERLU
+        const int size = this->ch? 500 : dim;
+        if(this->ch){
+            this->ptr_to_model->hamiltonian();
+            this->ptr_to_model->diag_sparse(true);
+        } else
+            this->ptr_to_model->diagonalization();
+    
+    #else
+        const int size = dim;
+        this->ptr_to_model->diagonalization();
+    #endif
+
+    std::cout << " - - - - - - FINISHED DIAGONALIZATION IN : " << tim_s(start) << " seconds - - - - - - " << std::endl; // simulation end
+    
+    start = std::chrono::system_clock::now();
+    // const arma::vec E = this->ptr_to_model->get_eigenvalues();
+    const long E_av_idx = this->ptr_to_model->E_av_idx;
+    const long min_idx = dim > 2 * int(this->num_of_points)? E_av_idx - int(this->num_of_points / 2.0) : 0;
+    const long max_idx = dim > 2 * int(this->num_of_points)? E_av_idx + int(this->num_of_points / 2.0) : dim - 1;
+    std::cout << E_av_idx << "\t\t" << min_idx << "\t\t" << max_idx << std::endl;
+    const auto U = this->ptr_to_model->get_model_ref().get_hilbert_space().symmetry_rotation();
+
+    std::cout << " - - - - - - FINISHED CREATING SYMMETRY TRANSFORMATION IN : " << tim_s(start) << " seconds - - - - - - " << std::endl; // simulation end
+    start = std::chrono::system_clock::now();
+
+    auto subsystem_sizes = arma::conv_to<arma::Col<int>>::from(arma::linspace(0, this->L / 2, this->L / 2 + 1));
+    std::cout << subsystem_sizes.t() << std::endl;
+
+    arma::mat S(this->num_of_points, subsystem_sizes.size(), arma::fill::zeros);
+    arma::vec E_av(this->num_of_points);
+    int th_num = this->thread_number;
+    omp_set_num_threads(1);
+    std::cout << th_num << "\t\t" << omp_get_num_threads() << std::endl;
+    auto seed = std::random_device{}();
+
+	disorder<double> random_generator(seed);
+	COE random_matrix(seed);
+        // auto start_LA = std::chrono::system_clock::now();
+    for(int gamma_a = 1; gamma_a <= this->num_of_points; gamma_a++)
+    {
+        double entropy = 0;
+        arma::mat Haar = random_matrix.generate_matrix(gamma_a);
+        // realisations to draw states randomly
+        double E = 0;
+    #pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
+        for(u64 unused = 0; unused < this->mu; unused++)
+        {
+            arma::Col<int> indices = random_generator.create_random_vec<int>(gamma_a, min_idx, max_idx);
+            int id = random_generator.random_uni<int>(0, gamma_a-1);
+
+            arma::vec state(U.n_cols, arma::fill::zeros);
+            arma::vec coeff = Haar.col(id) / std::sqrt(arma::cdot(Haar.col(id), Haar.col(id)));
+            long idx = 0;
+            for(auto& n : indices){
+                E += this->ptr_to_model->get_eigenValue(n);
+                auto eigenstate = this->ptr_to_model->get_eigenState(n);
+                state += coeff(idx++) * eigenstate;
+            }
+            state = U * state / std::sqrt(arma::cdot(state, state));
+            #pragma omp critical
+            {
+                E_av(gamma_a-1) += E / double(indices.size());
+                for(auto& LA : subsystem_sizes)
+                    S(gamma_a-1, LA) += entropy::schmidt_decomposition(state, LA, this->L);
+            }
+        }
+    }
+    E_av = E_av / double(this->mu) - this->ptr_to_model->get_eigenValue(E_av_idx);
+    S /= double(this->mu);
+    // std::cout << S.col(this->L / 2 - 1).t() << std::endl;
+    
+    std::cout << " - - - - - - FINISHED ENTROPY CALCULATION IN : " << tim_s(start) << " seconds - - - - - - " << std::endl; // simulation end
+    
+    omp_set_num_threads(this->thread_number);
+    th_num = 1;
+    
+    E_av.save(arma::hdf5_name(dir + filename + ".hdf5", "energies"));
+	S.save(arma::hdf5_name(dir + filename + ".hdf5", "entropy", arma::hdf5_opts::append));
+        
+    // #ifdef ARMA_USE_SUPERLU
+    //     arma::Mat<element_type> V;
+    //     if(this->ch) V = this->ptr_to_model->get_eigenvectors();
+    //     else         V = this->ptr_to_model->get_eigenvectors().submat(0, this->ptr_to_model->E_av_idx - 50, dim - 1, this->ptr_to_model->E_av_idx + 50);
+    // #else
+    //     arma::Mat<element_type> V = this->ptr_to_model->get_eigenvectors().submat(0, this->ptr_to_model->E_av_idx - 50, dim - 1, this->ptr_to_model->E_av_idx + 50);
+    // #endif
+    // V.save(arma::hdf5_name(dir + filename + ".hdf5", "eigenvectors",arma::hdf5_opts::append));
+}

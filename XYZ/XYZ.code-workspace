@@ -104,7 +104,13 @@
 			"thread": "cpp",
 			"cinttypes": "cpp",
 			"armadillo": "cpp",
-			"filesystem": "cpp"
+			"filesystem": "cpp",
+			"__verbose_abort": "cpp",
+			"typeindex": "cpp",
+			"list": "cpp",
+			"set": "cpp",
+			"span": "cpp",
+			"valarray": "cpp"
 		}
 	}
 }

@@ -104,7 +104,7 @@ public:
 	virtual void average_sff() = 0;
 	
 	virtual void eigenstate_entanglement() = 0;
-
+	virtual void eigenstate_entanglement_degenerate() = 0;
 	virtual void diagonal_matrix_elements() = 0;
 };
 

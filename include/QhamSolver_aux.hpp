@@ -27,6 +27,7 @@ class QHamSolver{
         auto& get_eigenvectors()        const { return this->eigenvectors; }			    // get the const reference to the eigenvectors
 	    auto get_eigenState(u64 idx)    const { return this->eigenvectors.col(idx); }	    // get the eigenvector at index idx
 	    
+        auto get_eigenValue(u64 idx)    const { return this->eigenvalues(idx); }            // get eigenenergy at position idx
         auto get_eigenvalues()	        const { return this->eigenvalues; }			        // get the const reference to eigenvalues
 	    auto get_hamiltonian()	        const { return this->H.get_hamiltonian(); }	        // get the const reference to a Hamiltonian
 	    auto get_dense_hamiltonian()    const { return this->H.get_dense_hamiltonian(); }	// get the const reference to a Hamiltonian
@@ -100,12 +101,11 @@ void QHamSolver<Hamiltonian>::diagonalization(bool get_eigenvectors, const char*
             + "\n spectrum size: " + std::to_string(this->dim)
         );
     }
-    double E_av = arma::trace(eigenvalues) / double(this->dim);
-    auto i = min_element(begin(eigenvalues), end(eigenvalues), [=](double x, double y) {
+    double E_av = arma::mean(this->eigenvalues);
+    auto i = min_element(begin(this->eigenvalues), end(this->eigenvalues), [=](double x, double y) {
         return abs(x - E_av) < abs(y - E_av);
         });
-    this->E_av_idx = i - begin(eigenvalues);
-
+    this->E_av_idx = i - begin(this->eigenvalues);
     #ifdef EXTRA_DEBUG
         printSeparated(std::cout, "\t", 16, true, "guessed index", "mean energy", "energies close to this value (-1,0,+1) around found index");
         printSeparated(std::cout, "\t", 16, true, this->E_av_idx, E_av, this->eigenvalues(this->E_av_idx - 1), this->eigenvalues(this->E_av_idx),  this->eigenvalues(this->E_av_idx + 1));
