@@ -4,5 +4,5 @@
 #define CONFIG 2
 
 #ifndef DIM
-    #define DIM 3
+    #define DIM 1
 #endif

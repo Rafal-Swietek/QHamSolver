@@ -47,7 +47,7 @@ public:
 	virtual void spectral_form_factor() 				override;
 	virtual void average_sff() 							override;
 	virtual void eigenstate_entanglement() 				override;
-	virtual void eigenstate_entanglement_degenerate() 	override {};
+	virtual void eigenstate_entanglement_degenerate() 	override;
 	virtual void analyze_spectra() 						override;
 	virtual void diagonal_matrix_elements() 			override;
 };

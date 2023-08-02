@@ -157,7 +157,7 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
 	std::string filename = info;// + "_subsize=" + std::to_string(VA);
 
 	const int Gamma_max = this->num_of_points;
-	u64 num_states = 1000 * Gamma_max;//ULLPOW(14);
+	u64 num_states = 100 * Gamma_max;//ULLPOW(14);
 
 	// arma::Col<int> subsystem_sizes = arma::conv_to<arma::Col<int>>::from(arma::linspace(0, this->V / 2 - 1, this->V / 2));
 	arma::Col<int> subsystem_sizes = arma::Col<int>({this->V / 2});
@@ -201,8 +201,11 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
 
         //<! add choosing flag
 		// auto mb_states = single_particle::mb_config_all(this->V);
-		auto mb_states = single_particle::mb_config(num_states, this->V, random_generator);
-		// auto mb_states = single_particle::mb_config_free_fermion(num_states, this->V, random_generator);
+		#ifdef FREE_FERMIONS
+			auto mb_states = single_particle::mb_config_free_fermion(num_states, this->V, random_generator);
+		#else
+			auto mb_states = single_particle::mb_config(num_states, this->V, random_generator);
+		#endif
 		
 		num_states = mb_states.size();
 		
@@ -229,18 +232,20 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
 				arma::cx_mat U = random_matrix.generate_matrix(gamma_a);
 				// realisations to draw states randomly
 			#pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
-				for(u64 unused = 0; unused < 100; unused++)
+				for(u64 unused = 0; unused < 1000; unused++)
 				{
 					arma::cx_mat J_m(VA, VA, arma::fill::zeros);
 					arma::Col<int> indices = random_generator.create_random_vec<int>(gamma_a, 0, num_states - 1);
 					int id = random_generator.random_uni<int>(0, gamma_a-1);
 					cpx lambda = 0.0;
+					
+					arma::cx_vec coeff = U.col(id) / std::sqrt(arma::cdot(U.col(id), U.col(id)));
 					for(int n = 0; n < gamma_a; n++)
 					{
 						auto state_n = mb_states[indices(n)];
 
 						// <n|f+_q f_q|n>
-						double pre = std::abs(U(id, n)) * std::abs(U(id, n));
+						double pre = std::abs(coeff(n)) * std::abs(coeff(n));
 						single_particle::correlators::one_body(orbitals, state_n, VA, J_m, lambda, pre);
 						
 						// <m|f+_q1 f_q2|n>
@@ -252,7 +257,7 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
 							auto x = state_n ^ state_m;
 							if(x.count() == 2){
 								std::vector<int> qs;
-								auto prefactor = std::conj(U(id, m)) * U(id, n);
+								auto prefactor = std::conj(coeff(m)) * coeff(n);
 								for(int q = 0; q < this->V; q++)
 									if(x[q]) qs.push_back(q);
 								if(state_n[qs[0]] ^ state_n[qs[1]])

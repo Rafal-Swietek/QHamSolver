@@ -195,7 +195,7 @@ namespace single_particle{
         /// @return entanglement entropy given by the eigenvalue of correlation matrix
         inline
         double vonNeumann_helper(double lambda){
-            if(std::abs( std::abs(lambda) - 1.0 ) < 1e-14)
+            if(std::abs(lambda) > 1.0 - 1e-12)
                 return 0;
             else{
                 double lam1 = (1 + lambda) / 2.;

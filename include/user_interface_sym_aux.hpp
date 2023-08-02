@@ -196,7 +196,7 @@ void user_interface_sym<Hamiltonian>::eigenstate_entanglement_degenerate()
 {
    clk::time_point start = std::chrono::system_clock::now();
 	
-	std::string dir = this->saving_dir + "Entropy" + kPSep + "Degeneracy" + kPSep;
+	std::string dir = this->saving_dir + "Entropy" + kPSep + "Degeneracy" + kPSep;// + "Deterministic" + kPSep;
 	createDirs(dir);
 	
     int LA = this->site;
@@ -258,6 +258,8 @@ void user_interface_sym<Hamiltonian>::eigenstate_entanglement_degenerate()
 
             arma::cx_vec state(U.n_cols, arma::fill::zeros);
             arma::cx_vec coeff = Haar.col(id) / std::sqrt(arma::cdot(Haar.col(id), Haar.col(id)));
+            // arma::cx_vec coeff(gamma_a, arma::fill::ones);
+            // coeff /= std::sqrt(arma::cdot(coeff, coeff));
             long idx = 0;
             for(auto& n : indices){
                 E += this->ptr_to_model->get_eigenValue(n) - this->ptr_to_model->get_eigenValue(E_av_idx);
@@ -269,7 +271,7 @@ void user_interface_sym<Hamiltonian>::eigenstate_entanglement_degenerate()
             {
                 E_av(gamma_a-1) += E / double(indices.size());
                 for(auto& LA : subsystem_sizes)
-                    S(gamma_a-1, LA) += entropy::schmidt_decomposition(state, LA, this->L);
+                    S(gamma_a-1, LA) += entropy::schmidt_decomposition(state, this->L - LA, this->L);
             }
         }
     }
@@ -282,8 +284,10 @@ void user_interface_sym<Hamiltonian>::eigenstate_entanglement_degenerate()
     omp_set_num_threads(this->thread_number);
     th_num = 1;
     
+    arma::Col<u64> dimension = arma::Col<u64>({dim});
     E_av.save(arma::hdf5_name(dir + filename + ".hdf5", "energies"));
 	S.save(arma::hdf5_name(dir + filename + ".hdf5", "entropy", arma::hdf5_opts::append));
+	dimension.save(arma::hdf5_name(dir + filename + ".hdf5", "dim", arma::hdf5_opts::append));
         
     // #ifdef ARMA_USE_SUPERLU
     //     arma::Mat<element_type> V;
