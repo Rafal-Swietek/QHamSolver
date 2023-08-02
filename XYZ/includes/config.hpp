@@ -9,7 +9,7 @@
 
     //<! Macro to control if main routines are set for symmetric or non-symmetric model
     #ifndef USE_SYMMETRIES
-        #define USE_SYMMETRIES
+        // #define USE_SYMMETRIES
     #endif
 
     //<! Macro to set element type to double for real momentum sectors

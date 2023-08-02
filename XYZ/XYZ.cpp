@@ -23,7 +23,7 @@
 /// @param add_parity_breaking add edge term to break parity (if no disorder present)
 /// @param add_edge_fields add edge fields to keep supersymmetry for OBC
 XYZ::XYZ(int _BC, unsigned int L, double J1, double J2, double delta1, double delta2, double eta1, double eta2,
-            double hx, double hz, bool add_parity_breaking, bool add_edge_fields)//double w, const u64 seed)
+            double hx, double hz, bool add_parity_breaking, bool add_edge_fields, double w, const u64 seed)
 { 
     CONSTRUCTOR_CALL;
 
@@ -46,12 +46,12 @@ XYZ::XYZ(int _BC, unsigned int L, double J1, double J2, double delta1, double de
     if(this->_add_edge_fields)
         this->_add_parity_breaking = false;
     //<! disorder terms
-    // if(w > 0){
-    //     this->_use_disorder = true;
-    //     this->_w = w;
-    //     this->_seed = seed;
-    //     this->_add_parity_breaking = false;
-    // }
+    if(w > 0){
+        this->_use_disorder = true;
+        this->_w = w;
+        this->_seed = seed;
+        this->_add_parity_breaking = false;
+    }
     init(); 
 }
 
@@ -83,13 +83,10 @@ void XYZ::set_hamiltonian_elements(u64 k, double value, u64 new_idx)
 void XYZ::create_hamiltonian()
 {
     this->H = sparse_matrix(this->dim, this->dim);
-    // if(this->_use_disorder){
-    //     this->_seed = std::abs(2 * (long)this->_seed - 10000) % ULONG_MAX;
-    //     disorder_generator = disorder<double>(this->_seed);
-    //     this->_disorder = disorder_generator.uniform(system_size, this->_hz, this->_hz + this->_w); 
-    // }
-    // if(this->_add_parity_breaking && !this->_use_disorder)
-    //     this->_disorder(0) = 0.1;
+    if(this->_use_disorder)
+        this->_disorder = disorder_generator.uniform(system_size, this->_hz, this->_hz + this->_w); 
+    if(this->_add_parity_breaking && !this->_use_disorder)
+        this->_disorder(0) = 0.1;
 
     double Jz = (this->_eta1 * this->_eta1 - 1) / 2.;
     if(this->_add_edge_fields){
@@ -135,9 +132,9 @@ void XYZ::create_hamiltonian()
 	}
 
     // add SUSY ground state energy (const shift) and invert (minus sign in front of hamiltonian)
-    this->H = -this->H + this->_J1 * (this->system_size - int(this->_boundary_condition)) * (2 + Jz) / 4. * arma::eye(this->dim, this->dim);
-    if(this->_boundary_condition)
-        this->H = this->H + this->_J1 * (1 + 3 * this->_eta1 * this->_eta1) / 4.0 * arma::eye(this->dim, this->dim);
+    // this->H = -this->H + this->_J1 * (this->system_size - int(this->_boundary_condition)) * (2 + Jz) / 4. * arma::eye(this->dim, this->dim);
+    // if(this->_boundary_condition)
+    //     this->H = this->H + this->_J1 * (1 + 3 * this->_eta1 * this->_eta1) / 4.0 * arma::eye(this->dim, this->dim);
 }
 
 

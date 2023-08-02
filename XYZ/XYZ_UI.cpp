@@ -286,26 +286,6 @@ void ui::make_sim(){
 	default:
 		#define generate_scaling_array(name) arma::linspace(this->name, this->name + this->name##s * (this->name##n - 1), this->name##n)
         #define for_loop(param, var) for (auto& param : generate_scaling_array(var))
-		// auto L_list = generate_scaling_array(L);
-		// auto J1_list = generate_scaling_array(J1);
-		// auto J2_list = generate_scaling_array(J2);
-		// auto delta1_list = generate_scaling_array(delta1);
-		// auto delta2_list = generate_scaling_array(delta2);
-		// auto eta1_list = generate_scaling_array(eta1);
-		// auto eta2_list = generate_scaling_array(eta2);
-		// auto hz_list = generate_scaling_array(hz);
-        // auto hx_list = generate_scaling_array(hx);
-		// auto w_list = generate_scaling_array(w);
-		//for (auto& system_size : L_list){
-        // for (auto& J1x : J1_list){
-        // for (auto& J2x : J2_list){
-        // for (auto& eta1x : eta1_list){
-        // for (auto& eta2x : eta2_list){
-        // for (auto& delta1x : delta1_list){
-        // for (auto& delta2x : delta2_list){
-        // for (auto& hxx : hx_list){
-        // for (auto& hzx : hz_list){
-        // for (auto& wx : w_list)
 
         for_loop(system_size, L){ 
             for_loop(J1x, J1){           
@@ -342,14 +322,17 @@ void ui::make_sim(){
                                         
                                         this->reset_model_pointer();
                                         //diagonal_matrix_elements();
-                                        this->diagonalize();
+                                        // this->diagonalize();
                                         //this->eigenstate_entanglement();
+                                        this->eigenstate_entanglement_degenerate();
 
                                     };
-            loopSymmetrySectors(kernel); continue;
-
-
+            // loopSymmetrySectors(kernel); continue;
             this->reset_model_pointer();
+
+            this->eigenstate_entanglement_degenerate(); 
+            continue;
+
             diagonal_matrix_elements();
             std::cout << "\t\t - - - - - - FINISHED ITERATION IN : " << tim_s(start_loop) << " seconds\n\t\t\t Total time : " << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
         }}}}}}}}}
@@ -536,7 +519,7 @@ typename ui::model_pointer ui::create_new_model_pointer(){
                                                     this->hx, this->hz, this->syms.k_sym, this->syms.p_sym, this->syms.zx_sym, this->syms.zz_sym, this->add_edge_fields);
     #else
         return std::make_unique<QHamSolver<XYZ>>(this->boundary_conditions, this->L, this->J1, this->J2, this->delta1, this->delta2, this->eta1, this->eta2,
-                                                    this->hx, this->hz, this->add_parity_breaking, this->add_edge_fields);// this->w, this->seed); 
+                                                    this->hx, this->hz, this->add_parity_breaking, this->add_edge_fields, this->w, this->seed); 
     #endif
 }
 
@@ -547,7 +530,7 @@ void ui::reset_model_pointer(){
                                                     this->hx, this->hz, this->syms.k_sym, this->syms.p_sym, this->syms.zx_sym, this->syms.zz_sym, this->add_edge_fields)); 
     #else
         return this->ptr_to_model.reset(new QHamSolver<XYZ>(this->boundary_conditions, this->L, this->J1, this->J2, this->delta1, this->delta2, this->eta1, this->eta2,
-                                                            this->hx, this->hz, this->add_parity_breaking, this->add_edge_fields));// this->w, this->seed)); 
+                                                            this->hx, this->hz, this->add_parity_breaking, this->add_edge_fields, this->w, this->seed)); 
     #endif
 }
 
