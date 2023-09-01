@@ -80,6 +80,21 @@ public:
 		}
 		return random_vec;
 	}
+
+
+	/// @brief Sample Haar-random matrix through QR-decomposition of complex matrix
+	/// @param size dimension of matrix
+	/// @return Haar-random matrix
+	arma::cx_mat haar_random(u64 size){
+		arma::cx_mat matrix(size, size);
+		std::normal_distribution<double> dist(0.0, 1.0);
+		for(int n = 0; n < size; n++)
+			for(int m = 0; m < size; m++)
+				matrix(n, m) = dist(engine) + 1i * dist(engine);
+		arma::cx_mat Q, R;
+		arma::qr(Q, R, matrix);
+		return Q;
+	};
 };
 
 template <> 

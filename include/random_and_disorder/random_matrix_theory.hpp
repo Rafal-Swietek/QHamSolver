@@ -106,21 +106,6 @@ public:
 
 //-------------------------------------------------------------------------------------------------- CIRCULAR ENSEMBLES
 
-/// @brief Sample Haar-random matrix through QR-decomposition of complex matrix
-/// @param size dimension of matrix
-/// @return Haar-random matrix
-inline
-arma::cx_mat haar_random(u64 size, const std::uint64_t seed = std::random_device{}()){
-    auto engine = std::mt19937_64(seed);
-    arma::cx_mat matrix(size, size);
-    std::normal_distribution<double> dist(0.0, 1.0);
-    for(int n = 0; n < size; n++)
-        for(int m = 0; m < size; m++)
-            matrix(n, m) = dist(engine) + 1i * dist(engine);
-    arma::cx_mat Q, R;
-    arma::qr(Q, R, matrix);
-    return Q;
-};
 
 /// @brief Cirtucal orthogonal ensemble
 class circular_orthogonal_ensemble : public random_matrix_theory<double>{
@@ -131,7 +116,7 @@ public:
 
     virtual arma::Mat<double> generate_matrix(u64 size) override
     {
-        arma::cx_mat U = haar_random(size, this->init_seed);
+        arma::cx_mat U = this->haar_random(size);
 		return arma::real(U.st() * U);
     }
 };
@@ -144,7 +129,7 @@ public:
         { this->init(seed); }
 
     virtual arma::Mat<cpx> generate_matrix(u64 size) override
-        { return haar_random(size, this->init_seed); }
+        { return this->haar_random(size); }
 };
 
 /// @brief 
@@ -156,7 +141,7 @@ public:
 
     virtual arma::Mat<cpx> generate_matrix(u64 size) override
     {
-        arma::cx_mat U = haar_random(2 * size, this->init_seed);
+        arma::cx_mat U = this->haar_random(2 * size);
         arma::mat Z = arma::diagmat(arma::vec(2*size, arma::fill::ones), 1) - arma::diagmat(arma::vec(2*size, arma::fill::ones), -1);
 	    return (Z * U.st() * Z.st()) * U;
     }
