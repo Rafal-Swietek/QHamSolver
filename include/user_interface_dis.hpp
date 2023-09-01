@@ -50,6 +50,7 @@ public:
 	virtual void eigenstate_entanglement_degenerate() 	override;
 	virtual void analyze_spectra() 						override;
 	virtual void diagonal_matrix_elements() 			override;
+	virtual void multifractality()						override;
 };
 
 // include definitions 

@@ -24,6 +24,9 @@ void ui::make_sim(){
 	case 2:
 		eigenstate_entanglement();
 		break;
+	case 3:
+		multifractality();
+		break;
 	default:
 		#define generate_scaling_array(name) arma::linspace(this->name, this->name + this->name##s * (this->name##n - 1), this->name##n);
 		auto L_list = generate_scaling_array(L);

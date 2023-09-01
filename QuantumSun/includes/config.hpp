@@ -4,7 +4,7 @@
 #define SPIN 0.5
 
 #ifndef CONF_DISORDER
-    #define CONF_DISORDER 1
+    #define CONF_DISORDER 0
 #endif
 
 

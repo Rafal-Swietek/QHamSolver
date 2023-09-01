@@ -764,8 +764,117 @@ void user_interface_dis<Hamiltonian>::diagonal_matrix_elements()
     std::cout << " - - - - - - FINISHED CALCULATION IN : " << tim_s(start) << " seconds - - - - - - " << std::endl; // simulation end
 }
 
-// -------------------------------------------------------------------------------------------------------------------------------------
 
+template <class Hamiltonian>
+void user_interface_dis<Hamiltonian>::multifractality(){
+
+    clk::time_point start = std::chrono::system_clock::now();
+
+	std::string subdir = "ParticipationRatio" + kPSep;
+	std::string dir = this->saving_dir + "MultiFractality" + kPSep + subdir;
+	createDirs(dir);
+
+	std::string info = this->set_info();
+	std::string filename = info;
+	
+	arma::vec participatio_ratio_100(this->num_of_points, arma::fill::zeros);
+	arma::vec participatio_ratio_200(this->num_of_points, arma::fill::zeros);
+	arma::vec participatio_ratio_500(this->num_of_points, arma::fill::zeros);
+	arma::vec participatio_ratio_D_2(this->num_of_points, arma::fill::zeros);
+	arma::vec participatio_ratio_D(this->num_of_points, arma::fill::zeros);
+	int counter = 0;
+	
+	arma::vec q_ipr_list = arma::linspace(2.0 / double(this->num_of_points), 2.0, this->num_of_points);
+
+	size_t dim = this->ptr_to_model->get_hilbert_size();
+	#ifdef ARMA_USE_SUPERLU
+        const int size = this->ch? 500 : dim;
+    #else
+        const int size = dim;
+    #endif
+
+	for(int realis = 0; realis < this->realisations; realis++)
+	{
+		if(realis > 0)
+			this->ptr_to_model->generate_hamiltonian();
+		
+    	clk::time_point start_loop = std::chrono::system_clock::now();
+		#ifdef ARMA_USE_SUPERLU
+			if(this->ch){
+				this->ptr_to_model->hamiltonian();
+				this->ptr_to_model->diag_sparse(true);
+			} else
+				this->ptr_to_model->diagonalization();
+		
+		#else
+			this->ptr_to_model->diagonalization();
+		#endif
+
+		const arma::vec E = this->ptr_to_model->get_eigenvalues();
+		u64 E_av_idx = spectrals::get_mean_energy_index(E);
+
+		arma::vec pr_100(this->num_of_points, arma::fill::zeros);
+		arma::vec pr_200(this->num_of_points, arma::fill::zeros);
+		arma::vec pr_500(this->num_of_points, arma::fill::zeros);
+		arma::vec pr_D_2(this->num_of_points, arma::fill::zeros);
+		arma::vec pr_D(this->num_of_points, arma::fill::zeros);
+	#pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
+		for(int n = 0; n < size; n++){
+			arma::Col<element_type> eigenstate = this->ptr_to_model->get_eigenState(n);
+			eigenstate /= std::sqrt(arma::cdot(eigenstate, eigenstate));
+			for(int iq = 0; iq < q_ipr_list.size(); iq++){
+				double pr_tmp = statistics::participation_ratio(eigenstate, q_ipr_list(iq));
+
+				if(n > E_av_idx - 50 && n < E_av_idx + 50) 				pr_100(iq) += pr_tmp;
+				if(n > E_av_idx - 100 && n < E_av_idx + 100) 			pr_200(iq) += pr_tmp;
+				if(n > E_av_idx - 250 && n < E_av_idx + 250) 			pr_500(iq) += pr_tmp;
+				if(n > E_av_idx - size / 4 && n < E_av_idx + size / 4) 	pr_D_2(iq) += pr_tmp;
+				pr_D(iq) += pr_tmp;
+			}
+		}
+		pr_100 /= 100.0;
+		pr_200 /= 200.0;
+		pr_500 /= 500.0;
+		pr_D_2 /= double(size / 2);
+		pr_D /= double(size);
+		if( this-> realisations > 1){
+			std::string dir_realis = dir + "realisation=" + std::to_string(realis + this->jobid) + kPSep;
+			createDirs(dir_realis);
+			q_ipr_list.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "qs"));
+			pr_100.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "100", arma::hdf5_opts::append));
+			pr_200.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "200", arma::hdf5_opts::append));
+			pr_500.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "500", arma::hdf5_opts::append));
+			pr_D_2.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "D_2", arma::hdf5_opts::append));
+			pr_D.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "D", arma::hdf5_opts::append));
+
+		}
+		participatio_ratio_100 += pr_100;
+		participatio_ratio_200 += pr_200;
+		participatio_ratio_500 += pr_500;
+		participatio_ratio_D_2 += pr_D_2;
+		participatio_ratio_D += pr_D;
+		counter++;
+		std::cout << " - - - - - - finished realisation realis = " << realis << " in : " << tim_s(start_loop) << " s - - - - - - " << std::endl; // simulation end
+	};
+	participatio_ratio_100 /= double(counter);
+	participatio_ratio_200 /= double(counter);
+	participatio_ratio_500 /= double(counter);
+	participatio_ratio_D_2 /= double(counter);
+	participatio_ratio_D /= double(counter);
+	
+	std::string suffix = "_jobid=" + std::to_string(this->jobid);
+
+	q_ipr_list.save(arma::hdf5_name(dir + filename + ".hdf5", "qs"));
+	participatio_ratio_100.save(arma::hdf5_name(dir + filename + suffix + ".hdf5", "100", arma::hdf5_opts::append));
+	participatio_ratio_200.save(arma::hdf5_name(dir + filename + suffix + ".hdf5", "200", arma::hdf5_opts::append));
+	participatio_ratio_500.save(arma::hdf5_name(dir + filename + suffix + ".hdf5", "500", arma::hdf5_opts::append));
+	participatio_ratio_D_2.save(arma::hdf5_name(dir + filename + suffix + ".hdf5", "D_2", arma::hdf5_opts::append));
+	participatio_ratio_D.save(arma::hdf5_name(dir + filename + suffix + ".hdf5", "D", arma::hdf5_opts::append));
+	
+    std::cout << " - - - - - - FINISHED ENTROPY CALCULATION IN : " << tim_s(start) << " seconds - - - - - - " << std::endl; // simulation end
+}
+
+// -------------------------------------------------------------------------------------------------------------------------------------
 // ---------------------------------------------------------------------------------------------------------------- IMPLEMENTATION OF UI
 
 /// @brief Sets model parameters from values in command line
