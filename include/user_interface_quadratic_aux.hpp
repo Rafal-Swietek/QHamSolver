@@ -140,9 +140,6 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement()
     std::cout << " - - - - - - FINISHED ENTROPY CALCUVATION IN : " << tim_s(start) << " seconds - - - - - - " << std::endl; // simuVAtion end
 }
 
-
-#pragma once
-
 /// @brief Calculate entanglement entropy for randomly mixed many-body states
 /// @tparam Hamiltonian template parameter for current used model
 template <class Hamiltonian>
@@ -157,7 +154,7 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
 	std::string filename = info;// + "_subsize=" + std::to_string(VA);
 
 	const int Gamma_max = this->num_of_points;
-	u64 num_states = 100 * Gamma_max;//ULLPOW(14);
+	u64 num_states = 500 * Gamma_max;//ULLPOW(14);
 
 	// arma::Col<int> subsystem_sizes = arma::conv_to<arma::Col<int>>::from(arma::linspace(0, this->V / 2 - 1, this->V / 2));
 	arma::Col<int> subsystem_sizes = arma::Col<int>({this->V / 2});
@@ -229,11 +226,12 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
 
 				double entropy_single_site = 0;
 				double entropy = 0;
-				arma::cx_mat U = random_matrix.generate_matrix(gamma_a);
+				// arma::cx_mat U = random_matrix.generate_matrix(gamma_a);
 				// realisations to draw states randomly
 			#pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
-				for(u64 unused = 0; unused < 1000; unused++)
+				for(u64 unused = 0; unused < 100; unused++)
 				{
+					arma::cx_mat U = random_matrix.generate_matrix(gamma_a);
 					arma::cx_mat J_m(VA, VA, arma::fill::zeros);
 					arma::Col<int> indices = random_generator.create_random_vec<int>(gamma_a, 0, num_states - 1);
 					int id = random_generator.random_uni<int>(0, gamma_a-1);
