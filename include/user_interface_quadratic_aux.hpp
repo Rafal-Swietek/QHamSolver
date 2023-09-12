@@ -148,6 +148,15 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
     clk::time_point start = std::chrono::system_clock::now();
 	
 	std::string dir = this->saving_dir + "Entropy" + kPSep + "Degeneracy" + kPSep;
+	#ifdef FREE_FERMIONS
+		if(this->op == 0) 		dir += "E=0,Q=0/";
+		else if(this->op == 2)	dir += "AllStates/";
+		else 					dir += "RandomChoice/";
+	#else
+		if(this->op == 2)	dir += "AllStates"
+		else 				dir += "RandomChoice"
+	#endif
+	
 	createDirs(dir);
 	
 	std::string info = this->set_info();
@@ -199,7 +208,10 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
         //<! add choosing flag
 		// auto mb_states = single_particle::mb_config_all(this->V);
 		#ifdef FREE_FERMIONS
-			auto mb_states = single_particle::mb_config_free_fermion(num_states, this->V, random_generator);
+			std::vector<boost::dynamic_bitset<>> mb_states;
+			if(this->op == 1)		mb_states = single_particle::mb_config(num_states, this->V, random_generator);
+			else if(this->op == 2) 	mb_states = single_particle::mb_config_all(this->V);
+			else					mb_states = single_particle::mb_config_free_fermion(num_states, this->V, random_generator);
 		#else
 			auto mb_states = single_particle::mb_config(num_states, this->V, random_generator);
 		#endif
