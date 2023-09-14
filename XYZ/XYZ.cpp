@@ -83,15 +83,18 @@ void XYZ::set_hamiltonian_elements(u64 k, double value, u64 new_idx)
 void XYZ::create_hamiltonian()
 {
     this->H = sparse_matrix(this->dim, this->dim);
+    
     if(this->_use_disorder)
-        this->_disorder = disorder_generator.uniform(system_size, this->_hz, this->_hz + this->_w); 
-    if(this->_add_parity_breaking && !this->_use_disorder)
-        this->_disorder(0) = 0.1;
+        this->_disorder = disorder_generator.uniform(system_size, 0, two_pi);
+    else{
+        if(this->_add_parity_breaking && !this->_use_disorder)
+            this->_disorder(0) = 5 * pi / 12.0;
 
-    double Jz = (this->_eta1 * this->_eta1 - 1) / 2.;
-    if(this->_add_edge_fields){
-        this->_disorder(0)                      = -Jz / 2;
-        this->_disorder(this->system_size - 1)  = -Jz / 2;
+        double Jz = (this->_eta1 * this->_eta1 - 1) / 2.;
+        if(this->_add_edge_fields){
+            this->_disorder(0)                      = -Jz / 2;
+            this->_disorder(this->system_size - 1)  = -Jz / 2;
+        }
     }
     std::vector<std::vector<double>> parameters = { { this->_J1 * (1 - this->_eta1), this->_J1 * (1 + this->_eta1), this->_J1 * this->_delta1},
                                                     { this->_J2 * (1 - this->_eta2), this->_J2 * (1 + this->_eta2), this->_J2 * this->_delta2}
@@ -107,11 +110,12 @@ void XYZ::create_hamiltonian()
             cpx val = 0.0;
             u64 op_k;
             std::tie(val, op_k) = operators::sigma_z(base_state, this->system_size, { j });
-			double fieldZ = this->_disorder(j) + this->_hz;
+			double fieldZ = this->_w * std::cos(this->_disorder(j)) + this->_hz;
             this->set_hamiltonian_elements(k, fieldZ * real(val), op_k);
 	    	
             std::tie(val, op_k) = operators::sigma_x(base_state, this->system_size, { j });			
-            this->set_hamiltonian_elements(k, this->_hx * real(val), op_k);
+            double fieldX = this->_w * std::sin(this->_disorder(j)) + this->_hx;
+            this->set_hamiltonian_elements(k, fieldX * real(val), op_k);
 
             for(int a = 0; a < neighbor_distance.size(); a++){
                 int r = neighbor_distance[a];

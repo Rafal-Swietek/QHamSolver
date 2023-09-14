@@ -149,12 +149,12 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
 	
 	std::string dir = this->saving_dir + "Entropy" + kPSep + "Degeneracy" + kPSep;
 	#ifdef FREE_FERMIONS
-		if(this->op == 0) 		dir += "E=0,Q=0/";
-		else if(this->op == 2)	dir += "AllStates/";
-		else 					dir += "RandomChoice/";
+		if(this->op == 0) 		dir += "E=0,Q=0" + kPSep;
+		else if(this->op == 2)	dir += "AllStates" + kPSep;
+		else 					dir += "RandomChoice" + kPSep;
 	#else
-		if(this->op == 2)	dir += "AllStates"
-		else 				dir += "RandomChoice"
+		if(this->op == 2)	dir += "AllStates" + kPSep;
+		else 				dir += "RandomChoice" + kPSep;
 	#endif
 	
 	createDirs(dir);
@@ -265,19 +265,20 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
 						
 							// arma::cx_mat J_m_tmp(VA, VA, arma::fill::zeros);
 							auto x = state_n ^ state_m;
-							if(x.count() == 2){
+							if(x.count() == 2){		// states differ only at two sites, q1 and q2
+								// std::cout << state_n << "\t\t" << state_m << std::endl;
 								std::vector<int> qs;
 								auto prefactor = std::conj(coeff(m)) * coeff(n);
 								for(int q = 0; q < this->V; q++)
 									if(x[q]) qs.push_back(q);
-								if(state_n[qs[0]] ^ state_n[qs[1]])
+								if(state_n[qs[0]] ^ state_n[qs[1]])	// state n and m differ at q1 and q2 to enable hopping, otherwise skip
 								{
 									for(auto& qss : v_2d<int>( { qs, v_1d<int>({qs[1], qs[0]}) } ) ){
 										int q1 = qss[0];
 										int q2 = qss[1];
 
 										cpx pre = prefactor;
-										if(state_n[q1])
+										if(state_n[q1])		// for one of the 2 cases do conjungation
 											pre = std::conj(prefactor);
 										
 										lambda += pre * std::abs(orbitals(q2, VA) * std::conj(orbitals(q1, VA)));
