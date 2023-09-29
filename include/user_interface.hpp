@@ -103,11 +103,13 @@ public:
 	virtual void spectral_form_factor() = 0;
 	virtual void average_sff() = 0;
 	
+	virtual void multifractality() = 0;
+
 	virtual void eigenstate_entanglement() = 0;
 	virtual void eigenstate_entanglement_degenerate() = 0;
+	
 	virtual void diagonal_matrix_elements() = 0;
-
-	virtual void multifractality() = 0;
+	virtual void matrix_elements() = 0;
 };
 
 // include implementation

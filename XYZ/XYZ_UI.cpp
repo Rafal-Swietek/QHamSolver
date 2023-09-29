@@ -18,7 +18,38 @@ namespace XYZ_UI{
 
 void ui::make_sim(){
     printAllOptions();
+
+    // int Gamma = this->Ln;
+    // CUE random_matrix(this->seed);
+    // auto disorder_generator = disorder<double>(this->seed);
+    // for(int t = 0; t < 50; t++){
+    //     arma::Col<int> base_states = disorder_generator.create_random_vec<int>(Gamma, 0, ULLPOW(this->L)-1);
+    //     // std::cout << base_states.t() << std::endl;
+    //     auto mask1 = boost::dynamic_bitset<>(this->L, ULLPOW(this->L/2)-1);
+    //     auto mask2 = boost::dynamic_bitset<>(this->L, ULLPOW(this->L) - ULLPOW(this->L/2));
+        
+    //     for(int id = 0; id < Gamma; id++)
+    //         printSeparated(std::cout, "\t", 20, false, boost::dynamic_bitset<>(this->L, base_states(id)));
+
+    //     double S = 0;
+    //     int counter = 0;
+    //     for(int r = 0; r < this->num_of_points; r++){
+    //         arma::cx_vec state(ULLPOW(this->L), arma::fill::zeros);
+    //         arma::cx_mat U = random_matrix.generate_matrix(Gamma);
+    //         arma::cx_vec coeff = U.col(0) / std::sqrt(arma::cdot(U.col(0), U.col(0)));
+            
+    //         for(int id = 0; id < Gamma; id++)
+    //             state(base_states(id)) += coeff(id);
+
+    //         S += entropy::schmidt_decomposition(state, this->L/2, this->L);
+    //         counter++;
+    //     }
+    //     printSeparated(std::cout, "\t", 20, true, S / double(counter));
+    // }
     
+
+
+    // return;
 //     arma::vec single_particle_energies;   
 //     bool loaded = single_particle_energies.load(arma::hdf5_name(this->saving_dir + "free_electron_spectra/L=" + std::to_string(this->L) + ".hdf5", "eigenvalues/dataset"));
 //     std::cout << single_particle_energies.t() << std::endl;
@@ -283,6 +314,9 @@ void ui::make_sim(){
 	case 3:
 		eigenstate_entanglement_degenerate();
 		break;
+	case 4:
+		diagonal_matrix_elements();
+		break;
 	default:
 		#define generate_scaling_array(name) arma::linspace(this->name, this->name + this->name##s * (this->name##n - 1), this->name##n)
         #define for_loop(param, var) for (auto& param : generate_scaling_array(var))
@@ -483,30 +517,33 @@ arma::SpMat<ui::element_type> ui::create_supercharge(bool dagger){
     // arma::sp_mat q(4, 2);   q(0, 1) = 1;            q(3, 1) = dzeta;
     // arma::sp_mat q2(4, 2);  q2(0, 0) = dzeta;       q2(3, 0) = 1;
     // arma::sp_mat qobc = q;  qobc(1, 0) = -dzeta;    qobc(2, 0) = -dzeta;    q(3, 1) = -dzeta;
+    #ifdef USE_SYMMETRIES
+        arma::SpMat<ui::element_type> q(4, 2);  
+        q(0, 0) = this->eta1;       
+        q(3, 0) = 1;
+        const int size = this->L - int(dagger);
+        const int p_sym = ( dagger && this->L % 2 )? -this->syms.p_sym : this->syms.p_sym;
+        const int z_sym = dagger?                    -this->syms.zz_sym : this->syms.zz_sym;
 
-    arma::SpMat<element_type> q(4, 2);  
-    q(0, 0) = this->eta1;       
-    q(3, 0) = 1;
-    const int size = this->L - int(dagger);
-    const int p_sym = ( dagger && this->L % 2 )? -this->syms.p_sym : this->syms.p_sym;
-    const int z_sym = dagger?                    -this->syms.zz_sym : this->syms.zz_sym;
+        int k_sec = size % 2 == 0? size / 2 : 0;
 
-    int k_sec = size % 2 == 0? size / 2 : 0;
+        std::vector<op::genOp> sym_gen;
+        sym_gen.emplace_back(op::_parity_symmetry(size, p_sym));
+        sym_gen.emplace_back(op::_spin_flip_z_symmetry(size, z_sym));
+        
+        auto _hilbert_space_1 = point_symmetric(size, sym_gen, this->boundary_conditions, k_sec, 0);
 
-    std::vector<op::genOp> sym_gen;
-    sym_gen.emplace_back(op::_parity_symmetry(size, p_sym));
-    sym_gen.emplace_back(op::_spin_flip_z_symmetry(size, z_sym));
-    
-    auto _hilbert_space_1 = point_symmetric(size, sym_gen, this->boundary_conditions, k_sec, 0);
-
-    sym_gen = std::vector<op::genOp>();
-    sym_gen.emplace_back(op::_parity_symmetry(size + 1, size % 2 == 0? -p_sym : p_sym));
-    sym_gen.emplace_back(op::_spin_flip_z_symmetry(size + 1, -z_sym));
-    
-    k_sec = (size + 1) % 2 == 0? (size + 1) / 2 : 0;
-    auto _hilbert_space_2 = point_symmetric(size + 1, sym_gen, this->boundary_conditions, k_sec, 0);
-    
-    return susy::create_supercharge(size, q, this->boundary_conditions, _hilbert_space_1, _hilbert_space_2);
+        sym_gen = std::vector<op::genOp>();
+        sym_gen.emplace_back(op::_parity_symmetry(size + 1, size % 2 == 0? -p_sym : p_sym));
+        sym_gen.emplace_back(op::_spin_flip_z_symmetry(size + 1, -z_sym));
+        
+        k_sec = (size + 1) % 2 == 0? (size + 1) / 2 : 0;
+        auto _hilbert_space_2 = point_symmetric(size + 1, sym_gen, this->boundary_conditions, k_sec, 0);
+        
+        return susy::create_supercharge(size, q, this->boundary_conditions, _hilbert_space_1, _hilbert_space_2);
+    #else
+        return arma::SpMat<ui::element_type>();
+    #endif
 }
 
 // -------------------------------------------------------------------------------------------------------------------------------------

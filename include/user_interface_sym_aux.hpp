@@ -298,3 +298,100 @@ void user_interface_sym<Hamiltonian>::eigenstate_entanglement_degenerate()
     // #endif
     // V.save(arma::hdf5_name(dir + filename + ".hdf5", "eigenvectors",arma::hdf5_opts::append));
 }
+
+/// @brief Calculate and save Matrix elments for different operaotors (for now kinetic energy and S_q=0 only)
+/// @tparam Hamiltonian template parameter for current used model
+template <class Hamiltonian>
+void user_interface_sym<Hamiltonian>::diagonal_matrix_elements(){
+    
+    clk::time_point start = std::chrono::system_clock::now();
+	
+	std::string dir = this->saving_dir + "DiagonalMatrixElements" + kPSep;
+	createDirs(dir);
+
+	size_t dim = this->ptr_to_model->get_hilbert_size();
+	
+	std::string info = this->set_info();
+	std::string filename = info;// + "_subsize=" + std::to_string(LA);
+
+    #ifdef ARMA_USE_SUPERLU
+        const int size = this->ch? 500 : dim;
+        if(this->ch){
+            this->ptr_to_model->hamiltonian();
+            this->ptr_to_model->diag_sparse(true);
+        } else
+            this->ptr_to_model->diagonalization();
+    
+    #else
+        const int size = dim;
+        this->ptr_to_model->diagonalization();
+    #endif
+
+    std::cout << " - - - - - - FINISHED DIAGONALIZATION IN : " << tim_s(start) << " seconds - - - - - - " << std::endl; // simulation end
+    start = std::chrono::system_clock::now();
+
+    const auto U = this->ptr_to_model->get_model_ref().get_hilbert_space().symmetry_rotation();
+    const arma::vec E = this->ptr_to_model->get_eigenvalues();
+    int Ll = this->L;
+
+    const size_t dim_max = ULLPOW(Ll);
+    arma::sp_mat Kin(dim_max, dim_max);
+    arma::sp_mat Kin_loc(dim_max, dim_max);
+    arma::sp_mat Sq0(dim_max, dim_max);
+
+    auto check_spin = op::__builtins::get_digit(Ll);
+    for(long k = 0; k < dim; k++){
+        for(int i = 0; i < this->L; i++)
+        {
+            int Si = check_spin(k, i);
+            int nei = (this->boundary_conditions)? i + 1 : (i + 1)%this->L;
+            if( nei < this->L ){
+                int S_nei = check_spin(k, nei);
+                if( (!Si) && S_nei ){
+                    u64 state =  flip(k, BinaryPowers[this->L - 1 - nei], this->L - 1 - nei);
+                    state =  flip(state, BinaryPowers[this->L - 1 - i], this->L - 1 - i);
+                    Kin(state, k) += _Spin * _Spin;
+                    Kin(k, state) += _Spin * _Spin;
+                    if(i == this->L / 2){
+                        Kin_loc(state, k) += _Spin * _Spin;
+                        Kin_loc(k, state) += _Spin * _Spin;
+                    }
+                }
+            }
+            for(int j = 0; j < this->L; j++)
+            {
+                int Sj = check_spin(k, j);
+                if( (!Si) && Sj ){
+                    u64 state = flip(k, BinaryPowers[this->L - 1 - j], this->L - 1 - j);
+                    state = flip(state, BinaryPowers[this->L - 1 - i], this->L - 1 - i);
+                    Sq0(state, k) += _Spin * _Spin;
+                }
+            }   
+        }
+    }
+    Sq0 /= double(this->L);
+    Kin /= std::sqrt(this->L);
+    std::cout << " - - - - - - Created Operators IN : " << tim_s(start) << " seconds - - - - - - " << std::endl; // simulation end
+    start = std::chrono::system_clock::now();
+
+    
+    arma::vec KineticEnergy(size);
+    arma::vec KineticEnergy_loc(size);
+    arma::vec Sq0_diagmat(size);
+
+#pragma omp parallel for
+    for(long n = 0; n < size; n++){
+        auto eigenstate = this->ptr_to_model->get_eigenState(n);
+        arma::Col<element_type> state = U * eigenstate;
+        KineticEnergy(n)        = std::real(arma::cdot(state, Kin * state));
+        KineticEnergy_loc(n)    = std::real(arma::cdot(state, Kin_loc * state));
+        Sq0_diagmat(n)          = std::real(arma::cdot(state, Sq0 * state));
+    }
+    std::cout << " - - - - - - Calculated Diagonal Matrix Elements IN : " << tim_s(start) << " seconds - - - - - - " << std::endl; // simulation end
+
+
+    E.save(arma::hdf5_name(dir + filename + ".hdf5", "energies"));
+	KineticEnergy.save(arma::hdf5_name(dir + filename + ".hdf5", "Kin", arma::hdf5_opts::append));
+	KineticEnergy_loc.save(arma::hdf5_name(dir + filename + ".hdf5", "Kin_loc", arma::hdf5_opts::append));
+	Sq0_diagmat.save(arma::hdf5_name(dir + filename + ".hdf5", "Sq0", arma::hdf5_opts::append));
+}

@@ -2,6 +2,10 @@
 
 namespace op {
 
+
+	// For changin to arbitrary output value
+	// decltype(std::declval<out_ty&>() * std::declval<out_ty2&>())
+	
 	//! generic class for operators (single operator or operator products)
 	template <typename... _ty>
 	class generic_operator{

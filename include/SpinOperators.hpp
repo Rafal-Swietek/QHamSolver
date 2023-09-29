@@ -13,7 +13,7 @@ namespace operators{
     sigma_x(u64 base_vec, unsigned int L, std::vector<int> sites) {
 		for (auto& site : sites) 
 			base_vec = flip(base_vec, BinaryPowers[L - 1 - site], L - 1 - site);
-		return std::make_pair(_Spin, base_vec);
+		return std::make_pair(std::pow(_Spin, sites.size()), base_vec);
 	};
 
     inline
@@ -35,6 +35,36 @@ namespace operators{
 		double val = 1.0;
 		for (auto& site : sites) 
 			val *= checkBit(tmp, L - 1 - site) ? _Spin : -_Spin;
+		return std::make_pair(val, base_vec);
+	};
+
+	inline
+    std::pair<cpx, u64> 
+    sigma_plus(u64 base_vec, unsigned int L, std::vector<int> sites) {
+		double val = 1.0;
+		for (auto& site : sites){
+			if(!checkBit(base_vec, L - 1 - site)){
+				base_vec = flip(base_vec, BinaryPowers[L - 1 - site], L - 1 - site);
+				val *= _Spin;
+			}
+			else
+				val *= 0.0;
+		}
+		return std::make_pair(val, base_vec);
+	};
+
+	inline
+    std::pair<cpx, u64> 
+    sigma_minus(u64 base_vec, unsigned int L, std::vector<int> sites) {
+		double val = 1.0;
+		for (auto& site : sites){
+			if(checkBit(base_vec, L - 1 - site)){
+				base_vec = flip(base_vec, BinaryPowers[L - 1 - site], L - 1 - site);
+				val *= _Spin;
+			}
+			else
+				val *= 0.0;
+		}
 		return std::make_pair(val, base_vec);
 	};
 
