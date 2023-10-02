@@ -340,7 +340,9 @@ void user_interface_sym<Hamiltonian>::diagonal_matrix_elements(){
     arma::sp_mat Sq0(dim_max, dim_max);
 
     auto check_spin = op::__builtins::get_digit(Ll);
-    for(long k = 0; k < dim; k++){
+    for(long k = 0; k < dim_max; k++)
+    {
+        // std::cout << boost::dynamic_bitset<>(this->L, k) << "\t\t";
         for(int i = 0; i < this->L; i++)
         {
             int Si = check_spin(k, i);
@@ -350,11 +352,12 @@ void user_interface_sym<Hamiltonian>::diagonal_matrix_elements(){
                 if( (!Si) && S_nei ){
                     u64 state =  flip(k, BinaryPowers[this->L - 1 - nei], this->L - 1 - nei);
                     state =  flip(state, BinaryPowers[this->L - 1 - i], this->L - 1 - i);
-                    Kin(state, k) += _Spin * _Spin;
-                    Kin(k, state) += _Spin * _Spin;
+                    // std::cout << boost::dynamic_bitset<>(this->L, state) << "\t\t" << i << std::endl;
+                    Kin(state, k) += 0.5;
+                    Kin(k, state) += 0.5;
                     if(i == this->L / 2){
-                        Kin_loc(state, k) += _Spin * _Spin;
-                        Kin_loc(k, state) += _Spin * _Spin;
+                        Kin_loc(state, k) += 0.5;
+                        Kin_loc(k, state) += 0.5;
                     }
                 }
             }
@@ -364,28 +367,32 @@ void user_interface_sym<Hamiltonian>::diagonal_matrix_elements(){
                 if( (!Si) && Sj ){
                     u64 state = flip(k, BinaryPowers[this->L - 1 - j], this->L - 1 - j);
                     state = flip(state, BinaryPowers[this->L - 1 - i], this->L - 1 - i);
-                    Sq0(state, k) += _Spin * _Spin;
+                    Sq0(state, k) += 1.0;
                 }
             }   
         }
+        // std::cout << std::endl;
     }
     Sq0 /= double(this->L);
     Kin /= std::sqrt(this->L);
     std::cout << " - - - - - - Created Operators IN : " << tim_s(start) << " seconds - - - - - - " << std::endl; // simulation end
     start = std::chrono::system_clock::now();
 
-    
-    arma::vec KineticEnergy(size);
-    arma::vec KineticEnergy_loc(size);
-    arma::vec Sq0_diagmat(size);
+    std::cout << "Local Kinetic energy\n" << arma::mat(Kin_loc) << std::endl;
+    std::cout << "Kinetic energy\n" << arma::mat(Kin) << std::endl;
+    std::cout << "SpinMomentum occupation\n" << arma::mat(Sq0) << std::endl;
+
+    arma::Col<user_interface_sym::element_type> KineticEnergy(size);
+    arma::Col<user_interface_sym::element_type> KineticEnergy_loc(size);
+    arma::Col<user_interface_sym::element_type> Sq0_diagmat(size);
 
 #pragma omp parallel for
     for(long n = 0; n < size; n++){
         auto eigenstate = this->ptr_to_model->get_eigenState(n);
         arma::Col<element_type> state = U * eigenstate;
-        KineticEnergy(n)        = std::real(arma::cdot(state, Kin * state));
-        KineticEnergy_loc(n)    = std::real(arma::cdot(state, Kin_loc * state));
-        Sq0_diagmat(n)          = std::real(arma::cdot(state, Sq0 * state));
+        KineticEnergy(n)        = arma::cdot(state, Kin * state);
+        KineticEnergy_loc(n)    = arma::cdot(state, Kin_loc * state);
+        Sq0_diagmat(n)          = arma::cdot(state, Sq0 * state);
     }
     std::cout << " - - - - - - Calculated Diagonal Matrix Elements IN : " << tim_s(start) << " seconds - - - - - - " << std::endl; // simulation end
 
