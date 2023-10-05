@@ -23,7 +23,7 @@ typedef std::vector<int> iVec;
 typedef std::vector<short int> kernel_arr;
 typedef std::vector<cpx> _cx_vec;
 
-using op_type = std::function<std::pair<cpx, u64>(u64, unsigned int, std::vector<int>)>;
+using op_type = std::function<std::pair<cpx, u64>(u64, unsigned int, int)>;
 typedef std::chrono::system_clock clk;
 const std::string kPSep = std::string(kPathSeparator);
 

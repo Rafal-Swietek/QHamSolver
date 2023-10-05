@@ -15,13 +15,13 @@ arma::mat H(dim, dim, arma::fill::zeros);
             if( ci )
                 ener -= std::cos(two_pi * (j + 0.0) / double(this->L));
             if(ci == 1 && ci_1 == 0){
-                auto [val1, op_k] = operators::sigma_x(k, this->L, { j });
-                auto [val2, opop_k] = operators::sigma_x(op_k, this->L, { nei });
+                auto [val1, op_k] = operators::sigma_x(k, this->L, j);
+                auto [val2, opop_k] = operators::sigma_x(op_k, this->L, nei);
                 H(opop_k, k) += sign / 2.0;
             }
             if(ci == 0 && ci_1 == 1){
-                auto [val1, op_k] = operators::sigma_x(k, this->L, { j });
-                auto [val2, opop_k] = operators::sigma_x(op_k, this->L, { nei });
+                auto [val1, op_k] = operators::sigma_x(k, this->L, j);
+                auto [val2, opop_k] = operators::sigma_x(op_k, this->L, nei);
                 H(opop_k, k) += sign / 2.0;
             }
         }

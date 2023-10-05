@@ -28,7 +28,8 @@ void user_interface_dis<Hamiltonian>::diagonalize(){
 		
 		std::cout << "\t\t	--> finished diagonalizing for " << info + _suffix << " - in time : " << tim_s(start) << "s" << std::endl;
 		
-		//std::cout << eigenvalues.t() << std::endl;
+		// std::cout << "Energies:\n";
+		// std::cout << eigenvalues << std::endl;
 
 		std::string name = dir + info + _suffix + ".hdf5";
 		eigenvalues.save(arma::hdf5_name(name, "eigenvalues", arma::hdf5_opts::append));
@@ -692,11 +693,11 @@ void user_interface_dis<Hamiltonian>::diagonal_matrix_elements()
 	arma::vec energies(size, arma::fill::zeros);
 
 	int Ll = this->L;
-	auto kernel1 = [Ll](u64 state){ auto [val, num] = operators::sigma_x(state, Ll, std::vector<int>({Ll / 2}) ); return std::make_pair(num, val); };
+	auto kernel1 = [Ll](u64 state){ auto [val, num] = operators::sigma_x(state, Ll, Ll / 2 ); return std::make_pair(num, val); };
 	auto SigmaX_op = op::generic_operator<>(this->L, std::move(kernel1), 1.0);
 	auto SigmaX = SigmaX_op.to_matrix(dim);
 
-	auto kernel2 = [Ll](u64 state){ auto [val, num] = operators::sigma_z(state, Ll, std::vector<int>({Ll / 2}) ); return std::make_pair(num, val); };
+	auto kernel2 = [Ll](u64 state){ auto [val, num] = operators::sigma_z(state, Ll, Ll / 2 ); return std::make_pair(num, val); };
 	auto SigmaZ_op = op::generic_operator<>(this->L, std::move(kernel2), 1.0);
 	auto SigmaZ = SigmaZ_op.to_matrix(dim);
 

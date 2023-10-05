@@ -165,8 +165,8 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
 	const int Gamma_max = this->num_of_points;
 	u64 num_states = 500 * Gamma_max;//ULLPOW(14);
 
-	// arma::Col<int> subsystem_sizes = arma::conv_to<arma::Col<int>>::from(arma::linspace(0, this->V / 2 - 1, this->V / 2));
-	arma::Col<int> subsystem_sizes = arma::Col<int>({this->V / 2});
+	arma::Col<int> subsystem_sizes = arma::conv_to<arma::Col<int>>::from(arma::linspace(0, this->V / 2, this->V / 2 + 1));
+	// arma::Col<int> subsystem_sizes = arma::Col<int>({this->V / 2});
 	std::cout << subsystem_sizes(0) << "...\t" << subsystem_sizes(subsystem_sizes.size() - 1) << std::endl;
 
 	arma::mat entropies(Gamma_max, subsystem_sizes.size(), arma::fill::zeros);
