@@ -65,9 +65,9 @@ class U1_hilbert_space : public hilbert_space_base
         // }
         // return __builtin_popcountll(idx) - this->system_size / 2. == this->U1_sector;
         if constexpr (U1_sym == U1::spin)
-            return __builtin_popcountll(idx) == this->U1_sector + this->system_size / 2.;
+            return __builtin_popcountll(idx) == this->U1_sector + this->system_size * _Spin;
         else if constexpr (U1_sym == U1::charge)
-            return __builtin_popcountll(idx) == this->U1_sector;
+            return __builtin_popcountll(idx) == (int)this->U1_sector;
         else
             return idx;
     }
@@ -90,7 +90,7 @@ public:
         {
             for (u64 j = start; j < stop; j++)
                 if (check_if_allowed_element(j)){
-                    std::cout << j << "\t\t" << to_binary(j, this->system_size) << std::endl;
+                    // std::cout << j << "\t\t" << to_binary(j, this->system_size) << std::endl;
                     map_threaded.emplace_back(j);
                 }
             //std::cout << map_threaded << std::endl;
@@ -115,7 +115,7 @@ public:
             for (auto& t : map_threaded)
                 this->mapping.insert(this->mapping.end(), std::make_move_iterator(t.begin()), std::make_move_iterator(t.end()));
         }
-        std::cout << mapping << std::endl;
+        // std::cout << mapping << std::endl;
         this->dim = this->mapping.size();
     }
 

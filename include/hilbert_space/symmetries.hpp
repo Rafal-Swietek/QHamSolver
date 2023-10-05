@@ -51,6 +51,54 @@ public:
 	auto get_sectors() 		  const { return this-> _sectors; }
 
 	arma::SpMat<elem_ty> symmetry_rotation() const;
+
+	//<!------------------------------------------- Tensor product
+	// auto tensor(const hilbert_space_base& global_hilbert_space)
+	friend
+	auto
+	tensor(
+		const point_symmetric& point_hilbert_space, 
+		const hilbert_space_base& global_hilbert_space
+		) -> point_symmetric
+		{
+			auto map1 = global_hilbert_space.get_mapping();
+			auto map2 = point_hilbert_space.get_mapping();
+			auto new_hilbert_space = point_hilbert_space;
+
+			//<! Find common elements in mapping
+			std::vector<u64> match_index, new_mapping;
+			match_index.reserve(map2.size());
+
+			for (auto it1 = map1.begin(), it2 = map2.begin();
+				it1 != map1.end() && it2 != map2.end();
+				++it2) {
+				while (it1 != map1.end() && *it1 < *it2) ++it1;
+				if (it1 != map1.end() && *it1 == *it2) {
+					match_index.push_back(it2 - map2.begin());
+					new_mapping.push_back(*it2);
+				}
+			}
+			std::sort(match_index.begin(), match_index.end());
+			new_hilbert_space.set_mapping(new_mapping);
+			new_hilbert_space.dim = new_mapping.size();
+
+			//<! Get appropriate normalization factors for indices of common elements	
+			std::vector<elem_ty> new_norms(match_index.size());
+			for(auto it = 0; it < match_index.size(); it++)
+				new_norms[it] = point_hilbert_space._normalisation[match_index[it]];
+			
+			new_hilbert_space._normalisation = new_norms;
+
+			return new_hilbert_space;
+		}
+
+	friend
+	auto
+	tensor(
+		const hilbert_space_base& global_hilbert_space,
+		const point_symmetric& point_hilbert_space
+		)
+		-> point_symmetric { return tensor(point_hilbert_space, global_hilbert_space); }
 };
 
 
@@ -309,7 +357,6 @@ inline
 u64 
 point_symmetric::find(u64 element) const
 	{ return binary_search(this->mapping, 0, this->dim - 1, element); }
-
 
 
 
