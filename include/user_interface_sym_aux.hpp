@@ -16,7 +16,8 @@ void user_interface_sym<Hamiltonian>::diagonalize(){
     // std::cout << eigenvalues.t() << std::endl;
     std::cout << "\t\t	--> finished diagonalizing for " << info << " - in time : " << tim_s(start) << "s" << std::endl;
     
-    //std::cout << eigenvalues.t() << std::endl;
+    // std::cout << "Energies:\n";
+    // std::cout << eigenvalues << std::endl;
 
     std::string name = dir + info + ".hdf5";
     eigenvalues.save(arma::hdf5_name(name, "energies"));
@@ -160,16 +161,8 @@ void user_interface_sym<Hamiltonian>::eigenstate_entanglement()
         auto eigenstate = this->ptr_to_model->get_eigenState(n);
         arma::Col<element_type> state = U * eigenstate;
         
-        for(auto& LA : subsystem_sizes){
+        for(auto& LA : subsystem_sizes)
             S(n, LA) = entropy::schmidt_decomposition(state, LA, this->L);
-            // auto S2 = entropy::vonNeumann(state, LA, this->L);
-            // #pragma omp critical
-            // {
-            //     double x = S2 - S(n, LA);
-            //     //if(std::abs(x) > 1e-14)
-            //     printSeparated(std::cout, "\t", 16, true, LA, E(n), S2, S(n, LA), x);
-            // }
-        }
     }
     std::cout << " - - - - - - FINISHED ENTROPY CALCULATION IN : " << tim_s(start) << " seconds - - - - - - " << std::endl; // simulation end
     
@@ -350,14 +343,18 @@ void user_interface_sym<Hamiltonian>::diagonal_matrix_elements(){
             if( nei < this->L ){
                 int S_nei = check_spin(k, nei);
                 if( (!Si) && S_nei ){
-                    u64 state =  flip(k, BinaryPowers[this->L - 1 - nei], this->L - 1 - nei);
-                    state =  flip(state, BinaryPowers[this->L - 1 - i], this->L - 1 - i);
+                    // u64 state =  flip(k, BinaryPowers[this->L - 1 - nei], this->L - 1 - nei);
+                    // state =  flip(state, BinaryPowers[this->L - 1 - i], this->L - 1 - i);
+                    auto [val, state_tmp]   = operators::sigma_minus(k, this->L, nei);
+                    auto [val2, state]      = operators::sigma_plus(state_tmp, this->L, i);
                     // std::cout << boost::dynamic_bitset<>(this->L, state) << "\t\t" << i << std::endl;
-                    Kin(state, k) += 0.5;
-                    Kin(k, state) += 0.5;
-                    if(i == this->L / 2){
-                        Kin_loc(state, k) += 0.5;
-                        Kin_loc(k, state) += 0.5;
+                    if(val != 0.0 && val2 != 0.0){
+                        Kin(state, k) += 0.5;
+                        Kin(k, state) += 0.5;
+                        if(i == this->L / 2){
+                            Kin_loc(state, k) += 0.5;
+                            Kin_loc(k, state) += 0.5;
+                        }
                     }
                 }
             }
@@ -365,22 +362,24 @@ void user_interface_sym<Hamiltonian>::diagonal_matrix_elements(){
             {
                 int Sj = check_spin(k, j);
                 if( (!Si) && Sj ){
-                    u64 state = flip(k, BinaryPowers[this->L - 1 - j], this->L - 1 - j);
-                    state = flip(state, BinaryPowers[this->L - 1 - i], this->L - 1 - i);
+                    // u64 state = flip(k, BinaryPowers[this->L - 1 - j], this->L - 1 - j);
+                    // state = flip(state, BinaryPowers[this->L - 1 - i], this->L - 1 - i);
+                    auto [val, state_tmp]   = operators::sigma_minus(k, this->L, j);
+                    auto [val2, state]      = operators::sigma_plus(state_tmp, this->L, i);
                     Sq0(state, k) += 1.0;
                 }
             }   
         }
         // std::cout << std::endl;
     }
-    Sq0 /= double(this->L);
-    Kin /= std::sqrt(this->L);
+    Sq0 = Sq0 / double(this->L);
+    Kin = Kin / std::sqrt(this->L);
     std::cout << " - - - - - - Created Operators IN : " << tim_s(start) << " seconds - - - - - - " << std::endl; // simulation end
     start = std::chrono::system_clock::now();
 
-    std::cout << "Local Kinetic energy\n" << arma::mat(Kin_loc) << std::endl;
-    std::cout << "Kinetic energy\n" << arma::mat(Kin) << std::endl;
-    std::cout << "SpinMomentum occupation\n" << arma::mat(Sq0) << std::endl;
+    // std::cout << "Local Kinetic energy\n" << arma::mat(Kin_loc) << std::endl;
+    // std::cout << "Kinetic energy\n" << arma::mat(Kin) << std::endl;
+    // std::cout << "SpinMomentum occupation\n" << arma::mat(Sq0) << std::endl;
 
     arma::Col<user_interface_sym::element_type> KineticEnergy(size);
     arma::Col<user_interface_sym::element_type> KineticEnergy_loc(size);

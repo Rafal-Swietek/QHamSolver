@@ -34,7 +34,11 @@ public:
 	
 	virtual void diagonal_matrix_elements() 			override;
 	virtual void matrix_elements()						override{};
-
+	
+	virtual 
+	arma::Col<element_type> 
+	cast_state(const arma::Col<element_type>& state) override 
+		{ return state; }
 };
 
 // include definitions 

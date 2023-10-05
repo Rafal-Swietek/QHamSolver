@@ -471,7 +471,7 @@ void user_interface_dis<Hamiltonian>::eigenstate_entanglement()
 					p[l] = (l < (LA % this->L) )? l + 1 : l;
 			std::cout << p << std::endl;
 			auto permutation = op::_permutation_generator(this->L, p);
-			arma::sp_mat P = arma::real(permutation.to_matrix( size ));
+			arma::sp_mat P = arma::real(permutation.to_matrix( ULLPOW(this->L) ));
 
 			std::cout << " - - - - - - set permutation matrix for LA = " << LA << " in : " << tim_s(start) << " s for realis = " << realis << " - - - - - - " << std::endl;
 			start_LA = std::chrono::system_clock::now();
@@ -481,8 +481,8 @@ void user_interface_dis<Hamiltonian>::eigenstate_entanglement()
 				arma::Col<element_type> state = this->ptr_to_model->get_eigenState(n);
 				
 				// somehow needs L-LA (computer sees bit representation the opposite way, i.e. take B subsystem)
-				S(n, LA) 		= entropy::schmidt_decomposition(state, this->L - LA, this->L);	// bipartite entanglement at subsystem size LA
-				state = P * state;
+				S(n, LA) 		= entropy::schmidt_decomposition(this->cast_state(state), this->L - LA, this->L);	// bipartite entanglement at subsystem size LA
+				state = P * this->cast_state(state);
 				S_site(n, LA) 	= entropy::schmidt_decomposition(state, this->L - 1, this->L);	// single site entanglement at site LA
 
 				//double S2 = entropy::vonNeumann(state, LA, this->L);
@@ -620,7 +620,7 @@ void user_interface_dis<Hamiltonian>::eigenstate_entanglement_degenerate()
 					long idx = 0;
 					for(auto& n : indices){
 						E += this->ptr_to_model->get_eigenValue(n) - this->ptr_to_model->get_eigenValue(E_av_idx);
-						auto eigenstate = this->ptr_to_model->get_eigenState(n);
+						auto eigenstate = this->cast_state(this->ptr_to_model->get_eigenState(n));
 						state += coeff(idx++) * eigenstate;
 					}
 					state = state / std::sqrt(arma::cdot(state, state));
@@ -733,7 +733,7 @@ void user_interface_dis<Hamiltonian>::diagonal_matrix_elements()
 		start = std::chrono::system_clock::now();
 	#pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
 		for(int n = 0; n < size; n++){
-			arma::Col<element_type> state = this->ptr_to_model->get_eigenState(n);
+			arma::Col<element_type> state = this->cast_state(this->ptr_to_model->get_eigenState(n));
 			sigX(n) = dot_prod(state, arma::cx_vec(SigmaX * state));
 			sigZ(n) = dot_prod(state, arma::cx_vec(SigmaZ * state));
 		}

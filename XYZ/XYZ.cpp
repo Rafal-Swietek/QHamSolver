@@ -87,7 +87,7 @@ void XYZ::create_hamiltonian()
     if(this->_use_disorder)
         this->_disorder = disorder_generator.uniform(system_size, 0, two_pi);
     else{
-        if(this->_add_parity_breaking && !this->_use_disorder)
+        if(this->_add_parity_breaking)
             this->_disorder(0) = 5 * pi / 12.0;
 
         double Jz = (this->_eta1 * this->_eta1 - 1) / 2.;
@@ -109,11 +109,11 @@ void XYZ::create_hamiltonian()
 	    for (int j = 0; j < this->system_size; j++) {
             cpx val = 0.0;
             u64 op_k;
-            std::tie(val, op_k) = operators::sigma_z(base_state, this->system_size, { j });
+            std::tie(val, op_k) = operators::sigma_z(base_state, this->system_size, j);
 			double fieldZ = this->_w * std::cos(this->_disorder(j)) + this->_hz;
             this->set_hamiltonian_elements(k, fieldZ * real(val), op_k);
 	    	
-            std::tie(val, op_k) = operators::sigma_x(base_state, this->system_size, { j });			
+            std::tie(val, op_k) = operators::sigma_x(base_state, this->system_size, j);			
             double fieldX = this->_w * std::sin(this->_disorder(j)) + this->_hx;
             this->set_hamiltonian_elements(k, fieldX * real(val), op_k);
 
@@ -126,8 +126,8 @@ void XYZ::create_hamiltonian()
 	    	    if (nei >= 0) {
                     for(int b = 0; b < XYZoperators.size(); b++){
                         op_type op = XYZoperators[b];
-		                auto [val1, op_k] = op(base_state, this->system_size, { j });
-		                auto [val2, opop_k] = op(op_k, this->system_size, { nei });
+		                auto [val1, op_k] = op(base_state, this->system_size, j);
+		                auto [val2, opop_k] = op(op_k, this->system_size, nei);
 						this->set_hamiltonian_elements(k, parameters[a][b] * real(val1 * val2), opop_k);
                     }
 	    	    }
@@ -169,7 +169,7 @@ std::ostream& XYZ::write(std::ostream& os) const
 {
     printSeparated(os, "\t", 16, true, "Model:", "XYZ spin chain");
     os << std::endl;
-    printSeparated(os, "\t", 16, true, "Hamiltonian:", "H = \u03A3_r J_r\u03A3_i [ (1-\u03B7_r) S^x_i S^x_i+1 + (1+\u03B7_r) S^y_i S^y_i+1) + \u0394_r S^z_iS^z_i+1] + \u03A3_i h_i S^z_i");
+    printSeparated(os, "\t", 16, true, "Hamiltonian:", "H = \u03A3_r J_r\u03A3_i [ (1-\u03B7_r) S^x_i S^x_i+1 + (1+\u03B7_r) S^y_i S^y_i+1) + \u0394_r S^z_iS^z_i+1] + \u03A3_i (h_i S^z_i + g_i S^x_i)");
     printSeparated(os, "\t", 16, true, "----------------------------------------------------------------------------------------------------");
     printSeparated(os, "\t", 16, true, "Parameters:");
     printSeparated(os, "\t", 16, true, "L", this->system_size);

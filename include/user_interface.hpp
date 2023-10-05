@@ -66,6 +66,7 @@ protected:
     int fun;											// choose function to start calculations
 
 	model_pointer ptr_to_model;
+	
 public:
 	virtual ~user_interface() = default;
 
@@ -110,7 +111,11 @@ public:
 	
 	virtual void diagonal_matrix_elements() = 0;
 	virtual void matrix_elements() = 0;
+
+
+	virtual arma::Col<element_type> cast_state(const arma::Col<element_type>& state) = 0;
 };
+
 
 // include implementation
 #include "user_interface_aux.hpp"

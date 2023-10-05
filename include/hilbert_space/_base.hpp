@@ -24,6 +24,9 @@ class hilbert_space_base {
         auto get_mapping() const { return this->mapping; }
         virtual void create_basis() = 0;
         
+        auto set_mapping(std::vector<u64> input_map) 
+            { this->mapping = input_map; }
+
         virtual u64 operator()(u64 idx) const = 0;
         virtual u64 find(u64 idx)       const = 0;
 };

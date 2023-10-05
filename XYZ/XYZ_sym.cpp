@@ -158,10 +158,10 @@ void XYZsym::create_hamiltonian()
             double fieldZ = this->_hz;
             if(this->_add_edge_fields && (j == 0 || j == this->system_size - 1))
                 fieldZ -= Jz / 2.0;
-            std::tie(val, op_k) = operators::sigma_z(base_state, this->system_size, { j });
+            std::tie(val, op_k) = operators::sigma_z(base_state, this->system_size, j);
             this->set_hamiltonian_elements(k, fieldZ * real(val), op_k);
 	    	
-            std::tie(val, op_k) = operators::sigma_x(base_state, this->system_size, { j });			
+            std::tie(val, op_k) = operators::sigma_x(base_state, this->system_size, j);			
             this->set_hamiltonian_elements(k, this->_hx * real(val), op_k);
 
             for(int a = 0; a < neighbor_distance.size(); a++){
@@ -173,8 +173,8 @@ void XYZsym::create_hamiltonian()
 	    	    if (nei >= 0) {
                     for(int b = 0; b < XYZsymoperators.size(); b++){
                         op_type op = XYZsymoperators[b];
-		                auto [val1, op_k] = op(base_state, this->system_size, { j });
-		                auto [val2, opop_k] = op(op_k, this->system_size, { nei });
+		                auto [val1, op_k] = op(base_state, this->system_size, j);
+		                auto [val2, opop_k] = op(op_k, this->system_size, nei);
 						this->set_hamiltonian_elements(k, parameters[a][b] * real(val1 * val2), opop_k);
                     }
 	    	    }
