@@ -165,8 +165,10 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
 	const int Gamma_max = this->num_of_points;
 	u64 num_states = 500 * Gamma_max;//ULLPOW(14);
 
-	arma::Col<int> subsystem_sizes = arma::conv_to<arma::Col<int>>::from(arma::linspace(0, this->V / 2, this->V / 2 + 1));
+	// arma::Col<int> subsystem_sizes = arma::conv_to<arma::Col<int>>::from(arma::linspace(0, this->V / 2, this->V / 2 + 1));
 	// arma::Col<int> subsystem_sizes = arma::Col<int>({this->V / 2});
+	arma::Col<int> subsystem_sizes = arma::Col<int>({this->V / 6, this->V / 4, this->V / 2, this->V / 2});
+
 	std::cout << subsystem_sizes(0) << "...\t" << subsystem_sizes(subsystem_sizes.size() - 1) << std::endl;
 
 	arma::mat entropies(Gamma_max, subsystem_sizes.size(), arma::fill::zeros);
@@ -226,8 +228,10 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
 		std::cout << outer_threads << "\t\t" << omp_get_num_threads() << std::endl;
 		
 		
-		for(auto& VA : subsystem_sizes)
+		// for(auto& VA : subsystem_sizes)
+		for(int VA_idx = 0; VA_idx < subsystem_sizes.size(); VA_idx++)
 		{
+			auto VA = subsystem_sizes(VA_idx);
 			auto start_VA = std::chrono::system_clock::now();
 			
 			start_VA = std::chrono::system_clock::now();
@@ -304,8 +308,8 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
 				}
 
     			std::cout << gamma_a << " ";
-				S(gamma_a-1, VA - subsystem_sizes(0)) 		= entropy / (double)counter_states;				// entanglement of subsystem VA
-				S_site(gamma_a-1, VA - subsystem_sizes(0)) 	= entropy_single_site / double(counter_states);	// single site entanglement at site VA
+				S(gamma_a-1, VA_idx) 		= entropy / (double)counter_states;				// entanglement of subsystem VA
+				S_site(gamma_a-1, VA_idx) 	= entropy_single_site / double(counter_states);	// single site entanglement at site VA
 			}
     		std::cout << "\n - - - - - - finished entropy size VA: " << VA << " in time:" << tim_s(start_VA) << " s - - - - - - " << std::endl; // simuVAtion end
 		}
