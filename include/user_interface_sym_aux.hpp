@@ -118,12 +118,18 @@ void user_interface_sym<Hamiltonian>::eigenstate_entanglement()
 	std::string dir = this->saving_dir + "Entropy" + kPSep + "Eigenstate" + kPSep;
 	createDirs(dir);
 	
+	std::string info = this->set_info();
+	std::string filename = info;// + "_subsize=" + std::to_string(LA);
+    
     int LA = this->site;
 	size_t dim = this->ptr_to_model->get_hilbert_size();
 	
-	std::string info = this->set_info();
-	std::string filename = info;// + "_subsize=" + std::to_string(LA);
-
+    arma::vec emtpy_vec(1);
+    if(dim == 0){
+        emtpy_vec.save(arma::hdf5_name(dir + filename + ".hdf5", "nope"));
+        return;
+    }
+    
     #ifdef ARMA_USE_SUPERLU
         const int size = this->ch? 500 : dim;
         if(this->ch){
@@ -328,76 +334,90 @@ void user_interface_sym<Hamiltonian>::diagonal_matrix_elements(){
     int Ll = this->L;
 
     const size_t dim_max = ULLPOW(Ll);
-    arma::sp_mat Kin(dim_max, dim_max);
-    arma::sp_mat Kin_loc(dim_max, dim_max);
-    arma::sp_mat Sq0(dim_max, dim_max);
+    arma::Col<double> KineticEnergy(size, arma::fill::zeros);
+    arma::Col<double> KineticEnergy_loc(size, arma::fill::zeros);
 
+    arma::Col<double> NextHopping(size, arma::fill::zeros);
+    arma::Col<double> NextHopping_loc(size, arma::fill::zeros);
+
+    arma::Col<double> Interaction(size, arma::fill::zeros);
+    arma::Col<double> Interaction_loc(size, arma::fill::zeros);
+
+    arma::Col<double> Sq0_diagmat(size, arma::fill::zeros);
     auto check_spin = op::__builtins::get_digit(Ll);
-    for(long k = 0; k < dim_max; k++)
-    {
-        // std::cout << boost::dynamic_bitset<>(this->L, k) << "\t\t";
-        for(int i = 0; i < this->L; i++)
-        {
-            int Si = check_spin(k, i);
-            int nei = (this->boundary_conditions)? i + 1 : (i + 1)%this->L;
-            if( nei < this->L ){
-                int S_nei = check_spin(k, nei);
-                if( (!Si) && S_nei ){
-                    // u64 state =  flip(k, BinaryPowers[this->L - 1 - nei], this->L - 1 - nei);
-                    // state =  flip(state, BinaryPowers[this->L - 1 - i], this->L - 1 - i);
-                    auto [val, state_tmp]   = operators::sigma_minus(k, this->L, nei);
-                    auto [val2, state]      = operators::sigma_plus(state_tmp, this->L, i);
-                    // std::cout << boost::dynamic_bitset<>(this->L, state) << "\t\t" << i << std::endl;
-                    if(val != 0.0 && val2 != 0.0){
-                        Kin(state, k) += 0.5;
-                        Kin(k, state) += 0.5;
-                        if(i == this->L / 2){
-                            Kin_loc(state, k) += 0.5;
-                            Kin_loc(k, state) += 0.5;
-                        }
-                    }
-                }
-            }
-            for(int j = 0; j < this->L; j++)
-            {
-                int Sj = check_spin(k, j);
-                if( (!Si) && Sj ){
-                    // u64 state = flip(k, BinaryPowers[this->L - 1 - j], this->L - 1 - j);
-                    // state = flip(state, BinaryPowers[this->L - 1 - i], this->L - 1 - i);
-                    auto [val, state_tmp]   = operators::sigma_minus(k, this->L, j);
-                    auto [val2, state]      = operators::sigma_plus(state_tmp, this->L, i);
-                    Sq0(state, k) += 1.0;
-                }
-            }   
-        }
-        // std::cout << std::endl;
-    }
-    Sq0 = Sq0 / double(this->L);
-    Kin = Kin / std::sqrt(this->L);
-    std::cout << " - - - - - - Created Operators IN : " << tim_s(start) << " seconds - - - - - - " << std::endl; // simulation end
-    start = std::chrono::system_clock::now();
-
-    // std::cout << "Local Kinetic energy\n" << arma::mat(Kin_loc) << std::endl;
-    // std::cout << "Kinetic energy\n" << arma::mat(Kin) << std::endl;
-    // std::cout << "SpinMomentum occupation\n" << arma::mat(Sq0) << std::endl;
-
-    arma::Col<user_interface_sym::element_type> KineticEnergy(size);
-    arma::Col<user_interface_sym::element_type> KineticEnergy_loc(size);
-    arma::Col<user_interface_sym::element_type> Sq0_diagmat(size);
 
 #pragma omp parallel for
     for(long n = 0; n < size; n++){
         auto eigenstate = this->ptr_to_model->get_eigenState(n);
-        arma::Col<element_type> state = U * eigenstate;
-        KineticEnergy(n)        = arma::cdot(state, Kin * state);
-        KineticEnergy_loc(n)    = arma::cdot(state, Kin_loc * state);
-        Sq0_diagmat(n)          = arma::cdot(state, Sq0 * state);
-    }
-    std::cout << " - - - - - - Calculated Diagonal Matrix Elements IN : " << tim_s(start) << " seconds - - - - - - " << std::endl; // simulation end
+        arma::Col<element_type> full_state = U * eigenstate;
 
+        for(long k = 0; k < dim_max; k++)
+        {
+            // std::cout << boost::dynamic_bitset<>(this->L, k) << "\t\t";
+            for(int i = 0; i < this->L; i++)
+            {
+                int Si = check_spin(k, i);
+                int nei = (this->boundary_conditions)? i + 1 : (i + 1)%this->L;
+                if( nei < this->L ){
+                    int S_nei = check_spin(k, nei);
+                    Interaction(n) += double(Si * S_nei) / 4.0 * std::abs(full_state(k) * full_state(k));
+                    if(i == this->L / 2)
+                        Interaction_loc(n) += double(Si * S_nei) / 4.0 * std::abs(full_state(k) * full_state(k));
+                    
+                    if( (!Si) && S_nei )
+                    {
+                        auto [val, state_tmp]   = operators::sigma_minus(k, this->L, nei);
+                        auto [val2, new_idx]      = operators::sigma_plus(state_tmp, this->L, i);
+                        if(val != 0.0 && val2 != 0.0){
+                            KineticEnergy(n) += 2.0 * std::real(std::conj(full_state(new_idx)) * full_state(k));   // because z + z* = 2 Re(z)
+                            if(i == this->L / 2)
+                                KineticEnergy_loc(n) += 2.0 * std::real(std::conj(full_state(new_idx)) * full_state(k));
+                        }
+                    }
+                }
+                nei = (this->boundary_conditions)? i + 2 : (i + 2)%this->L;
+                if( nei < this->L ){
+                    int S_nei = check_spin(k, nei);
+                    if( (!Si) && S_nei )
+                    {
+                        auto [val, state_tmp]   = operators::sigma_minus(k, this->L, nei);
+                        auto [val2, new_idx]      = operators::sigma_plus(state_tmp, this->L, i);
+                        if(val != 0.0 && val2 != 0.0){
+                            NextHopping(n) += 2.0 * std::real(std::conj(full_state(new_idx)) * full_state(k)); // because z + z* = 2 Re(z)
+                            if(i == this->L / 2){
+                                NextHopping_loc(n) += 2.0 * std::real(std::conj(full_state(new_idx)) * full_state(k));
+                            }
+                        }
+                    }
+                }
+                for(int j = 0; j < this->L; j++)
+                {
+                    int Sj = check_spin(k, j);
+                    if( (!Si) && Sj ){
+                        auto [val, state_tmp]   = operators::sigma_minus(k, this->L, j);
+                        auto [val2, new_idx]      = operators::sigma_plus(state_tmp, this->L, i);
+                        if(val != 0.0 && val2 != 0.0)
+                            Sq0_diagmat(n) += std::real(std::conj(full_state(new_idx)) * full_state(k));
+                    }
+                }   
+            }
+            // std::cout << std::endl;
+            // printSeparated(std::cout, "\t", 16, true, 
+            //     KineticEnergy(n), KineticEnergy_loc(n), NextHopping(n), NextHopping_loc(n), Interaction(n), Interaction_loc(n), Sq0_diagmat(n));
+        }
+    }
+    Sq0_diagmat = Sq0_diagmat / double(this->L);
+    KineticEnergy = KineticEnergy / double(this->L);
+    NextHopping = NextHopping / double(this->L);
+    Interaction = Interaction / double(this->L);
+    std::cout << " - - - - - - Calculated Diagonal Matrix Elements IN : " << tim_s(start) << " seconds - - - - - - " << std::endl; // simulation end
 
     E.save(arma::hdf5_name(dir + filename + ".hdf5", "energies"));
 	KineticEnergy.save(arma::hdf5_name(dir + filename + ".hdf5", "Kin", arma::hdf5_opts::append));
 	KineticEnergy_loc.save(arma::hdf5_name(dir + filename + ".hdf5", "Kin_loc", arma::hdf5_opts::append));
+	NextHopping.save(arma::hdf5_name(dir + filename + ".hdf5", "Kin2", arma::hdf5_opts::append));
+	NextHopping_loc.save(arma::hdf5_name(dir + filename + ".hdf5", "Kin2_loc", arma::hdf5_opts::append));
+	Interaction.save(arma::hdf5_name(dir + filename + ".hdf5", "Int", arma::hdf5_opts::append));
+	Interaction_loc.save(arma::hdf5_name(dir + filename + ".hdf5", "Int_loc", arma::hdf5_opts::append));
 	Sq0_diagmat.save(arma::hdf5_name(dir + filename + ".hdf5", "Sq0", arma::hdf5_opts::append));
 }
