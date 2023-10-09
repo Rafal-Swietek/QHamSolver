@@ -66,6 +66,7 @@ namespace single_particle{
             for(long j = 0; j < volume; j++){
                 float p = random_gen.random_uni<double>(0.0, 1.0);
 
+                if(num_up == 0 && num_down == 0)    continue;
                 if(num_down == 0 || (p <= double(num_up) / double(num_up + num_down) && num_up > 0)){
                     num_up--;
                     state[j] = 1;
@@ -114,14 +115,28 @@ namespace single_particle{
 
     #pragma omp parallel for
         for(u64 id = 0; id < num_of_states; id++){
-            arma::Col<int> positions = random_gen.create_random_vec<int>(num_particles / 2, volume / 4, 3 * volume / 4 - 1);
+            // arma::Col<int> positions = arma::sort(random_gen.create_random_vec<int>(num_particles / 4, 0, volume / 4));
+            std::vector<int> positions;
+            
+            long num_up = num_particles / 4;
+            long num_down = volume / 4 - 1 - num_particles / 4;
+
+            for(long j = 1; j < volume / 4; j++){
+                float p = random_gen.random_uni<double>(0.0, 1.0);
+                if(num_up + num_down == 0)  
+                    continue;
+                if(num_down == 0 || (p <= double(num_up) / double(num_up + num_down) && num_up > 0)){
+                    num_up--;
+                    positions.push_back(j);
+                } else
+                    num_down--;
+            }
             boost::dynamic_bitset<> state(volume);
-            // std::cout << positions.t();
             for(long j : positions){
                 state[j] = 1;
-                if( j > volume / 2 )        state[3 * volume / 2 - j] = 1;
-                else if( j == volume / 4 )  state[3 * volume / 4    ] = 1;
-                else                        state[    volume / 2 - j] = 1;
+                state[volume / 2 - j] = 1;
+                state[volume - j] = 1;
+                state[volume / 2 + j] = 1;
             }
             
             #pragma omp critical

@@ -217,6 +217,21 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
 		#else
 			auto mb_states = single_particle::mb_config(num_states, this->V, random_generator);
 		#endif
+		// printSeparated(std::cout, "\t", 20, true, "many-body state", "N", "Q", "E");
+		// for(auto& state : mb_states){
+		// 	double E = 0;
+		// 	int Q = 0;
+		// 	int N = 0;
+		// 	for(int q = 0; q < this->V; q++){
+		// 		double n_q = int(state[q]);
+		// 		E +=  n_q * (-2*std::cos(two_pi * q / double(this->V)));
+		// 		if( n_q ){
+		// 			Q += q;
+		// 			N++;
+		// 		}
+		// 	}
+		// 	printSeparated(std::cout, "\t", 20, true, state, N, (Q % this->V), E);
+		// }
 		
 		num_states = mb_states.size();
 		
@@ -279,7 +294,9 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
 									
 								if(state_n[qs[0]] ^ state_n[qs[1]])	// state n and m differ at q1 and q2 to enable hopping, otherwise skip
 								{
-									for(auto& [q1, q2] : v_2d<int>( { qs, v_1d<int>({qs[1], qs[0]}) } ) ){
+									for(auto& qss : v_2d<int>( { qs, v_1d<int>({qs[1], qs[0]}) } ) ){
+										int q1 = qss[0];
+										int q2 = qss[1];
 
 										cpx pre = prefactor;
 										if(state_n[q1])		// for one of the 2 cases do conjungation
