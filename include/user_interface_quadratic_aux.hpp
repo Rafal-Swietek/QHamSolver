@@ -163,11 +163,11 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
 	std::string filename = info;// + "_subsize=" + std::to_string(VA);
 
 	const int Gamma_max = this->num_of_points;
-	u64 num_states = 500 * Gamma_max;//ULLPOW(14);
+	u64 num_states = 1e5;//500 * Gamma_max;//ULLPOW(14);
 
 	// arma::Col<int> subsystem_sizes = arma::conv_to<arma::Col<int>>::from(arma::linspace(0, this->V / 2, this->V / 2 + 1));
-	// arma::Col<int> subsystem_sizes = arma::Col<int>({this->V / 2});
-	arma::Col<int> subsystem_sizes = arma::Col<int>({this->V / 6, this->V / 4, this->V / 2, this->V / 2});
+	arma::Col<int> subsystem_sizes = arma::Col<int>({this->V / 2});
+	// arma::Col<int> subsystem_sizes = arma::Col<int>({this->V / 6, this->V / 4, this->V / 2, this->V / 2});
 
 	std::cout << subsystem_sizes(0) << "...\t" << subsystem_sizes(subsystem_sizes.size() - 1) << std::endl;
 
@@ -245,10 +245,11 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
 				// arma::cx_mat U = random_matrix.generate_matrix(gamma_a);
 				// realisations to draw states randomly
 			#pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
-				for(u64 unused = 0; unused < 100; unused++)
+				for(u64 unused = 0; unused < 1000; unused++)
 				{
 					arma::cx_mat U = random_matrix.generate_matrix(gamma_a);
 					arma::cx_mat J_m(VA, VA, arma::fill::zeros);
+					
 					arma::Col<int> indices = random_generator.create_random_vec<int>(gamma_a, 0, num_states - 1);
 					int id = random_generator.random_uni<int>(0, gamma_a-1);
 					cpx lambda = 0.0;
@@ -275,11 +276,10 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
 								auto prefactor = std::conj(coeff(m)) * coeff(n);
 								for(int q = 0; q < this->V; q++)
 									if(x[q]) qs.push_back(q);
+									
 								if(state_n[qs[0]] ^ state_n[qs[1]])	// state n and m differ at q1 and q2 to enable hopping, otherwise skip
 								{
-									for(auto& qss : v_2d<int>( { qs, v_1d<int>({qs[1], qs[0]}) } ) ){
-										int q1 = qss[0];
-										int q2 = qss[1];
+									for(auto& [q1, q2] : v_2d<int>( { qs, v_1d<int>({qs[1], qs[0]}) } ) ){
 
 										cpx pre = prefactor;
 										if(state_n[q1])		// for one of the 2 cases do conjungation
@@ -290,7 +290,7 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
 										if(VA > 0){
 											auto orbital1 = orbitals.col(q1).rows(0, VA - 1);
 											auto orbital2 = orbitals.col(q2).rows(0, VA - 1);
-											J_m += 2.0 * pre * orbital2 * orbital1.t();
+											J_m += pre * orbital2 * orbital1.t();
 										}
 									}
 								}
