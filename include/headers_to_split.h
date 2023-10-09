@@ -1,7 +1,6 @@
 #pragma once
 
 extern int num_of_threads;													// number of threads
-
 using namespace std;
 
 

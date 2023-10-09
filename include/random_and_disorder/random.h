@@ -94,6 +94,9 @@ public:
 		arma::cx_mat Q, R;
 		arma::qr(Q, R, matrix);
 		return Q;
+		//<! to get better distribution
+		// auto diagonal = R.diag() / arma::abs(R.diag());
+		// return Q * arma::diagmat(diagonal) * Q;
 	};
 };
 

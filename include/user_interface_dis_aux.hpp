@@ -893,8 +893,7 @@ void user_interface_dis<Hamiltonian>::parse_cmd_options(int argc, std::vector<st
 	// disorder
 	choosen_option = "-jobid";
 	this->set_option(this->jobid, argv, choosen_option, true);
-	choosen_option = "-seed";
-	this->set_option(this->seed, argv, choosen_option, true);
+	
 	choosen_option = "-r";
 	this->set_option(this->realisations, argv, choosen_option, true);
 }
@@ -921,8 +920,7 @@ void user_interface_dis<Hamiltonian>::printAllOptions() const {
 	user_interface<Hamiltonian>::printAllOptions();
 	std::cout << std::endl;
 	std::cout << "realisations = " << this->realisations << std::endl
-		  << "jobid = " << this->jobid << std::endl
-		  << "seed = " << this->seed << std::endl << std::endl;
+		  << "jobid = " << this->jobid << std::endl;
 
 	std::cout << "---------------------------------------CHOSEN MODEL:" << std::endl;
 }

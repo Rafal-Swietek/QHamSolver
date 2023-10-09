@@ -131,6 +131,7 @@ void user_interface<Hamiltonian>::set_default(){
 
 	this->ch = false;
 	this->num_of_points = 5000;
+	this->seed = std::random_device{}();
 }
 
 /// @brief Prints all general UI option values
@@ -151,7 +152,8 @@ void user_interface<Hamiltonian>::printAllOptions() const {
 		  << "bucket size = " << this->mu << std::endl
 		  << "boolean value = " << this->ch << std::endl
 		  << "q_ipr = " << this->q_ipr << std::endl
-		  << "\u03B2 = " << this->beta << std::endl;
+		  << "\u03B2 = " << this->beta << std::endl
+		  << "seed = " << this->seed << std::endl;
 
 	#ifdef PRINT_HELP
 		std::cout << "---------------------------------------------------------------------------------\n\n";
@@ -216,6 +218,10 @@ void user_interface<Hamiltonian>::parse_cmd_options(int argc, std::vector<std::s
 	this->set_option(this->mu, argv, choosen_option, true);
 	choosen_option = "-num_of_points";
 	this->set_option(this->num_of_points, argv, choosen_option, true);
+
+	// random seed
+	choosen_option = "-seed";
+	this->set_option(this->seed, argv, choosen_option, true);
 
 	// thread number
 	choosen_option = "-th";

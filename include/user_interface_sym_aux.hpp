@@ -27,7 +27,8 @@ void user_interface_sym<Hamiltonian>::diagonalize(){
         H.save(arma::hdf5_name(name, "hamiltonian", arma::hdf5_opts::append));
         std::cout << "\t\t	--> finished saving Hamiltonian for " << info << " - in time : " << tim_s(start) << "s" << std::endl;
 
-        auto V = this->ptr_to_model->get_eigenvectors();
+        const auto U = this->ptr_to_model->get_model_ref().get_hilbert_space().symmetry_rotation();
+        auto V = U * this->ptr_to_model->get_eigenvectors();
         V.save(arma::hdf5_name(name, "eigenvectors", arma::hdf5_opts::append));
         std::cout << "\t\t	--> finished saving eigenvectors for " << info << " - in time : " << tim_s(start) << "s" << std::endl;
     }
@@ -334,14 +335,25 @@ void user_interface_sym<Hamiltonian>::diagonal_matrix_elements(){
     int Ll = this->L;
 
     const size_t dim_max = ULLPOW(Ll);
+    auto disorder_generator = disorder<double>(this->seed);
+    auto dis_K = disorder_generator.uniform(this->L, -1.0, 1.0);
+    auto dis_K2 = disorder_generator.uniform(this->L, -1.0, 1.0);
+    auto dis_U = disorder_generator.uniform(this->L, -1.0, 1.0);
+    // std::cout << dis_K.t() << std::endl;
+    // std::cout << dis_K2.t() << std::endl;
+    // std::cout << dis_U.t() << std::endl;
+
     arma::Col<double> KineticEnergy(size, arma::fill::zeros);
     arma::Col<double> KineticEnergy_loc(size, arma::fill::zeros);
+    arma::Col<double> KineticEnergy_dis(size, arma::fill::zeros);
 
     arma::Col<double> NextHopping(size, arma::fill::zeros);
     arma::Col<double> NextHopping_loc(size, arma::fill::zeros);
+    arma::Col<double> NextHopping_dis(size, arma::fill::zeros);
 
     arma::Col<double> Interaction(size, arma::fill::zeros);
     arma::Col<double> Interaction_loc(size, arma::fill::zeros);
+    arma::Col<double> Interaction_dis(size, arma::fill::zeros);
 
     arma::Col<double> Sq0_diagmat(size, arma::fill::zeros);
     auto check_spin = op::__builtins::get_digit(Ll);
@@ -361,6 +373,7 @@ void user_interface_sym<Hamiltonian>::diagonal_matrix_elements(){
                 if( nei < this->L ){
                     int S_nei = check_spin(k, nei);
                     Interaction(n) += double(Si * S_nei) / 4.0 * std::abs(full_state(k) * full_state(k));
+                    Interaction_dis(n) += double(Si * S_nei) / 4.0 * dis_U(i) * std::abs(full_state(k) * full_state(k));
                     if(i == this->L / 2)
                         Interaction_loc(n) += double(Si * S_nei) / 4.0 * std::abs(full_state(k) * full_state(k));
                     
@@ -370,6 +383,7 @@ void user_interface_sym<Hamiltonian>::diagonal_matrix_elements(){
                         auto [val2, new_idx]      = operators::sigma_plus(state_tmp, this->L, i);
                         if(val != 0.0 && val2 != 0.0){
                             KineticEnergy(n) += 2.0 * std::real(std::conj(full_state(new_idx)) * full_state(k));   // because z + z* = 2 Re(z)
+                            KineticEnergy_dis(n) += 2.0 * dis_K(i) * std::real(std::conj(full_state(new_idx)) * full_state(k));
                             if(i == this->L / 2)
                                 KineticEnergy_loc(n) += 2.0 * std::real(std::conj(full_state(new_idx)) * full_state(k));
                         }
@@ -384,6 +398,7 @@ void user_interface_sym<Hamiltonian>::diagonal_matrix_elements(){
                         auto [val2, new_idx]      = operators::sigma_plus(state_tmp, this->L, i);
                         if(val != 0.0 && val2 != 0.0){
                             NextHopping(n) += 2.0 * std::real(std::conj(full_state(new_idx)) * full_state(k)); // because z + z* = 2 Re(z)
+                            NextHopping_dis(n) += 2.0 * dis_K2(i) * std::real(std::conj(full_state(new_idx)) * full_state(k));
                             if(i == this->L / 2){
                                 NextHopping_loc(n) += 2.0 * std::real(std::conj(full_state(new_idx)) * full_state(k));
                             }
@@ -399,7 +414,10 @@ void user_interface_sym<Hamiltonian>::diagonal_matrix_elements(){
                         if(val != 0.0 && val2 != 0.0)
                             Sq0_diagmat(n) += std::real(std::conj(full_state(new_idx)) * full_state(k));
                     }
-                }   
+                }
+                // diagonal part
+                if(Si)
+                    Sq0_diagmat(n) += std::real(std::conj(full_state(k)) * full_state(k));
             }
             // std::cout << std::endl;
             // printSeparated(std::cout, "\t", 16, true, 
@@ -410,14 +428,22 @@ void user_interface_sym<Hamiltonian>::diagonal_matrix_elements(){
     KineticEnergy = KineticEnergy / double(this->L);
     NextHopping = NextHopping / double(this->L);
     Interaction = Interaction / double(this->L);
+    KineticEnergy_dis = KineticEnergy_dis / double(this->L);
+    NextHopping_dis = NextHopping_dis / double(this->L);
+    Interaction_dis = Interaction_dis / double(this->L);
     std::cout << " - - - - - - Calculated Diagonal Matrix Elements IN : " << tim_s(start) << " seconds - - - - - - " << std::endl; // simulation end
 
     E.save(arma::hdf5_name(dir + filename + ".hdf5", "energies"));
 	KineticEnergy.save(arma::hdf5_name(dir + filename + ".hdf5", "Kin", arma::hdf5_opts::append));
 	KineticEnergy_loc.save(arma::hdf5_name(dir + filename + ".hdf5", "Kin_loc", arma::hdf5_opts::append));
+	KineticEnergy_dis.save(arma::hdf5_name(dir + filename + ".hdf5", "Kin_dis", arma::hdf5_opts::append));
+
 	NextHopping.save(arma::hdf5_name(dir + filename + ".hdf5", "Kin2", arma::hdf5_opts::append));
 	NextHopping_loc.save(arma::hdf5_name(dir + filename + ".hdf5", "Kin2_loc", arma::hdf5_opts::append));
+	NextHopping_dis.save(arma::hdf5_name(dir + filename + ".hdf5", "Kin2_dis", arma::hdf5_opts::append));
+
 	Interaction.save(arma::hdf5_name(dir + filename + ".hdf5", "Int", arma::hdf5_opts::append));
 	Interaction_loc.save(arma::hdf5_name(dir + filename + ".hdf5", "Int_loc", arma::hdf5_opts::append));
+	Interaction_dis.save(arma::hdf5_name(dir + filename + ".hdf5", "Int_dis", arma::hdf5_opts::append));
 	Sq0_diagmat.save(arma::hdf5_name(dir + filename + ".hdf5", "Sq0", arma::hdf5_opts::append));
 }

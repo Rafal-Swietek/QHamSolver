@@ -35,7 +35,8 @@ protected:
 	unsigned int thread_number = 1;									// number of threads
 	int boundary_conditions = 1;									// boundary conditions - 0 - PBC, 1 - OBC, 2 - ABC,...
 	std::string saving_dir = "";									// directory for files to be saved onto
-
+	
+	size_t seed;													// radnom seed for random generator
 	// ----------------------------------- FUNCTIONS FOR READING THE INPUT
 
 	std::string getCmdOption(const v_1d<std::string>& vec, std::string option) const;					 	// get the option from cmd input
