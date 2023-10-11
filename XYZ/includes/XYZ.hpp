@@ -44,14 +44,14 @@ private:
     
     arma::vec _disorder;                    // disorder array on Z field
     
-    double _w = 0.5;                        // disorder value on top of uniform field
-    double _hz = 0.5;                       // uniform longitudinal field
-    double _hx = 0.5;                       // uniform transverse field
+    double _w = 0.0;                        // disorder value on top of uniform field
+    double _hz = 0.0;                       // uniform longitudinal field
+    double _hx = 0.0;                       // uniform transverse field
     double _J1 = 1.0;                       // nearest neighbour coupling amplitude
     double _J2 = 0.0;                       // next-nearest neighbour coupling amplitude
     double _delta1 = 0.55;                  // nearest neighbour interaction amplitude
     double _delta2 = 0.0;                   // next-nearest neighbour interaction amplitude
-    double _eta1 = 0.55;                    // nearest neighbour anisotropy in XY
+    double _eta1 = 0.5;                     // nearest neighbour anisotropy in XY
     double _eta2 = 0.0;                     // next-nearest neighbour anisotropy in XY
 
     u64 _seed = std::random_device{}();     // seed for random generator

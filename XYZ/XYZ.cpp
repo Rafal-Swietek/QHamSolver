@@ -46,9 +46,9 @@ XYZ::XYZ(int _BC, unsigned int L, double J1, double J2, double delta1, double de
     if(this->_add_edge_fields)
         this->_add_parity_breaking = false;
     //<! disorder terms
-    if(w > 0){
+    this->_w = w;
+    if(std::abs(w) > 0){
         this->_use_disorder = true;
-        this->_w = w;
         this->_seed = seed;
         this->_add_parity_breaking = false;
     }

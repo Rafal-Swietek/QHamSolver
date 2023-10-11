@@ -161,8 +161,10 @@ void XYZsym::create_hamiltonian()
             std::tie(val, op_k) = operators::sigma_z(base_state, this->system_size, j);
             this->set_hamiltonian_elements(k, fieldZ * real(val), op_k);
 	    	
-            std::tie(val, op_k) = operators::sigma_x(base_state, this->system_size, j);			
-            this->set_hamiltonian_elements(k, this->_hx * real(val), op_k);
+            if(std::abs(this->_hx) > 1e-15){
+                std::tie(val, op_k) = operators::sigma_x(base_state, this->system_size, j);			
+                this->set_hamiltonian_elements(k, this->_hx * real(val), op_k);
+            }
 
             for(int a = 0; a < neighbor_distance.size(); a++){
                 int r = neighbor_distance[a];
@@ -183,9 +185,9 @@ void XYZsym::create_hamiltonian()
 	}
 
     // add SUSY ground state energy (const shift) and invert (minus sign in front of hamiltonian)
-    this->H = -this->H + this->_J1 * (this->system_size - int(this->_boundary_condition)) * (2 + Jz) / 4. * arma::eye(this->dim, this->dim);
-    if(this->_boundary_condition)
-        this->H = this->H + this->_J1 * (1 + 3 * this->_eta1 * this->_eta1) / 4.0 * arma::eye(this->dim, this->dim);
+    // this->H = -this->H + this->_J1 * (this->system_size - int(this->_boundary_condition)) * (2 + Jz) / 4. * arma::eye(this->dim, this->dim);
+    // if(this->_boundary_condition)
+    //     this->H = this->H + this->_J1 * (1 + 3 * this->_eta1 * this->_eta1) / 4.0 * arma::eye(this->dim, this->dim);
 }
 
 

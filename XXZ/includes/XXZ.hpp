@@ -16,8 +16,8 @@ class XXZbase :
     public hamiltonian_base<_ty, hilbert>
 {
 protected:
-    double _hz = 0.5;                       // uniform longitudinal field
-    double _hx = 0.5;                       // uniform transverse field
+    double _hz = 0.0;                       // uniform longitudinal field
+    double _hx = 0.0;                       // uniform transverse field
     double _J1 = 1.0;                       // nearest neighbour coupling amplitude
     double _J2 = 0.0;                       // next-nearest neighbour coupling amplitude
     double _delta1 = 0.55;                  // nearest neighbour interaction amplitude
@@ -48,8 +48,8 @@ private:
     
     arma::vec _disorder;                    // disorder array on Z field
     
-    double _w = 0.5;                        // disorder value on top of uniform field
-    double _hz = 0.5;                       // uniform longitudinal field
+    double _w = 0.0;                        // disorder value on top of uniform field
+    double _hz = 0.0;                       // uniform longitudinal field
     double _J1 = 1.0;                       // nearest neighbour coupling amplitude
     double _J2 = 0.0;                       // next-nearest neighbour coupling amplitude
     double _delta1 = 0.55;                  // nearest neighbour interaction amplitude
