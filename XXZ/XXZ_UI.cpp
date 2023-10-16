@@ -250,7 +250,7 @@ arma::sp_mat ui::energy_current(){
         int nei = (this->boundary_conditions)? i + 1 : (i + 1)%this->L;
         int nei2 = (this->boundary_conditions)? i + 2 : (i + 2)%this->L;
         // printSeparated(std::cout, "\t", 20, true, "site", i, nei, nei2);
-        if(nei < this->L){
+        if(nei < this->L && nei2 < this->L){
             for(long k = 0; k < dim_max; k++)
             {
                 double Si = double(check_spin(k, i)) - 0.5;
