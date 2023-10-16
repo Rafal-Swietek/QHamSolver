@@ -18,10 +18,11 @@ namespace XYZ_UI{
 void ui::make_sim(){
     printAllOptions();
     
-    compare_energies();
-    return;
+    // compare_energies();
+    // return;
     this->ptr_to_model = create_new_model_pointer();
-	
+	// std::cout << arma::cx_mat(this->energy_current()) << std::endl;
+    // return;
 	clk::time_point start = std::chrono::system_clock::now();
     switch (this->fun)
 	{
@@ -78,8 +79,8 @@ void ui::make_sim(){
                                         this->syms.zz_sym = zz;
                                         
                                         this->reset_model_pointer();
-                                        this->diagonal_matrix_elements();
-                                        // this->diagonalize();
+                                        // this->diagonal_matrix_elements();
+                                        this->diagonalize();
                                         //this->eigenstate_entanglement();
                                         // this->eigenstate_entanglement_degenerate();
 
@@ -267,6 +268,61 @@ arma::SpMat<ui::element_type> ui::create_supercharge(bool dagger){
     #else
         return arma::SpMat<ui::element_type>();
     #endif
+}
+
+/// @brief Create energy current for this specific model
+arma::sp_mat ui::energy_current(){
+
+    const size_t dim_max = ULLPOW(this->L);
+    auto check_spin = op::__builtins::get_digit(this->L);
+    if(this->J2 != 0.0 || this->delta2 != 0)
+        assert(false && "Energy current implemented only for integrable case, no nearest neighbour terms yet!");
+    double Jx = 1 - this->eta1;
+    double Jy = 1 + this->eta1;
+    double Jz = this->delta1;
+    arma::sp_mat jE(dim_max, dim_max);
+    printSeparated(std::cout, "\t", 20, true, "Start Current", Jx, Jy, Jz);
+    for(int i = 0; i < this->L; i++)
+    {
+        int nei = (this->boundary_conditions)? i + 1 : (i + 1)%this->L;
+        int nei2 = (this->boundary_conditions)? i + 2 : (i + 2)%this->L;
+        // printSeparated(std::cout, "\t", 20, true, "site", i, nei, nei2);
+        if(nei < this->L){
+            for(long k = 0; k < dim_max; k++)
+            {
+                double Si = double(check_spin(k, i)) - 0.5;
+                double Snei = double(check_spin(k, nei)) - 0.5;
+                double Snei2 = double(check_spin(k, nei2)) - 0.5;
+                {
+                    auto [val, state_tmp]   = operators::sigma_x(k, this->L, i);
+                    auto [val2, new_idx]    = operators::sigma_y(state_tmp, this->L, nei2);
+                    jE(new_idx, k) += std::imag(Jx * Jy * Snei * val * val2);
+                }{
+                    auto [val, state_tmp]   = operators::sigma_x(k, this->L, nei2);
+                    auto [val2, new_idx]    = operators::sigma_y(state_tmp, this->L, i);
+                    jE(new_idx, k) -= std::imag(Jx * Jy * Snei * val * val2);
+                }{
+                    auto [val, state_tmp]   = operators::sigma_x(k, this->L, nei);
+                    auto [val2, new_idx]    = operators::sigma_y(state_tmp, this->L, i);
+                    jE(new_idx, k) += std::imag(Jz * Jy * Snei2 * val * val2);
+                }{
+                    auto [val, state_tmp]   = operators::sigma_x(k, this->L, i);
+                    auto [val2, new_idx]    = operators::sigma_y(state_tmp, this->L, nei);
+                    jE(new_idx, k) -= std::imag(Jz * Jx * Snei2 * val * val2);
+                }{
+                    auto [val, state_tmp]   = operators::sigma_x(k, this->L, nei2);
+                    auto [val2, new_idx]    = operators::sigma_y(state_tmp, this->L, nei);
+                    jE(new_idx, k) += std::imag(Jz * Jx * Si * val * val2);
+                }{
+                    auto [val, state_tmp]   = operators::sigma_x(k, this->L, nei);
+                    auto [val2, new_idx]    = operators::sigma_y(state_tmp, this->L, nei2);
+                    jE(new_idx, k) -= std::imag(Jz * Jy * Si * val * val2);
+                }
+            }
+        }
+    }
+
+    return jE / double(this->L);
 }
 
 // -------------------------------------------------------------------------------------------------------------------------------------
