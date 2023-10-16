@@ -115,6 +115,7 @@ public:
 
 
 	virtual arma::Col<element_type> cast_state(const arma::Col<element_type>& state) = 0;
+	virtual arma::sp_mat energy_current() = 0;
 };
 
 

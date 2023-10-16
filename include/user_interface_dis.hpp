@@ -56,6 +56,9 @@ public:
 	arma::Col<element_type> 
 	cast_state(const arma::Col<element_type>& state) override 
 		{ return state; }
+
+	// dummy override to not write for all models yet
+	virtual arma::sp_mat energy_current() override { return arma::sp_mat(); };
 };
 
 // include definitions 
