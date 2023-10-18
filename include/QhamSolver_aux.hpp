@@ -110,4 +110,7 @@ void QHamSolver<Hamiltonian>::diagonalization(bool get_eigenvectors, const char*
         printSeparated(std::cout, "\t", 16, true, "guessed index", "mean energy", "energies close to this value (-1,0,+1) around found index");
         printSeparated(std::cout, "\t", 16, true, this->E_av_idx, E_av, this->eigenvalues(this->E_av_idx - 1), this->eigenvalues(this->E_av_idx),  this->eigenvalues(this->E_av_idx + 1));
     #endif
+
+    //<! Force release of memory for dense matrix
+    H_temp.reset();
 }

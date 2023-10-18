@@ -22,21 +22,21 @@ namespace op{
 		return matrix;
 	}
 
-	// /// @brief 
-	// /// @tparam ..._ty 
-	// /// @param hilbert_space1 
-	// /// @param hilbert_space2 
-	// /// @return 
-	// template <typename... _ty>
-    // template <typename _hilbert>
-	// inline 
-	// arma::sp_cx_mat 
-	// generic_operator<_ty...>::
-	// 	to_matrix(const _hilbert& hilbert_space, _ty... args
-	// 				)
-	// {
+	/// @brief 
+	/// @tparam ..._ty 
+	/// @param hilbert_space1 
+	/// @param hilbert_space2 
+	/// @return 
+	template <typename... _ty>
+    template <typename _hilbert>
+	inline 
+	arma::sp_cx_mat 
+	generic_operator<_ty...>::
+		to_reduced_matrix(const _hilbert& hilbert_space, _ty... args
+					)
+	{
 		
-	// }
+	}
 
 	// /// @brief 
 	// /// @tparam _hilbert1 

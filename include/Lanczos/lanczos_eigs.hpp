@@ -7,8 +7,11 @@
 						}
 
 namespace lanczos {
+
+	
+	template <typename _ty>
 	inline
-		void Lanczos::diagonalization()
+		void Lanczos<_ty>::diagonalization()
 	{
 		try_alloc(this->build(););
 		arma::eig_sym(
@@ -18,9 +21,11 @@ namespace lanczos {
 		);
 
 	}
+
+	template <typename _ty>
 	inline
-	void Lanczos::diagonalization(
-		const arma::cx_vec& random	//<! random input
+	void Lanczos<_ty>::diagonalization(
+		const arma::Col<_ty>& random	//<! random input
 	) 
 	{
 		try_alloc(this->build(random););

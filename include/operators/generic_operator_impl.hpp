@@ -231,8 +231,8 @@ namespace op {
 		
 		arma::sp_cx_mat to_matrix(u64 dim, _ty... args);
 		
-		// template <typename _hilbert>
-		// arma::sp_cx_mat to_matrix(const _hilbert& hilbert_space, _ty... args);
+		template <typename _hilbert>
+		arma::sp_cx_mat to_reduced_matrix(const _hilbert& hilbert_space, _ty... args);
 
 		// template <typename _hilbert1, typename _hilbert2>
 		// arma::sp_cx_mat to_matrix(const _hilbert1& hilbert_space1, const _hilbert2& hilbert_space2, _ty... args);

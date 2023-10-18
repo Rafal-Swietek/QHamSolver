@@ -2,14 +2,18 @@
 
 namespace lanczos {
 
-	inline void Lanczos::initialize() {
+	template <typename _ty>
+	inline void Lanczos<_ty>::initialize() {
 		this->N = this->H.n_rows;
 		this->use_krylov = 
 				this->params.use_reorthogonalization 
 			&& !this->params.memory_over_performance;
-		this->ran = randomGen();
-		this->initial_random_vec = arma::normalise(this->ran.create_random_vec<cpx>(N, 1.0));
-		//this->model->saving_dir += "Lanczos/";
+		this->generator = disorder<_ty>(this->params._seed);
+
+		if(this->initial_random_vec.empty())
+			this->initial_random_vec = arma::normalise(this->generator.uniform(N, 1.0));
+		
+		// std::cout << this->initial_random_vec.t() << std::endl;
 		std::cout
 			<< "Model transfered to Lanczos wrapper with:\n"
 			<< this->params.lanczos_steps << " lanczos steps\n"

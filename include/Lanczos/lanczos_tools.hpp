@@ -3,8 +3,9 @@
 namespace lanczos {
 
 	//<! testing convergence of lanczos procedure 
+	template <typename _ty>
 	inline
-	void Lanczos::convergence(
+	void Lanczos<_ty>::convergence(
 		int num_state_out				//<! number of states to test convergence
 	) 
 	{
@@ -31,7 +32,7 @@ namespace lanczos {
 				gs_error << j << "\t";
 				for (int k = 0; k < num_state_out; k++) {
 					convergence << fabs((e_prev(k) - e(k)) / e(k)) << "\t";
-					arma::cx_vec eigenState = conv_to_hilbert_space(k);
+					arma::Col<_ty> eigenState = conv_to_hilbert_space(k);
 					double error = abs(arma::norm(this->eigenvalues(k) * eigenState - this->H * eigenState));
 					gs_error << error << "\t";
 				}
