@@ -8,6 +8,7 @@
 #include "thermodynamics.hpp"
 #include "entanglement.hpp"
 #include "adiabatic_gauges.hpp"
+#include "Lanczos/Lanczos.hpp"
 
 extern int outer_threads;
 
@@ -113,9 +114,16 @@ public:
 	virtual void diagonal_matrix_elements() = 0;
 	virtual void matrix_elements() = 0;
 
-
+	
 	virtual arma::Col<element_type> cast_state(const arma::Col<element_type>& state) = 0;
 	virtual arma::sp_mat energy_current() = 0;
+
+	virtual element_type
+	jE_mat_elem_kernel(
+		const arma::Col<element_type>& state1, 
+		const arma::Col<element_type>& state2,
+		int i, u64 k, const op::_ifun& check_spin
+		) = 0;
 };
 
 

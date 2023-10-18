@@ -354,8 +354,6 @@ void user_interface_sym<Hamiltonian>::diagonal_matrix_elements(){
 
     arma::Col<double> Sq0_diagmat(size, arma::fill::zeros);
     
-    auto jE = this->energy_current();
-    // jE = U.t() * jE * U;
     arma::cx_vec jE_diagmat(size, arma::fill::zeros);
     auto check_spin = op::__builtins::get_digit(Ll);
 
@@ -363,8 +361,6 @@ void user_interface_sym<Hamiltonian>::diagonal_matrix_elements(){
     for(long n = 0; n < size; n++){
         auto eigenstate = this->ptr_to_model->get_eigenState(n);
         arma::Col<element_type> full_state = U * eigenstate;
-        arma::Col<element_type> state2 = jE * full_state;
-        jE_diagmat(n) = 1i * dot_prod(full_state, state2);
 
         for(long k = 0; k < dim_max; k++)
         {
@@ -372,6 +368,8 @@ void user_interface_sym<Hamiltonian>::diagonal_matrix_elements(){
             for(int i = 0; i < this->L; i++)
             {
                 int Si = check_spin(k, i);
+                
+                // Nearest neighbor hopping
                 int nei = (this->boundary_conditions)? i + 1 : (i + 1)%this->L;
                 if( nei < this->L ){
                     int S_nei = check_spin(k, nei);
@@ -392,6 +390,8 @@ void user_interface_sym<Hamiltonian>::diagonal_matrix_elements(){
                         }
                     }
                 }
+
+                // Next-nearest neighbor hopping
                 nei = (this->boundary_conditions)? i + 2 : (i + 2)%this->L;
                 if( nei < this->L ){
                     int S_nei = check_spin(k, nei);
@@ -408,6 +408,10 @@ void user_interface_sym<Hamiltonian>::diagonal_matrix_elements(){
                         }
                     }
                 }
+                // Energy current
+                jE_diagmat(n) += 1.0i * jE_mat_elem_kernel(full_state, full_state, i, k, check_spin);
+
+                //<! Hard-core boson momentum occupation
                 for(int j = 0; j < this->L; j++)
                 {
                     int Sj = check_spin(k, j);
@@ -426,6 +430,7 @@ void user_interface_sym<Hamiltonian>::diagonal_matrix_elements(){
             // printSeparated(std::cout, "\t", 16, true, 
             //     KineticEnergy(n), KineticEnergy_loc(n), NextHopping(n), NextHopping_loc(n), Interaction(n), Interaction_loc(n), Sq0_diagmat(n));
         }
+        jE_diagmat(n) /= double(this->L);
     }
     Sq0_diagmat = Sq0_diagmat / double(this->L);
     jE_diagmat = jE_diagmat / double(this->L);

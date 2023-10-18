@@ -59,6 +59,13 @@ public:
 
 	// dummy override to not write for all models yet
 	virtual arma::sp_mat energy_current() override { return arma::sp_mat(); };
+	
+	virtual element_type
+	jE_mat_elem_kernel(
+		const arma::Col<element_type>& state1, 
+		const arma::Col<element_type>& state2,
+		int i, u64 k, const op::_ifun& check_spin
+		) override { return element_type(0); };
 };
 
 // include definitions 

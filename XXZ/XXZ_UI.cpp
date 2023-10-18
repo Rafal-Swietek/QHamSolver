@@ -240,8 +240,8 @@ arma::sp_mat ui::energy_current(){
     auto check_spin = op::__builtins::get_digit(this->L);
     if(this->J2 != 0.0 || this->delta2 != 0)
         assert(false && "Energy current implemented only for integrable case, no nearest neighbour terms yet!");
-    double Jx = 1;
-    double Jy = 1;
+    double Jx = this->J1;
+    double Jy = this->J1;
     double Jz = this->delta1;
     arma::sp_mat jE(dim_max, dim_max);
     printSeparated(std::cout, "\t", 20, true, "Start Current", Jx, Jy, Jz);
@@ -288,6 +288,67 @@ arma::sp_mat ui::energy_current(){
     return jE / double(this->L);
 }
 
+/// @brief Calculate matrix element of energy current <state1|jE|state2> at site i and basis state k
+/// @param state1 <state1| left-hand state in matrix element
+/// @param state2 |state2> right-hand state in matrix element
+/// @param i site
+/// @param k basis state id
+/// @param check_spin function to check current spin value
+ui::element_type 
+ui::jE_mat_elem_kernel(
+            const arma::Col<element_type>& state1, 
+            const arma::Col<element_type>& state2,
+            int i, u64 k, const op::_ifun& check_spin
+            )
+{
+    ui::element_type result = ui::element_type(0);
+    if(this->J2 != 0.0 || this->delta2 != 0)
+        assert(false && "Energy current implemented only for integrable case, no nearest neighbour terms yet!");
+    double Jx = this->J1;
+    double Jy = this->J1;
+    double Jz = this->delta1;
+   
+    int nei = (this->boundary_conditions)? i + 1 : (i + 1)%this->L;
+    int nei2 = (this->boundary_conditions)? i + 2 : (i + 2)%this->L;
+    if(nei < this->L && nei2 < this->L){
+        double Si = double(check_spin(k, i)) - 0.5;
+        double Snei = double(check_spin(k, nei)) - 0.5;
+        double Snei2 = double(check_spin(k, nei2)) - 0.5;
+        {
+            auto [val, state_tmp]   = operators::sigma_x(k, this->L, i);
+            auto [val2, new_idx]    = operators::sigma_y(state_tmp, this->L, nei2);
+            // jE(new_idx, k) += std::imag(Jx * Jy * Snei * val * val2);
+            result += my_conjungate(state1(new_idx)) * std::imag(Jx * Jy * Snei * val * val2) * state2(k);
+        }{
+            auto [val, state_tmp]   = operators::sigma_x(k, this->L, nei2);
+            auto [val2, new_idx]    = operators::sigma_y(state_tmp, this->L, i);
+            // jE(new_idx, k) -= std::imag(Jx * Jy * Snei * val * val2);
+            result -= my_conjungate(state1(new_idx)) * std::imag(Jx * Jy * Snei * val * val2) * state2(k);
+        }{
+            auto [val, state_tmp]   = operators::sigma_x(k, this->L, nei);
+            auto [val2, new_idx]    = operators::sigma_y(state_tmp, this->L, i);
+            // jE(new_idx, k) += std::imag(Jz * Jy * Snei2 * val * val2);
+            result += my_conjungate(state1(new_idx)) * std::imag(Jz * Jy * Snei2 * val * val2) * state2(k);
+        }{
+            auto [val, state_tmp]   = operators::sigma_x(k, this->L, i);
+            auto [val2, new_idx]    = operators::sigma_y(state_tmp, this->L, nei);
+            // jE(new_idx, k) -= std::imag(Jz * Jx * Snei2 * val * val2);
+            result -= my_conjungate(state1(new_idx)) * std::imag(Jz * Jx * Snei2 * val * val2) * state2(k);
+        }{
+            auto [val, state_tmp]   = operators::sigma_x(k, this->L, nei2);
+            auto [val2, new_idx]    = operators::sigma_y(state_tmp, this->L, nei);
+            // jE(new_idx, k) += std::imag(Jz * Jx * Si * val * val2);
+            result += my_conjungate(state1(new_idx)) * std::imag(Jz * Jx * Si * val * val2) * state2(k);
+        }{
+            auto [val, state_tmp]   = operators::sigma_x(k, this->L, nei);
+            auto [val2, new_idx]    = operators::sigma_y(state_tmp, this->L, nei2);
+            // jE(new_idx, k) -= std::imag(Jz * Jy * Si * val * val2);
+            result -= my_conjungate(state1(new_idx)) * std::imag(Jz * Jy * Si * val * val2) * state2(k);
+        }
+    }
+
+    return result;
+}
 
 // -------------------------------------------------------------------------------------------------------------------------------------
 // ---------------------------------------------------------------------------------------------------------------- IMPLEMENTATION OF UI

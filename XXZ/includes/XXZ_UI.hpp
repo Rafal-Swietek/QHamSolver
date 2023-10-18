@@ -121,6 +121,13 @@ namespace XXZ_UI{
         virtual arma::Col<element_type> cast_state(const arma::Col<element_type>& state) override;
 
         virtual arma::sp_mat energy_current() override;
+
+        virtual element_type
+        jE_mat_elem_kernel(
+            const arma::Col<element_type>& state1, 
+            const arma::Col<element_type>& state2,
+            int i, u64 k, const op::_ifun& check_spin
+            ) override;
     };
 }
 

@@ -127,6 +127,13 @@ namespace XYZ_UI{
         arma::SpMat<ui::element_type> create_supercharge(bool dagger = false);
         
 	    virtual arma::sp_mat energy_current() override;
+	    
+        virtual element_type
+        jE_mat_elem_kernel(
+            const arma::Col<element_type>& state1, 
+            const arma::Col<element_type>& state2,
+            int i, u64 k, const op::_ifun& check_spin
+            ) override;
     };
 }
 
