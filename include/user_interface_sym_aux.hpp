@@ -373,10 +373,10 @@ void user_interface_sym<Hamiltonian>::diagonal_matrix_elements(){
                 int nei = (this->boundary_conditions)? i + 1 : (i + 1)%this->L;
                 if( nei < this->L ){
                     int S_nei = check_spin(k, nei);
-                    Interaction(n) += double(Si * S_nei) / 4.0 * std::abs(full_state(k) * full_state(k));
+                    Interaction(n) += (Si - 0.5) * (S_nei - 0.5) * std::abs(full_state(k) * full_state(k));
                     // Interaction_dis(n) += double(Si * S_nei) / 4.0 * dis_U(i) * std::abs(full_state(k) * full_state(k));
                     if(i == this->L / 2)
-                        Interaction_loc(n) += double(Si * S_nei) / 4.0 * std::abs(full_state(k) * full_state(k));
+                        Interaction_loc(n) += (Si - 0.5) * (S_nei - 0.5) * std::abs(full_state(k) * full_state(k));
                     
                     if( (!Si) && S_nei )
                     {
@@ -430,13 +430,19 @@ void user_interface_sym<Hamiltonian>::diagonal_matrix_elements(){
             // printSeparated(std::cout, "\t", 16, true, 
             //     KineticEnergy(n), KineticEnergy_loc(n), NextHopping(n), NextHopping_loc(n), Interaction(n), Interaction_loc(n), Sq0_diagmat(n));
         }
-        jE_diagmat(n) /= double(this->L);
+        // jE_diagmat(n) /= double(this->L);
     }
-    Sq0_diagmat = Sq0_diagmat / double(this->L);
-    jE_diagmat = jE_diagmat / double(this->L);
-    KineticEnergy = KineticEnergy / double(this->L);
-    NextHopping = NextHopping / double(this->L);
-    Interaction = Interaction / double(this->L);
+    Sq0_diagmat = Sq0_diagmat / double(this->L / std::sqrt(2));
+    jE_diagmat = jE_diagmat / std::sqrt(this->L);
+    
+    double norm = this->boundary_conditions? std::sqrt( (this->L - 1) / 2.0) : std::sqrt(this->L / 2.0);
+    KineticEnergy = KineticEnergy / norm;
+    
+    norm = this->boundary_conditions? std::sqrt( (this->L - 2) / 2.0) : std::sqrt(this->L / 2.0);
+    NextHopping = NextHopping / norm;
+
+    norm = this->boundary_conditions? std::sqrt( (this->L - 1)) / 4.0 : std::sqrt(this->L) / 4.0;
+    Interaction = Interaction / norm;
     // KineticEnergy_dis = KineticEnergy_dis / double(this->L);
     // NextHopping_dis = NextHopping_dis / double(this->L);
     // Interaction_dis = Interaction_dis / double(this->L);
