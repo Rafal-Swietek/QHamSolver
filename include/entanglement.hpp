@@ -239,7 +239,7 @@ namespace entropy{
         double entropy = 0;
     #pragma omp parallel for reduction(+: entropy)
     	for (int i = 0; i < schmidt_coeff.size(); i++) {
-    		auto value = schmidt_coeff(i) * schmidt_coeff(i);
+    		auto value = std::abs(schmidt_coeff(i)) * std::abs(schmidt_coeff(i));
     		entropy += (abs(value) > 0) ? -value * std::log(value) : 0;
     	}
         return entropy;

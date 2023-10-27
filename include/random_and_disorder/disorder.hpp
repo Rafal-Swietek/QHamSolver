@@ -2,7 +2,7 @@
 #include "random.h"
 
 #define enable_if_convertible(type_in, type_base) \
-            static_assert(traits::is_convertible_v<type_in, type_base>, __FILE__"(line=" LINE_STR "): " NOT_CONVERTIBLE)
+            static_check(traits::is_convertible_v<type_in, type_base>, __FILE__"(line=" LINE_STR "): " NOT_CONVERTIBLE)
 
 // @brief BASE CLASS FOR DISORDER LANDSCAPE
 /// @tparam _ty template argument
