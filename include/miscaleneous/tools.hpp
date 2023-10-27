@@ -270,33 +270,35 @@ std::ostream& operator<<(
 //     return A;
 // }
 
-template <typename T, typename Iter>
-inline
-void removeIndicesFromVector(std::vector<T>& v, Iter begin, Iter end) // requires std::is_convertible_v<std::iterator_traits<Iter>::value_type, std::size_t>
-{
-    assert(std::is_sorted(begin, end));
-    auto rm_iter = begin;
-    std::size_t current_index = 0;
+// template <typename T, typename Iter>
+// inline
+// void removeIndicesFromVector(std::vector<T>& v, Iter begin, Iter end) // requires std::is_convertible_v<std::iterator_traits<Iter>::value_type, std::size_t>
+// {
+//     assert(std::is_sorted(begin, end));
+//     auto rm_iter = begin;
+//     std::size_t current_index = 0;
 
-    const auto pred = [&](const T&){
-        // any more to remove?
-        if (rm_iter == end) { return false; }
-        // is this one specified?
-        if (*rm_iter == current_index++) { return ++rm_iter, true; }
-        return false;
-    };
+//     const auto pred = [&](const T&){
+//         // any more to remove?
+//         if (rm_iter == end) { return false; }
+//         // is this one specified?
+//         if (*rm_iter == current_index++) { return ++rm_iter, true; }
+//         return false;
+//     };
 
-    v.erase(std::remove_if(v.begin(), v.end(), pred), v.end());
-}
+//     v.erase(std::remove_if(v.begin(), v.end(), pred), v.end());
+// }
 
 template <typename T, typename S> // requires std::is_convertible_v<S::value_type, std::size_t>
 inline
 void removeIndicesFromVector(std::vector<T>& v, const S& rm)
 {
-    using std::begin;
-    using std::end;
-    assert(std::is_sorted(begin(rm), end(rm)));
-    return removeIndicesFromVector(v, begin(rm), end(rm));
+	int counter = 0;
+    for(auto idx : rm){
+		v.erase(v.begin() + idx - counter);
+		counter++;
+	}
+    // return v;
 }
 
 
@@ -363,3 +365,38 @@ auto multi_index(index_t&& ... index)
     auto ar = std::array<int, size>{std::forward<index_t>(index) ...};
     return multi_index_t<size>(ar);
 }
+
+
+//-------------------------------------------------------------------------------------------------------------- LARGE NUMBER FACTORIALS, BINOMIALS AND MORE
+
+/// @brief Calculate binomial coefficient for integer types ( n,k < 2^64 )
+/// @param n upper number in coefficient
+/// @param k lower number in coefficient
+/// @return binomial coefficient
+constexpr 
+inline size_t _binom_(size_t n, size_t k) noexcept
+{
+    return
+      (        k> n  )? 0 :          // out of range
+      (k==0 || k==n  )? 1 :          // edge
+      (k==1 || k==n-1)? n :          // first
+      (     k+k < n  )?              // recursive:
+      (_binom_(n-1,k-1) * n)/k :       //  path to k=1   is faster
+      (_binom_(n-1,k) * n)/(n-k);      //  path to k=n-1 is faster
+}
+
+/// @brief Calculate binomial coefficient
+/// @param n upper number in coefficient
+/// @param k lower number in coefficient
+/// @return binomial coefficient
+inline 
+double logbinom(double n, double k) noexcept
+	{ return std::lgamma(n+1)-std::lgamma(n-k+1)-std::lgamma(k+1);}
+
+/// @brief Calculate binomial coefficient
+/// @param n upper number in coefficient
+/// @param k lower number in coefficient
+/// @return binomial coefficient
+inline 
+double binom(double n, double k) noexcept
+	{ return std::exp(logbinom(n,k)); }
