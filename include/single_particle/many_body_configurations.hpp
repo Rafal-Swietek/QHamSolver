@@ -92,7 +92,7 @@ namespace single_particle{
     /// @param num_particles number of particles
     /// @return 
     inline
-    std::vector<boost::dynamic_bitset<>> mb_config_free_fermion(u64 num_of_states, long int volume, int num_particles = 1)
+    std::vector<boost::dynamic_bitset<>> mb_config_free_fermion(long int volume, int num_particles = 1)
     {
         std::vector<boost::dynamic_bitset<>> mb_states;
 
@@ -114,7 +114,8 @@ namespace single_particle{
 				}
                 state[q] = ints[q];
             }
-            if( (N == num_particles) && (Q % volume == 0) && (std::abs(E) < 1e-12) )
+            // if( (N == num_particles) && (Q % volume == 0) && (std::abs(E) < 1e-12) )
+            if( (N == num_particles) && (std::abs(E) < 1e-12) )
                 mb_states.emplace_back(state);
         }while(std::next_permutation(ints.begin(), ints.end()));
         return mb_states;

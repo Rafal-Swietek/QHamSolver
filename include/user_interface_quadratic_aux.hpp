@@ -71,7 +71,7 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement()
 		#ifdef FREE_FERMIONS
 			if(this->op == 1)		mb_states = single_particle::mb_config(num_states, this->V, random_generator, N);
 			else if(this->op == 2) 	mb_states = single_particle::mb_config_all(this->V, N);
-			else					mb_states = single_particle::mb_config_free_fermion(num_states, this->V, N);
+			else					mb_states = single_particle::mb_config_free_fermion(this->V, N);
 
 			for(int k = 0; k < this->V; k++){
 				single_particle_energy(k) = 2.0 * std::cos(two_pi * double(k) / double(this->V));
@@ -280,7 +280,7 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
 		#ifdef FREE_FERMIONS
 			if(this->op == 1)		mb_states = single_particle::mb_config(num_states, this->V, random_generator, N);
 			else if(this->op == 2) 	mb_states = single_particle::mb_config_all(this->V, N);
-			else					mb_states = single_particle::mb_config_free_fermion(num_states, this->V, N);
+			else					mb_states = single_particle::mb_config_free_fermion(this->V, N);
 
 			for(int k = 0; k < this->V; k++){
 				single_particle_energy(k) = 2.0 * std::cos(two_pi * double(k) / double(this->V));
@@ -314,7 +314,8 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
 		
 		
 		std::cout << " - - - - - - finished many-body configurations in : " << tim_s(start) << " s for realis = " << realis << " - - - - - - " << std::endl;
-		std::cout << "Number of states = \t\t" << num_states << std::endl << std::endl; 
+		std::cout << "Number of states = \t\t" << num_states << std::endl << std::endl;
+		
 		outer_threads = this->thread_number;
 		omp_set_num_threads(1);
 		std::cout << outer_threads << "\t\t" << omp_get_num_threads() << std::endl;
@@ -335,10 +336,8 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
 				double entropy_single_site = 0;
 				double entropy = 0;
 				double entropy_test = 0;
-				// arma::cx_mat U = random_matrix.generate_matrix(gamma_a);
-				// realisations to draw states randomly
-			#pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
-				for(u64 unused = 0; unused < 1000; unused++)
+			// #pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
+				for(u64 unused = 0; unused < 50; unused++)
 				{
 					arma::cx_mat U = random_matrix.generate_matrix(gamma_a);
 					arma::cx_mat J_m(VA, VA, arma::fill::zeros);
@@ -350,6 +349,7 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
 					arma::cx_vec coeff = U.col(id);
 					coeff = arma::normalise(coeff);
 					arma::cx_vec fullstate(ULLPOW(this->V), arma::fill::zeros);
+
 					for(int n = 0; n < gamma_a; n++)
 					{
 						auto state_n = mb_states[indices(n)];
@@ -364,6 +364,7 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
 							}
 						}
 						// printSeparated(std::cout, "\t", 20, true, state_n, set_q.t());
+					#pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
 						for(long k = 0; k < dim; k++){
 							u64 state_idx = _hilbert_space(k);
 							boost::dynamic_bitset<> base_state(this->V, state_idx);
@@ -384,64 +385,18 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
 						}
 						// --------------------------------------------------------------------------------------
 
-						// <n|f+_q f_q|n>
-						// double pre = std::abs(coeff(n)) * std::abs(coeff(n));
-						// single_particle::correlators::one_body(orbitals, state_n, VA, J_m, lambda, pre);
-						
-						// <m|f+_q1 f_q2|n>
-					// 	for(int m = n + 1; m < gamma_a; m++)
-					// 	{
-					// 		auto state_m = mb_states[indices(m)];
-						
-					// 		// arma::cx_mat J_m_tmp(VA, VA, arma::fill::zeros);
-					// 		auto x = state_n ^ state_m;
-					// 		if(x.count() == 2){		// states differ only at two sites, q1 and q2
-					// 			// std::cout << state_n << "\t\t" << state_m << std::endl;
-					// 			std::vector<int> qs;
-					// 			auto prefactor = std::conj(coeff(m)) * coeff(n);
-					// 			for(int q = 0; q < this->V; q++)
-					// 				if(x[q]) qs.push_back(q);
-									
-					// 			if(state_n[qs[0]] ^ state_n[qs[1]])	// state n and m differ at q1 and q2 to enable hopping, otherwise skip
-					// 			{
-					// 				for(auto& qss : v_2d<int>( { qs, v_1d<int>({qs[1], qs[0]}) } ) ){
-					// 					int q1 = qss[0];
-					// 					int q2 = qss[1];
-
-					// 					cpx pre = prefactor;
-					// 					if(state_n[q1])		// for one of the 2 cases do conjungation
-					// 						pre = std::conj(prefactor);
-										
-					// 					lambda += pre * std::abs(orbitals(q2, VA) * std::conj(orbitals(q1, VA)));
-										
-					// 					if(VA > 0){
-					// 						auto orbital1 = orbitals.col(q1).rows(0, VA - 1);
-					// 						auto orbital2 = orbitals.col(q2).rows(0, VA - 1);
-					// 						J_m += pre * orbital2 * orbital1.t();
-					// 					}
-					// 				}
-					// 			}
-					// 		}
-					// 	}
-					
-
 					}
 					
-					fullstate = arma::normalise(fullstate);
-					J_m = 2.0 * J_m - arma::eye(VA, VA);
-					auto lambdas = arma::eig_sym(J_m);
-					#pragma omp critical
+					// #pragma omp critical
 					{
-						entropy 			+= single_particle::entanglement::vonNeumann(lambdas);
-						entropy_single_site += single_particle::entanglement::vonNeumann_helper(2.0 * std::real(lambda) - 1.0);
-						entropy_test		+= entropy::schmidt_decomposition(fullstate, VA, this->V);
+						entropy += entropy::schmidt_decomposition(fullstate, VA, this->V);
 						counter_states++;
 					}
 				}
 
 				// printSeparated(std::cout, "\t", 16, true, VA, gamma_a, entropy / (double)counter_states, entropy_test / (double)counter_states, entropy / (double)counter_states - entropy_test / (double)counter_states);
-				S(gamma_a-1, VA_idx) 		= entropy_test / (double)counter_states;				// entanglement of subsystem VA using Slater determiniants
-				// S(gamma_a-1, VA_idx) 		= entropy / (double)counter_states;				// entanglement of subsystem VA
+				
+				S(gamma_a-1, VA_idx) 		= entropy / (double)counter_states;				// entanglement of subsystem VA using Slater determiniants
 				// S_site(gamma_a-1, VA_idx) 	= entropy_single_site / double(counter_states);	// single site entanglement at site VA
 			}
     		std::cout << "\n - - - - - - finished entropy size VA: " << VA << " in time:" << tim_s(start_VA) << " s - - - - - - " << std::endl; // simuVAtion end
@@ -512,3 +467,52 @@ void user_interface_quadratic<Hamiltonian>::printAllOptions() const {
 }
 
 
+
+
+// ---------------------------------------------------------------------------------------------------------------- OPDM for gaussian mixture
+						// <n|f+_q f_q|n>
+						// double pre = std::abs(coeff(n)) * std::abs(coeff(n));
+						// single_particle::correlators::one_body(orbitals, state_n, VA, J_m, lambda, pre);
+						
+						// <m|f+_q1 f_q2|n>
+					// 	for(int m = n + 1; m < gamma_a; m++)
+					// 	{
+					// 		auto state_m = mb_states[indices(m)];
+						
+					// 		// arma::cx_mat J_m_tmp(VA, VA, arma::fill::zeros);
+					// 		auto x = state_n ^ state_m;
+					// 		if(x.count() == 2){		// states differ only at two sites, q1 and q2
+					// 			// std::cout << state_n << "\t\t" << state_m << std::endl;
+					// 			std::vector<int> qs;
+					// 			auto prefactor = std::conj(coeff(m)) * coeff(n);
+					// 			for(int q = 0; q < this->V; q++)
+					// 				if(x[q]) qs.push_back(q);
+									
+					// 			if(state_n[qs[0]] ^ state_n[qs[1]])	// state n and m differ at q1 and q2 to enable hopping, otherwise skip
+					// 			{
+					// 				for(auto& qss : v_2d<int>( { qs, v_1d<int>({qs[1], qs[0]}) } ) ){
+					// 					int q1 = qss[0];
+					// 					int q2 = qss[1];
+
+					// 					cpx pre = prefactor;
+					// 					if(state_n[q1])		// for one of the 2 cases do conjungation
+					// 						pre = std::conj(prefactor);
+										
+					// 					lambda += pre * std::abs(orbitals(q2, VA) * std::conj(orbitals(q1, VA)));
+										
+					// 					if(VA > 0){
+					// 						auto orbital1 = orbitals.col(q1).rows(0, VA - 1);
+					// 						auto orbital2 = orbitals.col(q2).rows(0, VA - 1);
+					// 						J_m += pre * orbital2 * orbital1.t();
+					// 					}
+					// 				}
+					// 			}
+					// 		}
+					// 	}
+
+					// fullstate = arma::normalise(fullstate);
+					// J_m = 2.0 * J_m - arma::eye(VA, VA);
+					// auto lambdas = arma::eig_sym(J_m);
+						// entropy 			+= single_particle::entanglement::vonNeumann(lambdas);
+						// entropy_single_site += single_particle::entanglement::vonNeumann_helper(2.0 * std::real(lambda) - 1.0);
+					

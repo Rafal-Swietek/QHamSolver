@@ -2,7 +2,6 @@
 
 //! ----------------------------------------------------------------------------- ARMADILLO HELPERS -----------------------------------------------------------------------------
 
-//<! calculate commutator of two input matrix types, which have overloaded * operator
 inline std::string matrix_size(u64 dim){
 	 if(dim < 1e3)
 	 	return std::to_string(dim) + " bytes";
@@ -17,6 +16,7 @@ inline std::string matrix_size(u64 dim){
 }
 
 
+//<! calculate commutator of two input matrix types, which have overloaded * operator
 template <typename matrix>
 matrix commutator(const matrix& A, const matrix& B)
 	{ return A * B - B * A; }
