@@ -8,10 +8,16 @@
 #include "thermodynamics.hpp"
 #include "entanglement.hpp"
 #include "adiabatic_gauges.hpp"
-#include "Lanczos/Lanczos.hpp"
+
+#include "Lanczos/_base.hpp"
+#include "LanczosBlock/_base.hpp"
 
 extern int outer_threads;
 
+/// @brief Change string of input flags to vector of separated flags
+/// @param argc number of input flags
+/// @param argv string of flags
+/// @return vector with separated input flags
 inline
 std::vector<std::string> 
 change_input_to_vec_of_str(int argc, char** argv)
@@ -68,6 +74,13 @@ protected:
     int fun;											// choose function to start calculations
 
 	model_pointer ptr_to_model;
+
+	//<! Lanczos (and related methods) parameters
+	int l_steps;										// number of lanczos steps
+	int l_realis;										// number of lanczos realizations for FTLM
+	int l_bundle;										// number of initial states in bundle for Block-Lanczos
+	bool mem_ver_perf = false;							// optimize memory for performance (do not create Hamiltonian matrix and use on-the-fly methods)
+	bool reorthogonalize = true;						// use full reorthogonalization in Lanczos methods
 	
 public:
 	virtual ~user_interface() = default;

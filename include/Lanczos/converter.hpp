@@ -11,17 +11,18 @@ namespace lanczos {
 		) const -> arma::Col<_ty>
 	{
 
-		assert(state_lanczos.size() == this->params.lanczos_steps
+		assert(state_lanczos.size() == this->lanczos_steps
 			&& "Wrong state dimensions! Required dim is the number of lanczos steps "
 		);
 		arma::Col<_ty> state(this->N, arma::fill::zeros);	//<! output state
 
-		if (this->use_krylov)
+		if (this->use_krylov){
 			state = this->krylov_space * state_lanczos;
-
-		else {
+		}
+		else 
+		{
 			arma::Col<_ty> fi_next(this->N, arma::fill::zeros);
-			//if (this->myParams.memory_over_performance)
+			//if (this->mymemory_over_performance)
 			//	this->model->hamil_vec_onthefly(rand, fi_next);
 			//else
 			fi_next = this->H * this->initial_random_vec;
@@ -29,13 +30,13 @@ namespace lanczos {
 			_ty alfa = cdot(this->initial_random_vec, fi_next);
 			fi_next = fi_next - alfa * this->initial_random_vec;
 			arma::Col<_ty> fi_prev = this->initial_random_vec;
-			for (int j = 1; j < this->params.lanczos_steps; j++) {
+			for (int j = 1; j < this->lanczos_steps; j++) {
 				_ty beta = arma::norm(fi_next);
 				arma::Col<_ty> fi = fi_next / beta;
 
 				state += state_lanczos(j) * fi;
 
-				//if (this->myParams.memory_over_performance)
+				//if (this->mymemory_over_performance)
 				//	this->hamil_vec_onthefly(fi, fi_nextdot+
 				//else
 				fi_next = this->H * fi;
@@ -82,15 +83,15 @@ namespace lanczos {
 		);
 
 		arma::Col<_ty> transformed_input(
-			params.lanczos_steps,
+			lanczos_steps,
 			arma::fill::zeros
 			);
 
-		if (this->use_krylov)
+		if (this->use_krylov){
 			transformed_input = this->krylov_space.t() * input;
-
-
-		else {
+		}
+		else 
+		{
 			transformed_input(0) = arma::cdot(this->initial_random_vec, input); // =1
 
 			arma::Col<_ty> fi_next = H * this->initial_random_vec;
@@ -100,7 +101,7 @@ namespace lanczos {
 			fi_next = fi_next - alfa * this->initial_random_vec;
 
 			//<! lanczos procedure
-			for (int j = 1; j < params.lanczos_steps; j++) {
+			for (int j = 1; j < lanczos_steps; j++) {
 				_ty beta = arma::norm(fi_next);
 				arma::Col<_ty> fi = fi_next / beta;
 				transformed_input(j) = arma::cdot(fi, input);

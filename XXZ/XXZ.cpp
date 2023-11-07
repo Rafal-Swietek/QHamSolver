@@ -86,7 +86,9 @@ void XXZ::create_hamiltonian()
         if(this->_add_parity_breaking)
             this->_disorder(0) = this->_hz;
     }   
-	std::cout << "disorder: \t\t" << this->_disorder.t() << std::endl;
+    #ifdef EXTRA_DEBUG
+	    std::cout << "disorder: \t\t" << this->_disorder.t() << std::endl;
+    #endif
 
     std::vector<double> coupling = {this->_J1, this->_J2};
     std::vector<double> interaction = {this->_delta1, this->_delta2};

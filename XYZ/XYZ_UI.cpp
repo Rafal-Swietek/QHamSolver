@@ -15,24 +15,41 @@ std::string operator*(std::string a, int b)
 
 namespace XYZ_UI{
 
+
+
 void ui::make_sim(){
     printAllOptions();
-    
+
+    this->ptr_to_model = create_new_model_pointer();
+
     // compare_energies();
     // return;
-    this->ptr_to_model = create_new_model_pointer();
-    // std::cout << arma::linspace(0, ULLPOW(this->L)-1, ULLPOW(this->L)).t() << std::endl;
-	// std::cout << arma::mat(this->energy_current()) << std::endl;
-    // return;
+    // // std::cout << arma::linspace(0, ULLPOW(this->L)-1, ULLPOW(this->L)).t() << std::endl;
+	// // std::cout << arma::mat(this->energy_current()) << std::endl;
+    // // return;
 
     // this->ptr_to_model->diagonalization();
-    // auto lanczos_params = lanczosParams(std::min((u64)200, this->ptr_to_model->get_hilbert_size()), 1, this->seed, true);
-    // auto H = this->ptr_to_model->get_hamiltonian();
-    // auto lancz = lanczos::Lanczos<ui::element_type>(H, lanczos_params);
-    // lancz.diagonalization();
-    // std::cout << lancz.get_eigenvalues().t();
-    // std::cout << this->ptr_to_model->get_eigenvalues().t();
-    // return;
+    auto H = this->ptr_to_model->get_hamiltonian();
+
+    auto lancz = lanczos::Lanczos<ui::element_type>(H, this->l_steps, this->l_realis, this->seed, this->reorthogonalize);
+    lancz.convergence(this->saving_dir, this->set_info());
+    auto lancz_block = lanczos::BlockLanczos<ui::element_type>(H, this->l_steps, this->l_realis, this->l_bundle, this->seed, this->reorthogonalize);
+    lancz_block.convergence(this->saving_dir, this->set_info());
+    // for(this->L = 10; this->L < 18; this->L++){
+    //     this->reset_model_pointer();
+    //     auto H = this->ptr_to_model->get_dense_hamiltonian();
+    //     int counter = 0;
+    //     auto N = this->ptr_to_model->get_hilbert_size();
+    //     for(int n = 0; n < N; n++)
+    //         for(int m = 0; m < n; m++)
+    //             if(std::abs(H(n,m)) > 1e-14)
+    //                 counter++;
+    //     std::cout << this->L << "\t\t" << counter << std::endl;
+    // }
+    
+    
+    
+    return;
 
 	clk::time_point start = std::chrono::system_clock::now();
     switch (this->fun)
@@ -90,9 +107,9 @@ void ui::make_sim(){
                                         this->syms.zz_sym = zz;
                                         
                                         this->reset_model_pointer();
-                                        this->diagonal_matrix_elements();
+                                        // this->diagonal_matrix_elements();
                                         // this->diagonalize();
-                                        //this->eigenstate_entanglement();
+                                        this->eigenstate_entanglement();
                                         // this->eigenstate_entanglement_degenerate();
 
                                     };
@@ -292,7 +309,7 @@ arma::sp_mat ui::energy_current(){
     double Jy = this->J1 * (1 + this->eta1);
     double Jz = this->J1 * this->delta1;
     arma::sp_mat jE(dim_max, dim_max);
-    printSeparated(std::cout, "\t", 20, true, "Start Current", Jx, Jy, Jz);
+    // printSeparated(std::cout, "\t", 20, true, "Start Current", Jx, Jy, Jz);
     for(int i = 0; i < this->L; i++)
     {
         int nei = (this->boundary_conditions)? i + 1 : (i + 1)%this->L;
@@ -333,7 +350,7 @@ arma::sp_mat ui::energy_current(){
         }
     }
 
-    return jE / double(this->L);
+    return jE;
 }
 
 /// @brief Calculate matrix element of energy current <state1|jE|state2> at site i and basis state k

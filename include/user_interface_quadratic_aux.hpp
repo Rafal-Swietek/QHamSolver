@@ -402,7 +402,8 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
     		std::cout << "\n - - - - - - finished entropy size VA: " << VA << " in time:" << tim_s(start_VA) << " s - - - - - - " << std::endl; // simuVAtion end
 		}
 
-		if(this->realisations > 1){
+		// if(this->realisations > 1)
+		{
 			std::string dir_realis = dir + "realisation=" + std::to_string(this->jobid + realis) + kPSep;
 			createDirs(dir_realis);
 			S.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "entropy"));

@@ -100,6 +100,13 @@ void user_interface<Hamiltonian>::print_help() const {
 		"	  -- to get sum of local Sz or Sx take Sz_q or Sx_q with -s=0\n"
 		"	  -- i or q are set to site (flag -s); (default 0)\n"
 		""
+		"Lanczos parameters:"
+		"-l_steps Number of lanczos iterations fo either regular or Block Lanczos"
+		"-l_realis NUmber of realizations for FTLM methods"
+		"-l_bundle Number of initial states for Block Lanczos method"
+		"-mem_over_perf Use Hamiltonian-vector product on-the-fly (no Hamiltonian in memory)"
+		"-reortho Use full reorthogonalization in Lanczos methods"
+		""
 		"-fun choose function to start calculations: check user_interface.cpp -> make_sim() to find functions\n May be different in other models"
 		"-th number of threads to be used for CPU parallelization : depends on the machine specifics, default(1)\n"
 		"-ch general boolean flag used in different context (default: 0)\n"
@@ -132,6 +139,13 @@ void user_interface<Hamiltonian>::set_default(){
 	this->ch = false;
 	this->num_of_points = 5000;
 	this->seed = std::random_device{}();
+
+
+	this->l_steps = 100;
+	this->l_realis = 1;
+	this->l_bundle = 5;
+	this->mem_ver_perf = false;
+	this->reorthogonalize = true;
 }
 
 /// @brief Prints all general UI option values
@@ -153,7 +167,12 @@ void user_interface<Hamiltonian>::printAllOptions() const {
 		  << "boolean value = " << this->ch << std::endl
 		  << "q_ipr = " << this->q_ipr << std::endl
 		  << "\u03B2 = " << this->beta << std::endl
-		  << "seed = " << this->seed << std::endl;
+		  << "seed = " << this->seed << std::endl
+		  << "l_steps = " << this->l_steps << std::endl
+		  << "l_realis = " << this->l_realis << std::endl
+		  << "l_bundle = " << this->l_bundle << std::endl
+		  << "mem_over_perf = " << this->mem_ver_perf << std::endl
+		  << "reortho = " << this->reorthogonalize << std::endl;
 
 	#ifdef PRINT_HELP
 		std::cout << "---------------------------------------------------------------------------------\n\n";
@@ -212,6 +231,20 @@ void user_interface<Hamiltonian>::parse_cmd_options(int argc, std::vector<std::s
 	// choose function
 	choosen_option = "-fun";
 	this->set_option(this->fun, argv, choosen_option, true);
+
+
+	// Lanczos parameters
+	choosen_option = "-l_steps";
+	this->set_option(this->l_steps, argv, choosen_option, true);
+	choosen_option = "-l_realis";
+	this->set_option(this->l_realis, argv, choosen_option, true);
+	choosen_option = "-l_bundle";
+	this->set_option(this->l_bundle, argv, choosen_option, true);
+	choosen_option = "-mem_over_perf";
+	this->set_option(this->mem_ver_perf, argv, choosen_option, true);
+	choosen_option = "-reortho";
+	this->set_option(this->reorthogonalize, argv, choosen_option, true);
+
 
 	// buckets
 	choosen_option = "-mu";

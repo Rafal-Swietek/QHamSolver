@@ -95,7 +95,7 @@ namespace XYZ_UI{
 			_types... args										   //!< arguments passed to callable interface lambda
 		) {
             
-			const int k_end = (this->boundary_conditions) ? 1 : this->L / 2;
+			const int k_end = (this->boundary_conditions) ? 2 : this->L / 2 + (this->L % 2);
 			v_1d<int> zxsec = (this->use_flip_X())? v_1d<int>({-1, 1}) : v_1d<int>({1});
 			v_1d<int> zzsec = (this->use_flip_Z())? v_1d<int>({-1, 1}) : v_1d<int>({1});
             std::cout << this->L << "\t\t" << this->hx << "\t\t" << zxsec << std::endl;
@@ -104,7 +104,7 @@ namespace XYZ_UI{
         #ifdef USE_REAL_SECTORS
             for(int ks : (this->L%2 || this->boundary_conditions? v_1d<int>({0}) : v_1d<int>({0, (int)this->L/2})) ){
         #else
-			for (int ks = 0; ks < k_end; ks++) {
+			for (int ks = 1; ks < k_end; ks++) {
         #endif
 				v_1d<int> psec = k_real_sec(ks)? v_1d<int>({-1, 1}) : v_1d<int>({1});
                 std::cout << ks << "\t\t" << psec << std::endl;
