@@ -86,8 +86,13 @@ void QHamSolver<Hamiltonian>::diagonalization(bool get_eigenvectors, const char*
     arma::Mat<_ty> H_temp;
     try {
         H_temp = this->H.get_dense_hamiltonian();
-        if (get_eigenvectors)   arma::eig_sym(this->eigenvalues, this->eigenvectors, H_temp, method);
-        else                    arma::eig_sym(this->eigenvalues, H_temp);
+        if (get_eigenvectors){
+            if(this->dim > 1e5)
+                method = "std"; // Change method due to smaller memory consumption (higher CPU time though -- benchmark)
+            arma::eig_sym(this->eigenvalues, this->eigenvectors, H_temp, method);
+        }
+        else
+            arma::eig_sym(this->eigenvalues, H_temp);
         #ifndef NO_DEBUG
             std::cout << "\t HAMILTONIAN TYPE: " + type_name<_ty>() + "\n\tsparse - dim(H) = " + matrix_size(this->H.n_nonzero * sizeof(this->H(0, 0)))
                 + "\n\tdense - dim(H) = " + matrix_size(H_temp.n_cols * H_temp.n_rows * sizeof(H_temp(0, 0)))
