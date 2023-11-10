@@ -63,7 +63,7 @@ slurm-*.out
 *.dat
 *.npy
 *.csv
-
+*/*.csv
 # whole folders will be ignored
 
 # User-specific files (MonoDevelop/Xamarin Studio)
