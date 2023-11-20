@@ -28,7 +28,32 @@ class InvertedNormalize(Normalize):
  
 
 def set_plot_elements(axis, xlim =[None, None], ylim=[None, None], xlabel = None, ylabel = None, xscale = None, yscale = None, set_legend = True, font_size = 10):
+    """
+    Setting plot style
+    ---------------------------
+    axis:      (subplot/plot object)
+        Axis object of plot to set legend for
 
+    xlim:       (list/tuple)
+        Limits for x-axis range
+    ylim:       (list/tuple)
+        Limits for y-axis range
+
+    xlabel:     (r-string)
+        X-axis label
+    ylabel:     (r-string)
+        Y-axis label
+    xscale:     (string)
+        scale type for x-axis
+    yscale:     (string)
+        scale type for y-axis
+    
+    set_legend: (boolean)
+        Set legend to default options
+    
+    font_size:   (int)
+        Fontsize of handles
+    """
     if xlabel is not None: axis.set_xlabel(xlabel, rotation=0, fontsize=font_size+2, labelpad=font_size-8)
     if ylabel is not None: axis.set_ylabel(ylabel, rotation=90, fontsize=font_size+2)
     if xscale is not None: axis.set_xscale(xscale)
@@ -50,3 +75,32 @@ def set_plot_elements(axis, xlim =[None, None], ylim=[None, None], xlabel = None
     if y1 != None and y2 != None:
         if y1 < y2: axis.set_ylim([y1, y2])
         else: axis.set_ylim([y2, y1])
+
+# axes[0,1].legend(frameon=0, fontsize=16, loc='upper left', handletextpad=0.25, handlelength = 1.25, bbox_to_anchor=(-0.02,1.03))
+def set_legend(axis, fontsize = 16, loc = 'best', anchor = None):
+    """
+    Setting plot legend
+    ---------------------------
+    axis:      (subplot/plot object)
+        Axis object of plot to set legend for
+
+    fontsize:   (int)
+        Fontsize of handles
+    
+    loc:        (string)
+        Location of legend on the plot (upper, center, lower) x (left, center, right)
+    """
+    if anchor is None:
+        if loc == 'upper left': anchor = (-0.02, 1.02)
+        elif loc == 'upper center': anchor = (0.5, 1.02)
+        elif loc == 'upper right': anchor = (1.02, 1.02)
+        elif loc == 'center left': anchor = (-0.02, 0.5)
+        elif loc == 'center center': anchor = (0.5, 0.5)
+        elif loc == 'center right': anchor = (1.02, 0.5)
+        elif loc == 'lower left': anchor = (-0.02, -0.02)
+        elif loc == 'lower center': anchor = (0.5, -0.02)
+        elif loc == 'lower right': anchor = (1.02, -0.02)
+        else:
+            axis.legend(frameon=0, fontsize=fontsize, loc=loc, handletextpad=0.25, handlelength = 1.25)
+            return;
+    axis.legend(frameon=0, fontsize=fontsize, loc=loc, handletextpad=0.25, handlelength = 1.25, bbox_to_anchor=anchor)
