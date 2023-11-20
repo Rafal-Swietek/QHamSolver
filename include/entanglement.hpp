@@ -172,7 +172,7 @@ namespace entropy{
         int alfa,
         op::generic_operator<> permutation
         ) {
-        assert(alfa > 1 && "Only alfa>=2 powers are possible");
+        _assert_(alfa > 1, "Only alfa>=2 powers are possible");
     	arma::Mat<_ty> rho = entanglement::reduced_density_matrix(state, A_size, L, permutation);
                                                  //full_map.empty()?  : entaglement::reduced_density_matrix_sym(state, A_size, L, full_map);
         rho = arma::powmat(rho, alfa);

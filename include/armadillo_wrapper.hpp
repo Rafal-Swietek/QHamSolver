@@ -3,16 +3,7 @@
 //! ----------------------------------------------------------------------------- ARMADILLO HELPERS -----------------------------------------------------------------------------
 
 inline std::string matrix_size(u64 dim){
-	 if(dim < 1e3)
-	 	return std::to_string(dim) + " bytes";
-	 else if(dim < 1e6)
-	 	return to_string_prec(dim / 1e3, 2) + " kB";
-	 else if(dim < 1e9)
-	 	return to_string_prec(dim / 1e6, 2) + " MB";
-	 else if(dim < 1e12)
-	 	return to_string_prec(dim / 1e9, 2) + " GB";
-	else 
-	 	return to_string_prec(dim / 1e12, 2) + " TB";
+	 return translate_bytes(dim);
 }
 
 
@@ -146,3 +137,24 @@ inline arma::sp_cx_mat cast_cx_sparse(const arma::sp_cx_mat& mat)
 //general_dot_prod(arma::subview_col, arma::Col		 );
 //general_dot_prod(arma::Col,			arma::subview_col);
 //general_dot_prod(arma::subview_col, arma::subview_col);
+
+
+/// @brief 
+/// @tparam elem_ty 
+/// @param res 
+/// @param A 
+/// @param B 
+template <typename elem_ty>
+inline void
+matmul(arma::SpMat<elem_ty>& res, const arma::SpMat<elem_ty>& A, const arma::SpMat<elem_ty>& B)
+{
+	_assert_( (A.n_cols == B.n_rows) && (res.n_cols == B.n_cols) && (res.n_rows == A.n_rows), 
+					"\t\tDimension mismatch: Number of columns in first matrix needs to be equal to number of column of second matrix");
+#pragma omp parallel for
+	for(long n = 0; n < A.n_rows; n++){
+		for(long m = 0; m < B.n_cols; m++){
+			res(n, m) = 0;
+			for(long k = 0; k < B.n_rows; k++){
+				res(n, m) += A(n, k) * B(k, m);
+	}}}
+}

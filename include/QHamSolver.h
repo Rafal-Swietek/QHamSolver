@@ -36,12 +36,20 @@
 #include "metaprograming/structures.hpp"
 #include "miscaleneous/tools.hpp"
 
+//<! 
 #include "armadillo_wrapper.hpp"
 
 #include "I_O_streaming/stream_wrapper_base.hpp"
 #include "headers_to_split.h"
 
 #include "gcem/include/gcem.hpp"        //<! constexpr library for math functinos
+
+
+//<! PROFILING TOOLS
+#include "profiling/memory.hpp"
+#include "profiling/cpu.hpp"
+#include "profiling/profilers.hpp"
+
 
 #include "SpinOperators.hpp"
 #include "hilbert_space/_base.hpp"

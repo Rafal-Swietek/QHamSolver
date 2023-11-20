@@ -93,7 +93,7 @@ void QHamSolver<Hamiltonian>::diagonalization(bool get_eigenvectors, const char*
         }
         else
             arma::eig_sym(this->eigenvalues, H_temp);
-        #ifndef NO_DEBUG
+        #ifndef NODEBUG
             std::cout << "\t HAMILTONIAN TYPE: " + type_name<_ty>() + "\n\tsparse - dim(H) = " + matrix_size(this->H.n_nonzero * sizeof(this->H(0, 0)))
                 + "\n\tdense - dim(H) = " + matrix_size(H_temp.n_cols * H_temp.n_rows * sizeof(H_temp(0, 0)))
                 + "\n\tspectrum size: " + std::to_string(this->dim) << std::endl << std::endl;

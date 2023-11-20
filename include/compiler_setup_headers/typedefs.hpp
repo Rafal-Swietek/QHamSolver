@@ -27,9 +27,13 @@ using op_type = std::function<std::pair<cpx, u64>(u64, unsigned int, int)>;
 typedef std::chrono::system_clock clk;
 const std::string kPSep = std::string(kPathSeparator);
 
-template<class T> using v_3d = std::vector<std::vector<std::vector<T>>>;		// 3d type T vector
-template<class T> using v_2d = std::vector<std::vector<T>>;						// 2d type T vector
-template<class T> using v_1d = std::vector<T>;									// 1d type T vector
+template<class T> using v_3d = std::vector<std::vector<std::vector<T>>>;	// 3d type T vector
+template<class T> using v_2d = std::vector<std::vector<T>>;					// 2d type T vector
+template<class T> using v_1d = std::vector<T>;								// 1d type T vector
+
+template <class tensor> 
+using hamiltonian_func_ptr = std::function<tensor(const tensor&)>;			// Function pointer to hamiltonian-vector (or matrix) product
+
 //<! -------------------------------------------------------------------------------------------------------------- ATTRIBUTES
 
 //<! SOME PRODUCE ERROR! LEARN FIRST THEY USAGE NIGGAH

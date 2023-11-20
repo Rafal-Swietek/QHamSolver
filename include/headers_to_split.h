@@ -4,31 +4,20 @@ extern int num_of_threads;													// number of threads
 using namespace std;
 
 
-inline void handle_exception(std::exception_ptr eptr, std::string message) {
+inline void handle_exception(std::exception_ptr eptr, const std::string& message) {
 	try {
 		if (eptr) {
 			std::rethrow_exception(eptr);
 		}
 	}
-	catch (const std::runtime_error& err) {
-		std::cout << "Runtime error:\t" << err.what() << "\n";
-		std::cout << message << std::endl;
-		assert(false);
-	}
-	catch (const std::bad_alloc& err) {
-		std::cout << "Bad alloc error:\t" << err.what() << "\n";
-		std::cout << message << std::endl;
-		assert(false);
-	}
-	catch (const std::exception& err) {
-		std::cout << "Exception:\t" << err.what() << "\n";
-		std::cout << message << std::endl;
-		assert(false);
-	}
-	catch (...) {
-		std::cout << "Unknown error...!" << "\n";
-		std::cout << message << std::endl;
-		assert(false);
+	catch (const std::runtime_error& err){
+		_assert_(false, "Runtime error:\t" + std::string(err.what()) + ":\t" + message);
+	} catch (const std::bad_alloc& err){
+		_assert_(false, "Bad alloc error:\t" + std::string(err.what()) + ":\t" + message);
+	} catch (const std::exception& err) {
+		_assert_(false, "Exception:\t" + std::string(err.what()) + ":\t" + message);
+	} catch (...) {
+		_assert_(false, "Unknown error...! " + message);
 	}
 }
 #define BEGIN_CATCH_HANDLER try{
@@ -48,7 +37,7 @@ inline void handle_exception(std::exception_ptr eptr, std::string message) {
 /// <returns></returns>
 template <class T>
 inline u64 binary_search(const std::vector<T>& arr, u64 l_point, u64 r_point, T element) {
-	if (l_point < 0) assert(false && "What?");
+	_assert_(l_point < arr.size(), "What?");
 	if (r_point >= arr.size()) {
 		return -1;
 	}
@@ -66,7 +55,7 @@ inline u64 binary_search(const std::vector<T>& arr, u64 l_point, u64 r_point, T 
 
 template <>
 inline u64 binary_search(const std::vector<double>& arr, u64 l_point, u64 r_point, double element) {
-	if (l_point < 0) assert(false && "What?");
+	_assert_(l_point < arr.size(), "What?");
 	if (r_point >= arr.size()) {
 		return -1;
 	}
@@ -268,10 +257,8 @@ inline auto readFromFile(std::ifstream& input, std::string filename) {
 
 template <typename ... _ty>
 inline void save_to_file(std::string name, const arma::vec& x, const arma::vec& y, _ty... args) {
-	if(x.size() != y.size()){
-		std::cout << "Incompatible dimensions: " << x.size() << "vs.\t" << y.size() << std::endl;
-		assert(false);
-	}
+	_assert_(x.size() == y.size(), "Incompatible dimensions: " + std::to_string(x.size()) + "vs.\t" + std::to_string(y.size()) );
+	
 	std::ofstream file;
 	openFile(file, name, ios::out);
 	for (int i = 0; i < x.size(); i++) {
@@ -282,7 +269,7 @@ inline void save_to_file(std::string name, const arma::vec& x, const arma::vec& 
 }
 template <typename ... _ty>
 inline void save_to_file(std::string name, const arma::vec& x, const arma::vec& y, const arma::vec& z, _ty... args) {
-	assert(((x.size() == y.size()) && (x.size() == z.size())) && "Incompatible dimensions");
+	_assert_(((x.size() == y.size()) && (x.size() == z.size())), "Incompatible dimensions");
 	std::ofstream file;
 	openFile(file, name, ios::out);
 	for (int i = 0; i < x.size(); i++) {

@@ -69,7 +69,7 @@ public:
 		const arma::vec& y,
 		_ty... args
 	) {
-		assert(x.size() == y.size() && "Incompatible dimensions");
+		_assert_(x.size() == y.size(), "Incompatible dimensions");
 		for (int i = 0; i < x.size(); i++) {
 			if (i == 0) ((this << x(i) << y(i)) << ... << args) << std::endl;
 			else		  this << x(i) << y(i) << std::endl;

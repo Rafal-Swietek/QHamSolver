@@ -31,14 +31,36 @@
 #define INCOMPATIBLE_SIZE	"ERROR 5: size of input arrays does not match"
 
 //! --------------------------------------------------------- EXTRA DEBUG SETUP
+#ifndef NODEBUG
+	#define DEBUG
+#endif
+
+//<! pre-definition
+void _current_profiling_info();
+
 #if defined(EXTRA_DEBUG)
 	#define DESTRUCTOR_CALL std::cout << FUN_SIGNATURE << "->\tdestructor called" << std::endl << std::endl;
 	#define CONSTRUCTOR_CALL std::cout << FUN_SIGNATURE << "->\tconstructor called" << std::endl << std::endl;
+	#define _debug_start(expr)	expr; (void)_profile_memory_(); (void)_profile_cpu_();
+	#define _debug_end(expr)	_current_profiling_info(); std::cout << "--------------->"; expr;
+
+	//<! extra debug macro to hide if not code for runtime
+	#define _extra_debug(expr)	std::cout << "--------------->"; expr;
 #else 
 	#define DESTRUCTOR_CALL 
 	#define CONSTRUCTOR_CALL
+	#if defined(DEBUG)
+		#define _debug_end(expr)	std::cout << "------>"; expr
+	#else 
+		#define _debug_end(expr)
+	#endif
+	#define _debug_start(expr) _debug_end(expr)
+
+	//<! extra debug macro to hide if not code for runtime
+	#define _extra_debug(expr)
 #endif
 
+//! --------------------------------------------------------- DEBUG SETUP
 #ifndef _assert_
 	#define stringize(x) #x
 	#include <iostream>
@@ -51,6 +73,17 @@
 	#endif
 
 	inline void __M_Assert(const char* expr_str, bool expr, const char* file, int line, const char* _func_sign, const char* msg)
+	{
+		if (!expr)
+		{
+			std::cerr << "Assert failed:\t" << msg << "\n"
+				<< "Expected:\t" << expr_str << "\n"
+				<< "Source:\t\t" << file << ", line " << line << "\n"
+				<< "Function:\t\t" << _func_sign << "\n";
+			abort();
+		}
+	}
+	inline void __M_Assert(const char* expr_str, bool expr, const char* file, int line, const char* _func_sign, std::string msg)
 	{
 		if (!expr)
 		{

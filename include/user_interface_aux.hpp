@@ -101,12 +101,14 @@ void user_interface<Hamiltonian>::print_help() const {
 		"	  -- i or q are set to site (flag -s); (default 0)\n"
 		""
 		"Lanczos parameters:"
+		"-l_maxiter Maximal number of lanczos iterations for either regular or Block Lanczos"
 		"-l_steps Number of lanczos iterations fo either regular or Block Lanczos"
 		"-l_realis NUmber of realizations for FTLM methods"
 		"-l_bundle Number of initial states for Block Lanczos method"
 		"-mem_over_perf Use Hamiltonian-vector product on-the-fly (no Hamiltonian in memory)"
 		"-reortho Use full reorthogonalization in Lanczos methods"
 		""
+		"-tol tolerance for iterative methods (i.e. Lanczos)"
 		"-fun choose function to start calculations: check user_interface.cpp -> make_sim() to find functions\n May be different in other models"
 		"-th number of threads to be used for CPU parallelization : depends on the machine specifics, default(1)\n"
 		"-ch general boolean flag used in different context (default: 0)\n"
@@ -129,6 +131,7 @@ void user_interface<Hamiltonian>::set_default(){
 	this->op = 0;
 	this->fun = INT_MAX;
 	this->mu = 5;
+	this->tol = 1e-14;
 	
 	this->q_ipr = 1.0;
 	this->beta = 0.0;
@@ -141,6 +144,7 @@ void user_interface<Hamiltonian>::set_default(){
 	this->seed = std::random_device{}();
 
 
+	this->l_maxiter = 1000;
 	this->l_steps = 100;
 	this->l_realis = 1;
 	this->l_bundle = 5;
@@ -168,6 +172,8 @@ void user_interface<Hamiltonian>::printAllOptions() const {
 		  << "q_ipr = " << this->q_ipr << std::endl
 		  << "\u03B2 = " << this->beta << std::endl
 		  << "seed = " << this->seed << std::endl
+		  << "tol = " << this->tol << std::endl
+		  << "l_maxiter = " << this->l_maxiter << std::endl
 		  << "l_steps = " << this->l_steps << std::endl
 		  << "l_realis = " << this->l_realis << std::endl
 		  << "l_bundle = " << this->l_bundle << std::endl
@@ -224,7 +230,7 @@ void user_interface<Hamiltonian>::parse_cmd_options(int argc, std::vector<std::s
 	choosen_option = "-ch";
 	this->set_option(this->ch, argv, choosen_option, true);
 	
-	//choose dimensionality
+	// choose temperature
 	choosen_option = "-beta";
 	this->set_option(this->beta, argv, choosen_option);
 
@@ -232,8 +238,13 @@ void user_interface<Hamiltonian>::parse_cmd_options(int argc, std::vector<std::s
 	choosen_option = "-fun";
 	this->set_option(this->fun, argv, choosen_option, true);
 
+	// choose tolerance
+	choosen_option = "-tol";
+	this->set_option(this->tol, argv, choosen_option);
 
 	// Lanczos parameters
+	choosen_option = "-l_maxiter";
+	this->set_option(this->l_maxiter, argv, choosen_option, false);
 	choosen_option = "-l_steps";
 	this->set_option(this->l_steps, argv, choosen_option, true);
 	choosen_option = "-l_realis";

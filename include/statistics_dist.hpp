@@ -55,7 +55,7 @@ auto remove_fluctuations(
 ) -> arma::vec 
 {
 	arma::vec new_data = data;
-	assert(mu < data.size() && "Bucket exceeds data container\nTry again\n");
+	_assert_(mu < data.size(), "Bucket exceeds data container\nTry again\n");
 
 #pragma omp parallel for
 	for (int k = mu / 2; k < data.size() - mu / 2; k++) {
@@ -76,7 +76,7 @@ auto data_fluctuations(
 ) -> arma::vec 
 {
 	arma::vec fluct(data.size(), arma::fill::zeros);
-	assert(mu < data.size() && "Bucket exceeds data container\nTry again\n");
+	_assert_(mu < data.size(), "Bucket exceeds data container\nTry again\n");
 
 #pragma omp parallel for
 	for (int k = mu / 2; k < data.size() - mu / 2; k++) {

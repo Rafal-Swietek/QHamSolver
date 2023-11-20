@@ -62,10 +62,7 @@ public:
 	}
 	auto read() {
 		std::vector<arma::vec> data;
-		if (!this->isOpen()) {
-			std::cout << "File not open! could not load";
-			assert(false);
-		}
+		_assert_(this->isOpen(), "File not open! could not load");
 		get_data_dimensions();
 		this->reOpen();
 		// set dataset dimensions

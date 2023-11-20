@@ -9,10 +9,13 @@
 #include "entanglement.hpp"
 #include "adiabatic_gauges.hpp"
 
-#include "Lanczos/_base.hpp"
-#include "LanczosBlock/_base.hpp"
 
 extern int outer_threads;
+#include "Lanczos/params.hpp"
+#include "Lanczos/_base.hpp"
+#include "LanczosBlock/_base.hpp"
+#include "POLFED/_base.hpp"
+
 
 /// @brief Change string of input flags to vector of separated flags
 /// @param argc number of input flags
@@ -68,7 +71,8 @@ protected:
     
 	int mu;												// small bucket for the operator fluctuations to be averaged onto
 	int num_of_points;									// number of points for time evolution/spectral functions/SFF/etc..
-    
+    double tol;											// tolerance for iterative procedures (i.e. Lanczos)
+	
 	int site;											// site for operator averages
     int op;												// choose operator
     int fun;											// choose function to start calculations
@@ -76,6 +80,7 @@ protected:
 	model_pointer ptr_to_model;
 
 	//<! Lanczos (and related methods) parameters
+	int l_maxiter;										// maximal number of iterations for Lanczos and Block-Lanczos
 	int l_steps;										// number of lanczos steps
 	int l_realis;										// number of lanczos realizations for FTLM
 	int l_bundle;										// number of initial states in bundle for Block-Lanczos
