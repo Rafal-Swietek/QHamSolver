@@ -66,22 +66,28 @@ private:
     //<! ----------------------------------------------------- INITIALIZE MODEL
     virtual void init() override
     {   
+        CONSTRUCTOR_CALL;
         // initialize hilbert space
+        _debug_start( clk::time_point start = std::chrono::system_clock::now(); )
         this->_hilbert_space = U1Hilbert(this->system_size, this->Sz);
         this->dim = this->_hilbert_space.get_hilbert_space_size();
+        _debug_end( std::cout << "\t\tFinished setting generating reduced basis (U(1)) with size:\t dim=" << this->dim << "\tin " << tim_s(start) << " seconds" << std::endl; )
 
         // initialize disorder
         disorder_generator = disorder<double>(this->_seed);
         this->_disorder = arma::vec(this->system_size, arma::fill::zeros);
 
         // create hamiltonian
+        _debug_start( start = std::chrono::system_clock::now(); )
         this->create_hamiltonian();
+        _debug_end( std::cout << "\t\tFinished generating Hamiltonian in " << tim_s(start) << " seconds" << std::endl; )
         // std::cout << "Mapping:\n" << this->_hilbert_space.get_mapping() << std::endl;
         // std::cout << "Hamiltonian:\n" << arma::mat(this->H) << std::endl;
     }
 
 public:
     //<! ----------------------------------------------------- CONSTRUCTORS
+    ~XXZ() { DESTRUCTOR_CALL; }
     XXZ() = default;
     XXZ(std::istream& os);
     XXZ(int _BC, unsigned int L, double J1, double J2, double delta1, double delta2, double hz, float Sz = 0.0, 

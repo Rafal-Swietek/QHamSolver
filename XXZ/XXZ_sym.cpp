@@ -11,10 +11,14 @@
 /// @brief Initialize model dependencies (symetries, hilbert space, ...)
 void XXZsym::init()
 {   
-    // set symmetry generators
+    // set symmetry generator
+    CONSTRUCTOR_CALL;
+    _debug_start( clk::time_point start = std::chrono::system_clock::now(); )
     this->set_symmetry_generators();
+    _debug_end( std::cout << "\t\tFinished setting generators in " << tim_s(start) << " seconds" << std::endl; )
 
     // initialize hilbert space
+    _debug_start( start = std::chrono::system_clock::now(); )
     this->_hilbert_space = tensor(
                             point_symmetric( this->system_size, 
                                             this->symmetry_generators, 
@@ -25,9 +29,12 @@ void XXZsym::init()
                             U1Hilbert(this->system_size, this->syms.Sz)
                                 );
     this->dim = this->_hilbert_space.get_hilbert_space_size();
+    _debug_end( std::cout << "\t\tFinished setting generating reduced basis (U(1) x point symmetries) with size:\t dim=" << this->dim << "\tin " << tim_s(start) << " seconds" << std::endl; )
 
     // create hamiltonian
+    _debug_start( start = std::chrono::system_clock::now(); )
     this->create_hamiltonian();
+    _debug_end( std::cout << "\t\tFinished generating Hamiltonian in " << tim_s(start) << " seconds" << std::endl; )
     // std::cout << "Mapping:\n" << this->_hilbert_space.get_mapping() << std::endl;
     // std::cout << "Hamiltonian:\n" << arma::Mat<elem_ty>(this->H) << std::endl;
 }

@@ -50,6 +50,7 @@ private:
 
 public:
     //<! ----------------------------------------------------- CONSTRUCTORS
+    ~XXZsym() { DESTRUCTOR_CALL; }
     XXZsym() = default;
     XXZsym(std::istream& os);
     XXZsym(int _BC, unsigned int L, double J1, double J2, double delta1, double delta2, double hz, 
