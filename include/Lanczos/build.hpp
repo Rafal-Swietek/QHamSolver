@@ -1,16 +1,16 @@
 #pragma once
 #ifndef _LANCZOSBUILD
-#define _LANCZOSBUILD
-
+    #include "build_converged.hpp"
+#endif
  
 namespace lanczos 
 {
 
 	//<! builds lanczos tridiagonal matrix with or without
 	//<! orthogonalization and no krylov space in memory
-	template <typename _ty>
+	template <typename _ty, converge converge_type>
 	inline
-	void Lanczos<_ty>::build_lanczos()
+	void Lanczos<_ty, converge_type>::build_lanczos()
 	{
 		this->randVec_inKrylovSpace = arma::Col<_ty>(
 			this->lanczos_steps,
@@ -48,7 +48,6 @@ namespace lanczos
 			//else
 			fi_next = H * fi;
 
-
 			alfa = arma::cdot(fi, fi_next);
 			fi_next = fi_next - alfa * fi - beta * fi_prev;
 
@@ -63,9 +62,9 @@ namespace lanczos
 
 	//<! builds lanczos tridiagonal matrix
 	//<! with orthogonalization and krylov space
-	template <typename _ty>
+	template <typename _ty, converge converge_type>
 	inline 
-	void Lanczos<_ty>::build_krylov()
+	void Lanczos<_ty, converge_type>::build_krylov()
 	{
 		this->krylov_space = arma::Mat<_ty>(
 			this->N,
@@ -86,10 +85,11 @@ namespace lanczos
 		H_lanczos(0, 0) = alfa;
 
 		double E0 = 0.0;
+		_ty beta = arma::norm(fi_next);
+		// this->krylov_space.col(1) = fi_next / beta;
 		for (int j = 1; j < this->lanczos_steps; j++) {
-			_ty beta = arma::norm(fi_next);
+			// printSeparated(std::cout, "\t", 20, true, j, beta);
 			this->krylov_space.col(j) = fi_next / beta;
-
 			fi_next = this->H * this->krylov_space.col(j);
 
 			alfa = arma::cdot(this->krylov_space.col(j), fi_next);
@@ -99,54 +99,29 @@ namespace lanczos
 			this->H_lanczos(j, j - 1) = beta;
 			this->H_lanczos(j - 1, j) = my_conjungate(beta);
 
-			//<! convergence
-			// double Enew = arma::eig_sym(this->H_lanczos.submat(0, 0, j, j))(0);
-			// printSeparated(std::cout, "\t", 15, true, j, std::abs(Enew - E0));
-			// E0 = Enew;
+			beta = arma::norm(fi_next);
 		}
 		this->randVec_inKrylovSpace = this->krylov_space.t() * this->initial_random_vec;
 	}
 
 	//<! general lanczos build selecting either memory efficient or with krylov space
-	template <typename _ty>
+	template <typename _ty, converge converge_type>
 	inline
-	void Lanczos<_ty>::build(const arma::Col<_ty>& random) {
+	void Lanczos<_ty, converge_type>::build(const arma::Col<_ty>& random) {
 		this->initial_random_vec = random;
 		this->build();
 	}
 
-	template <typename _ty>
+	template <typename _ty, converge converge_type>
 	inline
-	void Lanczos<_ty>::build() {
-		if (this->use_krylov)
-			this->build_krylov();
-		else
-			this->build_lanczos();
+	void Lanczos<_ty, converge_type>::build() {
+		if(this->use_full_convergence){
+			if (this->use_krylov)	this->build_krylov_converged();
+			else					this->build_lanczos_converged();
+		} else {
+			if (this->use_krylov)	this->build_krylov();
+			else					this->build_lanczos();
+		}
 	}
 
-	//<! orthogonalizes input vector to the krylov space,
-	//<! spanned by the first j vectors
-	template <typename _ty>
-	inline
-	void Lanczos<_ty>::orthogonalize(
-			arma::Col<_ty>& vec_to_ortho,			//<! vector to orthogonalize
-			int j									//<! current dimension of Krylov space
-		) {
-		arma::Col<_ty> temporary(this->N, arma::fill::zeros);
-		for (int k = 0; k <= j; k++)
-			temporary += arma::cdot(this->krylov_space.col(k), vec_to_ortho) * this->krylov_space.col(k);
-
-		vec_to_ortho = vec_to_ortho - temporary;
-
-		// temporary.zeros();
-		// for (int k = 0; k <= j; k++)
-		// 	temporary += arma::cdot(this->krylov_space.col(k), vec_to_ortho) * this->krylov_space.col(k);
-
-		// vec_to_ortho = vec_to_ortho - temporary;
-	};
-
-	
-
 }
-
-#endif

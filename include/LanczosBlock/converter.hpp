@@ -5,12 +5,12 @@ namespace lanczos {
 	/// @brief conversion of input state to templated basis
 	/// @tparam _ty template for element type
 	/// @tparam base basis type of input state
-	/// @param state_id index of state to transform
-	/// @return transformed state in Hilbert space
-	template <typename _ty>
+	/// @param state_in state to transform
+	/// @return transformed state in chosen basis
+	template <typename _ty, converge converge_type>
 	template <base_type base>
 	inline
-	auto BlockLanczos<_ty>::conv_to(const arma::Col<_ty>& state_in) const -> arma::Col<_ty>
+	auto BlockLanczos<_ty, converge_type>::conv_to(const arma::Col<_ty>& state_in) const -> arma::Col<_ty>
 	{
 		if constexpr (base == base_type::hilbert)
 			return this->conv_to_hilbert_space(state_in);
@@ -27,15 +27,15 @@ namespace lanczos {
 	/// @tparam _ty template for element type
 	/// @param state_id index of state to transform
 	/// @return transformed state in Hilbert space
-	template <typename _ty>
+	template <typename _ty, converge converge_type>
 	inline
-	auto BlockLanczos<_ty>::conv_to_hilbert_space(
+	auto BlockLanczos<_ty, converge_type>::conv_to_hilbert_space(
 			const arma::Col<_ty>& state_lanczos	//<! state to transform
 		) const -> arma::Col<_ty>
 	{
 
-		assert(state_lanczos.size() == this->matrix_size
-			&& "Wrong state dimensions! Required dim is the number of (lanczos steps) x (size of bundle) "
+		_assert_(state_lanczos.size() == this->matrix_size,
+			"Wrong state dimensions! Required dim is the number of (lanczos steps) x (size of bundle) "
 		);
 		arma::Col<_ty> state(this->N, arma::fill::zeros);	//<! output state
 
@@ -44,7 +44,7 @@ namespace lanczos {
 		}
 		else 
 		{
-			
+			_assert_(this->use_krylov, "Note implemented generating states without krylov subspace.");
 		}
 		return state;
 	};
@@ -53,14 +53,14 @@ namespace lanczos {
 	/// @tparam _ty template for element type
 	/// @param state_id index of state to transform
 	/// @return transformed state in Hilbert space
-	template <typename _ty>
+	template <typename _ty, converge converge_type>
 	inline
 	auto
-	BlockLanczos<_ty>::conv_to_hilbert_space(
+	BlockLanczos<_ty, converge_type>::conv_to_hilbert_space(
 			int state_id						//<! index of state to transform
 		) const -> arma::Col<_ty>
 	{
-		assert(!this->H_lanczos.is_empty() && "Diagonalize!!");
+		_assert_(!this->H_lanczos.is_empty(), "Diagonalize!!");
 		return this->conv_to_hilbert_space(this->eigenvectors.col(state_id));
 	}
 
@@ -70,15 +70,15 @@ namespace lanczos {
 	/// @tparam _ty template for element type
 	/// @param input state to transform
 	/// @return transformed state in Krylov basis
-	template <typename _ty>
+	template <typename _ty, converge converge_type>
 	inline
-	auto BlockLanczos<_ty>::conv_to_krylov_space(
+	auto BlockLanczos<_ty, converge_type>::conv_to_krylov_space(
 		const arma::Col<_ty>& input		//<! state to transform from hilbert to krylov
 	) const -> arma::Col<_ty>
 	{
 
-		assert(input.size() == this->N
-			&& "Wrong state dimensions! Required dim is the original hilbert space size "
+		_assert_(input.size() == this->N,
+			 "Wrong state dimensions! Required dim is the original hilbert space size "
 		);
 
 		arma::Col<_ty> transformed_input(
@@ -91,7 +91,7 @@ namespace lanczos {
 		}
 		else 
 		{
-			
+			_assert_(this->use_krylov, "Note implemented generating states without krylov subspace.");
 		}
 		return transformed_input;
 	}

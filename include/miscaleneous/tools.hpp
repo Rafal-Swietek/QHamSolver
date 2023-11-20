@@ -5,8 +5,8 @@
 /// @return 
 inline 
 double tim_s(clk::time_point start) {
-	return double(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::duration(\
-		clk::now() - start)).count()) / 1000.0;
+	return double(std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::duration(\
+		clk::now() - start)).count()) / 1e6;
 }
 //-------------------------------------------------------------------------------------------------------------- OPERATION ON STRINGS
 
@@ -191,6 +191,41 @@ void apply_permutation(
 
 //-------------------------------------------------------------------------------------------------------------- ADDITIONAL TOOLS
 
+/// @brief Translate input bytes to appropriate scale (kB, MB,..)
+/// @param bytes 
+/// @return 
+inline 
+std::string translate_bytes(u64 bytes){
+	 if(bytes < 1e3)
+	 	return std::to_string(bytes) + " bytes";
+	 else if(bytes < 1e6)
+	 	return to_string_prec(bytes / 1e3, 2) + " kB";
+	 else if(bytes < 1e9)
+	 	return to_string_prec(bytes / 1e6, 2) + " MB";
+	 else if(bytes < 1e12)
+	 	return to_string_prec(bytes / 1e9, 2) + " GB";
+	else 
+	 	return to_string_prec(bytes / 1e12, 2) + " TB";
+}
+
+/// @brief Find dividor of number closest to target integer
+/// @param target integer determining the dividor
+/// @param number number to get its dividor
+/// @return dividor of 'number' closest to 'target'
+static 
+int getClosestFactor(int target, int number) {
+    for (int i = 0; i < number; i++) {
+        if (number % (target + i) == 0) {
+            return target + i;
+        } else if (number % (target - i) == 0) {
+            return target - i;
+        }
+    }
+    return number;
+}
+/// @brief Consequitive power of imaginary factor
+/// @param power power of i
+/// @return i^power
 inline
 std::complex<double> pow_im(unsigned int power){
 	const int num = power % 4;

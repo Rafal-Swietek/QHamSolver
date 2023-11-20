@@ -1,18 +1,41 @@
 #pragma once
 
 namespace lanczos {
-	//TODO: make separately from the class as standalone and do struct within class?
-	//! ------------------------------------------------------ from: KRYLOV -> to: HILBERT
-	//<! conversion of input state to original Hilbert space
-	template <typename _ty>
+
+	/// @brief conversion of input state to templated basis
+	/// @tparam _ty template for element type
+	/// @tparam base basis type of input state
+	/// @param state_in state to transform
+	/// @return transformed state in chosen basis
+	template <typename _ty, converge converge_type>
+	template <base_type base>
 	inline
-	auto Lanczos<_ty>::conv_to_hilbert_space(
+	auto Lanczos<_ty, converge_type>::conv_to(const arma::Col<_ty>& state_in) const -> arma::Col<_ty>
+	{
+		if constexpr (base == base_type::hilbert)
+			return this->conv_to_hilbert_space(state_in);
+		else if constexpr (base == base_type::krylov)
+			return this->conv_to_krylov_space(state_in);
+		else{
+			static_check((base == base_type::hilbert) || (base == base_type::krylov), "Not implemented other Basis type. Choose among: hilbert, krylov.");
+		}
+	};
+
+	//! ------------------------------------------------------ from: KRYLOV -> to: HILBERT
+	
+	/// @brief conversion of input state to original Hilbert space
+	/// @tparam _ty template for element type
+	/// @param state_lanczos  state in Krylov basis to transform
+	/// @return state in Hilbert basis
+	template <typename _ty, converge converge_type>
+	inline
+	auto Lanczos<_ty, converge_type>::conv_to_hilbert_space(
 			const arma::Col<_ty>& state_lanczos	//<! state to transform
 		) const -> arma::Col<_ty>
 	{
 
-		assert(state_lanczos.size() == this->lanczos_steps
-			&& "Wrong state dimensions! Required dim is the number of lanczos steps "
+		_assert_(state_lanczos.size() == this->lanczos_steps,
+			"Wrong state dimensions! Required dim is the number of lanczos steps "
 		);
 		arma::Col<_ty> state(this->N, arma::fill::zeros);	//<! output state
 
@@ -58,28 +81,37 @@ namespace lanczos {
 	// 	return this->conv_to_hilbert_space(state);
 	// }
 
-	//<! conversion of eigenstate (by index) to original Hilbert space
-	template <typename _ty>
+	
+	/// @brief conversion of eigenstate (by index) to original Hilbert space
+	/// @tparam _ty template for element type
+	/// @param state_id index of eigenstate to transform
+	/// @return transformed eigenstate to Hilbert basis
+	template <typename _ty, converge converge_type>
 	inline
 	auto
-	Lanczos<_ty>::conv_to_hilbert_space(
+	Lanczos<_ty, converge_type>::conv_to_hilbert_space(
 			int state_id						//<! index of state to transform
 		) const -> arma::Col<_ty>
 	{
-		assert(!this->H_lanczos.is_empty() && "Diagonalize!!");
+		_assert_(!this->H_lanczos.is_empty(), "Diagonalize!!");
 		return this->conv_to_hilbert_space(this->eigenvectors.col(state_id));
 	}
 
 	//! ------------------------------------------------------ from: HILBERT -> to: KRYLOV
-	template <typename _ty>
+	
+	/// @brief conversion of eigenstate to Krylov basis
+	/// @tparam _ty template for element type
+	/// @param input state to transform
+	/// @return transformed state in Krylov basis
+	template <typename _ty, converge converge_type>
 	inline
-	auto Lanczos<_ty>::conv_to_krylov_space(
+	auto Lanczos<_ty, converge_type>::conv_to_krylov_space(
 		const arma::Col<_ty>& input		//<! state to transform from hilbert to krylov
 	) const -> arma::Col<_ty>
 	{
 
-		assert(input.size() == this->N
-			&& "Wrong state dimensions! Required dim is the original hilbert space size "
+		_assert_(input.size() == this->N,
+			"Wrong state dimensions! Required dim is the original hilbert space size "
 		);
 
 		arma::Col<_ty> transformed_input(

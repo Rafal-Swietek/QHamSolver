@@ -2,16 +2,15 @@
 
 #define try_alloc(code) try{ code;}\
 						catch(const std::bad_alloc& e) {						\
-							std::cout << "Memory exceeded" << e.what() << "\n";	\
-							assert(false);										\
+							_assert_(false, "Memory exceeded: " + std::string(e.what()));										\
 						}
 
 namespace lanczos {
 
 	
-	template <typename _ty>
+	template <typename _ty, converge converge_type>
 	inline
-		void Lanczos<_ty>::diagonalization()
+		void Lanczos<_ty, converge_type>::diagonalization()
 	{
 		try_alloc(this->build(););
 		arma::eig_sym(
@@ -22,9 +21,9 @@ namespace lanczos {
 
 	}
 
-	template <typename _ty>
+	template <typename _ty, converge converge_type>
 	inline
-	void Lanczos<_ty>::diagonalization(
+	void Lanczos<_ty, converge_type>::diagonalization(
 		const arma::Col<_ty>& random	//<! random input
 	) 
 	{
