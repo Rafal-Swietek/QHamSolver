@@ -3,7 +3,7 @@
 namespace polfed {
 
 	/// @brief Initialize the BlockLanczos instance with set class members
-	/// @tparam _ty type of input Hamiltonian (enforces type on onput state) 
+	/// @tparam _ty type of input Hamiltonian (enforces type on Krylov basis) 
 	/// @tparam converge_type enum type for convergence criterion (energies or states)
 	template <typename _ty, converge converge_type>
 	inline 

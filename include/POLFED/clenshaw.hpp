@@ -14,6 +14,7 @@ namespace polfed{
         /// @param K order of polynomial
         /// @param coeff array of coefficients (of size K+1)
         /// @param matrix matrix to transform (needs to be square)
+        /// @return transformed matrix P^K(matrix)
         template <typename _ty>
         inline 
         arma::SpMat<_ty>
@@ -45,6 +46,7 @@ namespace polfed{
         /// @param K order of polynomial
         /// @param coeff array of coefficients (of size K+1)
         /// @param values array of values
+        /// @return transformed P^K(values)
         template <typename _ty>
         inline 
         arma::Col<_ty>
@@ -73,6 +75,7 @@ namespace polfed{
         /// @param K order of polynomial
         /// @param coeff array of coefficients (of size K+1) 
         /// @param sigma value to get polynomial
+        /// @return transformed P^K(sigma)
         template <typename _ty>
         inline
         _ty
@@ -99,6 +102,7 @@ namespace polfed{
         /// @param coeff array of coefficients (of size K+1)
         /// @param matrix matrix to 'transform' (needs to be square)
         /// @param state state to act with P^K(H)
+        /// @return transformed matrix-vector product P^K(matrix) * state
         template <typename _ty>
         inline 
         arma::Col<_ty>
@@ -129,7 +133,8 @@ namespace polfed{
         /// @param K order of polynomial
         /// @param coeff array of coefficients (of size K+1)
         /// @param matrix matrix to 'transform' (needs to be square)
-        /// @param state state to act with P^K(H)
+        /// @param states states to act with P^K(H)
+        /// @return transformed matrix-matrix product P^K(matrix) * states
         template <typename _ty>
         inline 
         arma::Mat<_ty>

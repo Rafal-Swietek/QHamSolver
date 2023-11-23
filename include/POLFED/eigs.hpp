@@ -3,7 +3,7 @@
 namespace polfed{
 
     /// @brief Calculate eigenvalues and eigenstates using Block-Lanczos of transformed hamiltonian
-    /// @tparam _ty type of input Hamiltonian (enforces type on onput state)
+    /// @tparam _ty type of input Hamiltonian (enforces type on Krylov basis)
 	/// @tparam converge_type enum type for convergence criterion (energies or states)
     /// @return true eigenvalues and eigenvectors as std::pair
     template <typename _ty, converge converge_type>
@@ -36,7 +36,7 @@ inline
 
 	//! ------------------------------------------------------------------------------------------------------------ PASS REFERENCE TO CONTAINERS
     /// @brief Calculate eigenvalues and eigenstates using Block-Lanczos of transformed hamiltonian
-    /// @tparam _ty type of input Hamiltonian (enforces type on onput state)
+    /// @tparam _ty type of input Hamiltonian (enforces type on Krylov basis)
 	/// @tparam converge_type enum type for convergence criterion (energies or states)
     /// @return true eigenvalues and eigenvectors as std::pair
     template <typename _ty, converge converge_type>
@@ -66,7 +66,7 @@ inline
     }
     
     /// @brief Calculate only eigenstates using Block-Lanczos of transformed hamiltonian
-    /// @tparam _ty type of input Hamiltonian (enforces type on onput state)
+    /// @tparam _ty type of input Hamiltonian (enforces type on Krylov basis)
 	/// @tparam converge_type enum type for convergence criterion (energies or states)
     /// @param V reference to eigenvectors to be overwritten with true eigenstates from polfed
     template <typename _ty, converge converge_type>
@@ -88,7 +88,7 @@ inline
     }
 
     /// @brief Calculate eigenvalues using Block-Lanczos of transformed hamiltonian
-    /// @tparam _ty type of input Hamiltonian (enforces type on onput state)
+    /// @tparam _ty type of input Hamiltonian (enforces type on Krylov basis)
 	/// @tparam converge_type enum type for convergence criterion (energies or states)
     /// @param E reference to energies to be overwritten with true eigenenergies from polfed
     template <typename _ty, converge converge_type>

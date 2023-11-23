@@ -27,9 +27,10 @@ namespace polfed {
 		//<! private members
 		const arma::SpMat<_ty>& H;					//<! original hamiltonian matrix -- change to operator instance
 		arma::SpMat<_ty> P_H;						//<! hamiltonian matrix to tranform and work on -- change to operator instance
+		// arma::SpMat<_ty> _dummy_H;					//<! dummy object to have H being reference to it when use_on_the_fly enabled
 		arma::Col<_ty> coeff;			    		//<! coefficients of polynomial expansion
 		u64 N;										//<! dimension of hilbert space
-		arma::SpMat<_ty> _dummy_H;					//<! dummy object to have H being reference to it when use_on_the_fly enabled
+		
 		_ham_func_ptr H_multiply;					//<! hamiltonian function pointer to hamiltonian-vector product
 		_ham_func_ptr PH_multiply;					//<! hamiltonian function pointer to transfomred hamiltonian-vector product
 
@@ -39,7 +40,7 @@ namespace polfed {
 		long seed 			= std::random_device{}();   //<! seed for random generator
 		int num_of_eigval 	= 200;						//<! number of lanczos iterations
 		int bundle_size  	= 5;						//<! number of initial random vectors (number of columns in initial_bundle matrix)
-		int K 				= 10;						//<! order of polynomial
+		int K 				= -1;						//<! order of polynomial
 
 		bool use_on_the_fly	= false;					//<! diagonalizing on-the-fly (not Hamiltonian as matrix is known)
 		bool use_krylov 	= false;					//<! boolean value whether useing krylov matrix or not
@@ -59,7 +60,7 @@ namespace polfed {
 		POLFED() = delete;
 
 		/// @brief Constructor of Lanczos class
-		/// @tparam _ty type of input Hamiltonian (enforces type on onput state)
+		/// @tparam _ty type of input Hamiltonian (enforces type on Krylov basis)
 		/// @param hamiltonian Input Hamiltonian matrix as sparse matrix
 		/// @param Nev number of desired eigenstates
 		/// @param s number of initial states (bundle size)
@@ -81,7 +82,7 @@ namespace polfed {
 		{ initialize(); }
 
 		// /// @brief Constructor of Lanczos class
-		// /// @tparam _ty type of input Hamiltonian (enforces type on onput state)
+		// /// @tparam _ty type of input Hamiltonian (enforces type on Krylov basis)
 		// /// @param H_mult_state Function pointer for Hamiltonian-vector product
 		// /// @param dimension dimension of Hilbert space for given hamiltonian (can't be established from the pointer)
 		// /// @param Nev number of desired eigenstates
@@ -119,12 +120,6 @@ namespace polfed {
 
 		//TODO: some methods with return values
 
-		//------------------------------------------------------------------------------------------------ CAST STATES TO ORIGINAL HILBERT SPACE:
-		template <base_type base>
-		[[nodiscard]] auto conv_to(const arma::Col<_ty>& input) const -> arma::Col<_ty>;
-
-		[[nodiscard]] auto conv_to_hilbert_space(int state_id) const -> arma::Col<_ty>;
-		
 		//------------------------------------------------------------------------------------------------ TOOLS
 		// void convergence(std::string dir, std::string name);
 		

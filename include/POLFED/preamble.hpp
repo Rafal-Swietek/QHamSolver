@@ -38,7 +38,7 @@ namespace polfed{
 	}
 
     /// @brief Find order of polynomial
-    /// @tparam _ty type of input Hamiltonian (enforces type on onput state)
+    /// @tparam _ty type of input Hamiltonian (enforces type on Krylov basis)
 	/// @tparam converge_type enum type for convergence criterion (energies or states)
     template <typename _ty, converge converge_type>
 	inline 
@@ -58,7 +58,7 @@ namespace polfed{
                 this->coeff(n) = 2.0 * std::cos(n * std::acos(this->sigma));
             _ty poly = clenshaw::chebyshev(this->K, this->coeff, this->sigma + delta) / clenshaw::chebyshev(this->K, this->coeff, this->sigma);
             if( std::abs(poly) < this->cutoff){
-                this->K -= 6;
+                this->K -= 2;
                 break;
             } else
                 this->K += 2;
@@ -66,7 +66,7 @@ namespace polfed{
     }
 
     /// @brief Transform Hamiltonian to polynomial series
-	/// @tparam _ty type of input Hamiltonian (enforces type on onput state)
+	/// @tparam _ty type of input Hamiltonian (enforces type on Krylov basis)
 	/// @tparam converge_type enum type for convergence criterion (energies or states)
 	template <typename _ty, converge converge_type>
 	inline 
@@ -74,7 +74,7 @@ namespace polfed{
 
         //<! get energy boundaries (to rescale E \in [-1,1])
         _debug_start( clk::time_point start = std::chrono::system_clock::now(); )
-        this->P_H = H;
+        this->P_H = this->H;
         int steps = 0;
         auto [Emin, Emax] = this->get_energy_bounds(steps);
         this->P_H = (2.0 * this->P_H - (Emax + Emin) * arma::eye<arma::SpMat<_ty>>(this->N, this->N)) / (Emax - Emin);
