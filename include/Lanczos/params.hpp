@@ -9,7 +9,8 @@ enum class base_type {
 
 enum class converge {
 		energies,	//<! converge using eigenenergies (faster, but states not fully converged)
-		states		//<! converge using eigenstates
+		states,		//<! converge using eigenstates
+		none		//<! no convergence
 	};
 	
 namespace lanczos{

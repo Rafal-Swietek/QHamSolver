@@ -31,10 +31,10 @@ namespace lanczos {
 
 		//! ----------------------------------------------------- PRIVATE BUILDERS / INITIALISERS
 		void initialize();
-		void build_lanczos();
-		void build_krylov();
-		void build_lanczos_converged();
-		void build_krylov_converged();
+		void _build_lanczos();
+		void _build_krylov();
+		void _build_lanczos_converged();
+		void _build_krylov_converged();
 
 		void orthogonalize(
 			arma::Col<_ty>& vec_to_ortho,  //<! vector to orthogonalize

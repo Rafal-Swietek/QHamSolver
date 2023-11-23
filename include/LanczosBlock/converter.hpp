@@ -3,7 +3,8 @@
 namespace lanczos {
 
 	/// @brief conversion of input state to templated basis
-	/// @tparam _ty template for element type
+	/// @tparam _ty type of input Hamiltonian (enforces type on Krylov basis) 
+	/// @tparam converge_type enum type for convergence criterion (energies or states)
 	/// @tparam base basis type of input state
 	/// @param state_in state to transform
 	/// @return transformed state in chosen basis
@@ -24,7 +25,8 @@ namespace lanczos {
 	//! ------------------------------------------------------ from: KRYLOV -> to: HILBERT
 
 	/// @brief conversion of input state to original Hilbert space
-	/// @tparam _ty template for element type
+	/// @tparam _ty type of input Hamiltonian (enforces type on Krylov basis) 
+	/// @tparam converge_type enum type for convergence criterion (energies or states)
 	/// @param state_id index of state to transform
 	/// @return transformed state in Hilbert space
 	template <typename _ty, converge converge_type>
@@ -50,7 +52,8 @@ namespace lanczos {
 	};
 
 	/// @brief conversion of eigenstate (by index) to original Hilbert space
-	/// @tparam _ty template for element type
+	/// @tparam _ty type of input Hamiltonian (enforces type on Krylov basis) 
+	/// @tparam converge_type enum type for convergence criterion (energies or states)
 	/// @param state_id index of state to transform
 	/// @return transformed state in Hilbert space
 	template <typename _ty, converge converge_type>
@@ -67,7 +70,8 @@ namespace lanczos {
 	//! ------------------------------------------------------ from: HILBERT -> to: KRYLOV
 
 	/// @brief conversion of eigenstate to Krylov basis
-	/// @tparam _ty template for element type
+	/// @tparam _ty type of input Hamiltonian (enforces type on Krylov basis) 
+	/// @tparam converge_type enum type for convergence criterion (energies or states)
 	/// @param input state to transform
 	/// @return transformed state in Krylov basis
 	template <typename _ty, converge converge_type>

@@ -22,7 +22,7 @@ const v_1d<u64> powers =  []{ 	v_1d<u64> a(64 / block_size);
 
 
 //! --------------------------------- ERROR MESSAGES FOR OPERATOR CLASSES
-#define INCOMPATIBLE_DIMENSION	"ERROR OP-1: Incompatible operator dimensions. Different Hilbert space sizes"
+#define INCOMPATIBLE_DIMENSION_OP	"ERROR OP-1:" _INCOMPATIBLE_DIMENSION
 #define NOT_ALLOWED_INPUT_OP	"ERROR OP-2: input not amongst allowed operators! See ALLOWED_OPERATORS macro"
 #define ONLY_EMPTY_TEMPLATE		"ERROR OP-3: operator/function only allowed for non-templated instance"
 #define NOT_ALLOWED_OPERATION	"ERROR OP-4: not permitted operation! See definition"
@@ -47,7 +47,7 @@ const v_1d<u64> powers =  []{ 	v_1d<u64> a(64 / block_size);
 #if defined(DISABLE_DEBUG)
 	#define assert_hilbert_space(...) __PRAGMA message( "Debug disabled. No bounds check on operator Hilbert spaces. Check dimensionality yourself!")
 #else
-	#define assert_hilbert_space(...) _assert_(check_hilbert_space(__VA_ARGS__), INCOMPATIBLE_DIMENSION)
+	#define assert_hilbert_space(...) _assert_(check_hilbert_space(__VA_ARGS__), INCOMPATIBLE_DIMENSION_OP)
 #endif
 
 

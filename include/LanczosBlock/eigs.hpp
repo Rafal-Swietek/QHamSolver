@@ -1,19 +1,16 @@
 #pragma once
 
-#define try_alloc(code) try{ code;}\
-						catch(const std::bad_alloc& e) {						\
-							_assert_(false, "Memory exceeded: " + std::string(e.what()));		\
-						}
 
 namespace lanczos {
 
-	/// @brief 
-	/// @tparam _ty 
+	/// @brief Runs the building of the Lanczos matrix and diagonalizes to find energies and eigenstates (in Krylov basis)
+	/// @tparam _ty type of input Hamiltonian (enforces type on Krylov basis) 
+	/// @tparam converge_type enum type for convergence criterion (energies or states)
 	template <typename _ty, converge converge_type>
 	inline
 		void BlockLanczos<_ty, converge_type>::diagonalization()
 	{
-		try_alloc(this->build(););
+		this->build();
 		arma::eig_sym(
 			this->eigenvalues,
 			this->eigenvectors,
@@ -22,16 +19,17 @@ namespace lanczos {
 
 	}
 
-	/// @brief 
-	/// @tparam _ty 
-	/// @param random 
+	/// @brief Runs the building of the Lanczos matrix and diagonalizes to find energies and eigenstates (in Krylov basis)
+	/// @tparam _ty type of input Hamiltonian (enforces type on Krylov basis) 
+	/// @tparam converge_type enum type for convergence criterion (energies or states)
+	/// @param random Initial random bundle of vectors
 	template <typename _ty, converge converge_type>
 	inline
 	void BlockLanczos<_ty, converge_type>::diagonalization(
 		const arma::Mat<_ty>& random	//<! random input
 	) 
 	{
-		try_alloc(this->build(random););
+		this->build(random);
 		arma::eig_sym(
 				this->eigenvalues,
 				this->eigenvectors,
@@ -39,9 +37,10 @@ namespace lanczos {
 			);
 	}
 
-	/// @brief 
-	/// @tparam _ty 
-	/// @return 
+	/// @brief Get eigenstates in Hilbert space
+	/// @tparam _ty type of input Hamiltonian (enforces type on Krylov basis) 
+	/// @tparam converge_type enum type for convergence criterion (energies or states)
+	/// @return Matrix with transformed eigenstates
 	template <typename _ty, converge converge_type>
 	inline
 	auto 
@@ -51,6 +50,7 @@ namespace lanczos {
 			return this->krylov_space * this->eigenvectors;
 		} else {
 			_assert_(this->use_krylov, "Note implemented generating states without krylov subspace.");
+			return arma::Mat<_ty>();
 		}
 	}
 }

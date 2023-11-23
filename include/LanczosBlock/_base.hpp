@@ -6,7 +6,8 @@
 namespace lanczos {
 
 	/// @brief Class for Block-Lanczos calculation with flags for number of steps and bundle size
-	/// @tparam _ty type of input Hamiltonian (enforces type on input states)
+	/// @tparam _ty type of input Hamiltonian (enforces type on Krylov basis) 
+	/// @tparam converge_type enum type for convergence criterion (energies or states)
 	template <typename _ty, converge converge_type = converge::states>
 	class BlockLanczos {
 
@@ -18,9 +19,8 @@ namespace lanczos {
 		arma::Mat<_ty> H_lanczos;					//<! Lanczos matrix for tridiagonalization
 		arma::Mat<_ty> eigenvectors;				//<! eigenvectors from diagonalizing lanczos matrix
 		arma::vec eigenvalues;						//<! lanczos eignevalues
-		const arma::SpMat<_ty>& H;					//<! hamiltonian matrix -- change to operator instance
-		arma::SpMat<_ty> _dummy_H;					//<! dummy object to have H being reference to it when use_on_the_fly enabled
-		_ham_func_ptr Hmultiply;					//<! hamiltonian function pointer to hamiltonian-vector product
+
+		_ham_func_ptr Hamiltonian;					//<! hamiltonian function pointer to hamiltonian-vector product
 		
 		arma::Mat<_ty> initial_bundle;			    //<! initial random vector
 		// arma::Mat<_ty> randVec_inKrylovSpace;	//<! random vector written in lanczos basis (used in FTLM)
@@ -31,21 +31,22 @@ namespace lanczos {
 		double tolerance  = 1e-14;					//<! tolerance determining preciaion of lanczos iteration with convergence
 		long _seed 		  = std::random_device{}(); //<! seed for random generator
 		int maxiter 	  = -1;						//<! maxiteration (by default = dimension of Hilbert space)
-		int lanczos_steps = 200;					//<! number of lanczos iterations (or number of required eigenstates)
-		int random_steps  = 1;						//<! number of random vectors in FTLM
-		int bundle_size   = 5;						//<! number of initial random vectors (number of columns in initial_bundle matrix)
-		int matrix_size;							//<! size of lanczos matrix
+		unsigned int lanczos_steps = 200;			//<! number of lanczos iterations (or number of required eigenstates)
+		unsigned int random_steps  = 1;				//<! number of random vectors in FTLM
+		unsigned int bundle_size   = 5;				//<! number of initial random vectors (number of columns in initial_bundle matrix)
+		unsigned int matrix_size;					//<! size of lanczos matrix
 
-		bool use_on_the_fly 		= false;		//<! diagonalizing on-the-fly (not Hamiltonian as matrix is known)
 		bool use_krylov				= true;			//<! boolean value whether useing krylov matrix or not
 		bool use_full_convergence 	= true;			//<! don't test convergence of states
 
 		//! ----------------------------------------------------- PRIVATE BUILDERS / INITIALISERS
 		void initialize();
-		void build_lanczos();
-		void build_krylov();
-		void build_lanczos_converged();
-		void build_krylov_converged();
+		void _build_lanczos();
+		void _build_krylov();
+		void _build_lanczos_converged();
+		void _build_krylov_converged();
+
+		double _calculate_convergence(arma::vec& Eprev, const arma::Mat<_ty>& beta);
 
 		void orthogonalize(arma::Col<_ty>& vec_to_ortho, int j);
 		void orthogonalize(arma::Mat<_ty>& mat_to_ortho, int j);
@@ -64,8 +65,8 @@ namespace lanczos {
 		BlockLanczos() = delete;
 
 		/// @brief Constructor of Lanczos class
-		/// @tparam _ty type of input Hamiltonian (enforces type on onput state)
-		/// @param hamiltonian Input Hamiltonian matrix as sparse matrix
+		/// @tparam _ty type of input Hamiltonian (enforces type on Krylov basis)
+		/// @param H Input Hamiltonian matrix as sparse matrix
 		/// @param M number of lanczos steps (or number of required eigenstates)
 		/// @param s number of initial states (bundle size)
 		/// @param max_iter maximal number of lanczos steps
@@ -74,22 +75,23 @@ namespace lanczos {
 		/// @param use_reortho (boolean) use reorthogonalization scheme and keep all Krylov states?
 		/// @param random_vec input random state
 		explicit BlockLanczos(
-			const arma::SpMat<_ty>& hamiltonian, 
+			const arma::SpMat<_ty>& H, 
 			int M, int s, int max_iter = -1, double tol = 1e-14,
 			int seed = std::random_device{}(), 
 			bool use_reortho = false, 
 			const arma::Mat<_ty>& initial_states = arma::Mat<_ty>()
 		) 
-			: H(hamiltonian), lanczos_steps(M), bundle_size(s), _seed(seed), maxiter(max_iter), tolerance(tol),
+			: lanczos_steps(M), bundle_size(s), _seed(seed), maxiter(max_iter), tolerance(tol),
 			use_krylov(use_reortho),
 			initial_bundle(initial_states)
 		{ 
-			this->use_on_the_fly = false; 
+			this->N = H.n_cols;
+			this->Hamiltonian = _ham_func_ptr( [&H](const arma::Mat<_ty>& matrix) -> arma::Mat<_ty> { return H * matrix; } );
 			initialize(); 
 		}
 
 		// /// @brief Constructor of Lanczos class
-		// /// @tparam _ty type of input Hamiltonian (enforces type on onput state)
+		// /// @tparam _ty type of input Hamiltonian (enforces type on Krylov basis)
 		// /// @param hamiltonian Input Hamiltonian matrix as sparse matrix
 		// /// @param M number of lanczos steps (or number of required eigenstates)
 		// /// @param s number of initial states (bundle size)
@@ -114,7 +116,7 @@ namespace lanczos {
 		// { initialize(); }
 
 		/// @brief Constructor of Lanczos class
-		/// @tparam _ty type of input Hamiltonian (enforces type on onput state)
+		/// @tparam _ty type of input Hamiltonian (enforces type on Krylov basis)
 		/// @param H_mult_state Function pointer for Hamiltonian-vector product
 		/// @param dimension dimension of Hilbert space for given hamiltonian (can't be established from the pointer)
 		/// @param M number of lanczos steps (or number of required eigenstates)
@@ -131,15 +133,11 @@ namespace lanczos {
 			bool use_reortho = false, 
 			const arma::Mat<_ty>& initial_states = arma::Mat<_ty>()
 		) 
-			: Hmultiply(H_mult_state), N(dimension), H(this->_dummy_H),
+			: Hamiltonian(H_mult_state), N(dimension),
 			lanczos_steps(M), bundle_size(s), _seed(seed), maxiter(max_iter), tolerance(tol),
 			use_krylov(use_reortho),
 			initial_bundle(initial_states)
-		{ 
-			_extra_debug( std::cout << "Chosen Hamiltonian-matrix product on the fly! BEWARE: Do not use this->H as it is a reference to a dummy object!"; )
-			this->use_on_the_fly = true;
-			initialize();
-		}
+		{ initialize(); }
 
 		BlockLanczos(const BlockLanczos& input_model) = default;
 		BlockLanczos(BlockLanczos&& input_model) noexcept = default;

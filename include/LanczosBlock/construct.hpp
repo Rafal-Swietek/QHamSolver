@@ -3,14 +3,12 @@
 namespace lanczos {
 
 	/// @brief Initialize the BlockLanczos instance with set class members
-	/// @tparam _ty type of input Hamiltonian (enforces type on onput state)
+	/// @tparam _ty type of input Hamiltonian (enforces type on Krylov basis) 
+	/// @tparam converge_type enum type for convergence criterion (energies or states)
 	template <typename _ty, converge converge_type>
 	inline void BlockLanczos<_ty, converge_type>::initialize() {
 		CONSTRUCTOR_CALL;
 		
-		if(!this->use_on_the_fly)
-			this->N = this->H.n_rows;
-			
 		this->generator = disorder<_ty>(this->_seed);
 
 		//<! CHECK ESSENTIAL CLASS ELEMENTS
@@ -20,9 +18,6 @@ namespace lanczos {
 			this->maxiter += this->lanczos_steps * this->bundle_size;
 		} else if(this->maxiter > this->N){
 			this->maxiter = this->N;
-				// this->bundle_size = getClosestFactor(this->bundle_size, this->N);
-				// this->maxiter = this->N / this->bundle_size;
-			// this->maxiter = this->lanczos_steps;
 		}
 
 		if(this->lanczos_steps * this->bundle_size > this->N){
@@ -61,8 +56,10 @@ namespace lanczos {
 			std::cout << "V1 After orthogonalization:\n" << this->initial_bundle.t() * this->initial_bundle << std::endl;
 		#endif
 
-		if(this->use_full_convergence)	this->matrix_size = this->bundle_size * this->maxiter;
-		else							this->matrix_size = this->bundle_size * this->lanczos_steps;
+		// if(this->use_full_convergence)	this->matrix_size = this->bundle_size * this->maxiter;
+		// else							this->matrix_size = this->bundle_size * this->lanczos_steps;
+
+		this->matrix_size = this->bundle_size * this->lanczos_steps;
 		
 		#ifdef EXTRA_DEBUG
 			std::cout

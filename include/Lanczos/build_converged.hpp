@@ -10,7 +10,7 @@ namespace lanczos
 	//<! orthogonalization and no krylov space in memory
 	template <typename _ty, converge converge_type>
 	inline
-	void Lanczos<_ty, converge_type>::build_lanczos_converged()
+	void Lanczos<_ty, converge_type>::_build_lanczos_converged()
 	{
 		this->randVec_inKrylovSpace = arma::Col<_ty>(
 			this->maxiter,
@@ -99,7 +99,7 @@ namespace lanczos
 	//<! with orthogonalization and krylov space
 	template <typename _ty, converge converge_type>
 	inline 
-	void Lanczos<_ty, converge_type>::build_krylov_converged()
+	void Lanczos<_ty, converge_type>::_build_krylov_converged()
 	{
 		this->krylov_space = arma::Mat<_ty>(
 			this->N,
