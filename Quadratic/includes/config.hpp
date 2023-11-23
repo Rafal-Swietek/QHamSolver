@@ -1,6 +1,7 @@
 #pragma once 
 
 // #define EXTRA_DEBUG
+#undef NODEBUG
 #define CONFIG 2
 
 #ifndef DIM

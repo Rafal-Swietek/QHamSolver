@@ -5,7 +5,6 @@
 
 #include "config.hpp"
 #include "../../include/user_interface_quadratic.hpp"
-#include "../../include/hilbert_space/u1.hpp"
 #include "Quadratic.hpp"
 
 // ----------------------------------------------------------------------------- UI QUANTUM SUN -----------------------------------------------------------------------------

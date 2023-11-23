@@ -13,11 +13,11 @@
 #include "../../include/lattice.hpp"
 /// @brief Model for EBT, Anderson model
 class Quadratic : 
-    public hamiltonian_base<double, full_hilbert_space>
+    public QHS::hamiltonian_base<double, QHS::full_hilbert_space>
 {
     //<! ----------------------------------------------------- INHERIT TYPEDEFs FROM BASE
-    typedef typename hamiltonian_base<double, full_hilbert_space>::matrix        matrix;
-    typedef typename hamiltonian_base<double, full_hilbert_space>::sparse_matrix sparse_matrix;
+    typedef typename QHS::hamiltonian_base<double, QHS::full_hilbert_space>::matrix        matrix;
+    typedef typename QHS::hamiltonian_base<double, QHS::full_hilbert_space>::sparse_matrix sparse_matrix;
 
     //<! ----------------------------------------------------- MODEL PARAMETERS
 private:
@@ -58,7 +58,7 @@ public:
     virtual void create_hamiltonian() override;
     
     // local hamiltonian has no reason to exist in single-particle models
-    virtual sparse_matrix create_local_hamiltonian(int site) override {};
+    virtual sparse_matrix create_local_hamiltonian(int site) override { return sparse_matrix(this->dim, this->dim); };
     
     virtual void set_hamiltonian_elements(u64 k, double value, u64 new_idx) override {};
 
