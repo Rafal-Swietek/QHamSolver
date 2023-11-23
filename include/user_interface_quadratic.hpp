@@ -1,13 +1,18 @@
 #pragma once
 
 #include "user_interface_dis.hpp"
-#include "single_particle/single_particle.hpp"
+#include "hilbert_space/u1.hpp"
+
+#include "single_particle/many_body_configurations.hpp"
+#include "single_particle/correlators.hpp"
+#include "single_particle/entanglement.hpp"
+#include "single_particle/many_body_state.hpp"
 
 /// @brief General UI class for disordered models (includes locally perturbed models)
 /// @tparam Hamiltonian template model (haamiltonian) type
 template <class Hamiltonian>
 class user_interface_quadratic : public user_interface_dis<Hamiltonian>{
-	static_check((std::is_base_of_v<_hamiltonian, Hamiltonian>), 
+	static_check((std::is_base_of_v<QHS::_hamiltonian, Hamiltonian>), 
                     "\n" BAD_INHERITANCE "\n\t base class is: hamiltonian_base<element_type, hilbert_space>");
 protected:
     int V;				// volume of system (L^d)

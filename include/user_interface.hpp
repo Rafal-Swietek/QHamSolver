@@ -39,7 +39,7 @@ change_input_to_vec_of_str(int argc, char** argv)
 /// @tparam Hamiltonian template model (haamiltonian) type
 template <class Hamiltonian>
 class user_interface {
-	static_check((std::is_base_of_v<_hamiltonian, Hamiltonian>), 
+	static_check((std::is_base_of_v<QHS::_hamiltonian, Hamiltonian>), 
                     "\n" BAD_INHERITANCE "\n\t base class is: hamiltonian_base<element_type, hilbert_space>");
 protected:
 	unsigned int thread_number = 1;									// number of threads
@@ -52,7 +52,7 @@ protected:
 	std::string getCmdOption(const v_1d<std::string>& vec, std::string option) const;					 	// get the option from cmd input
 
 	// ----------------------------------- TEMPLATES
-	typedef std::unique_ptr<QHamSolver<Hamiltonian>> model_pointer;
+	typedef std::unique_ptr<QHS::QHamSolver<Hamiltonian>> model_pointer;
     typedef typename Hamiltonian::element_type element_type;
 	
 	template <typename _ty>

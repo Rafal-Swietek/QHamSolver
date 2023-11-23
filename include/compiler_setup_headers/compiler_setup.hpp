@@ -14,21 +14,26 @@
 #endif
 
 
-//! --------------------------------------------------------- STATIC CONDITION CHECK\
-// convert to string literals
+//! --------------------------------------------------------- STATIC CONDITION CHECK
 #define TO_STRING_IMPL(x) #x
+// convert to string literals
 #define TO_STRING(x) TO_STRING_IMPL(x)
 
+/// convert file line to string output
 #define LINE_STR TO_STRING(__LINE__)
 
+/// compiler-time check with assertion and pretty printing
 #define static_check(condition, str_lit) static_assert(condition, __FILE__"(line=" LINE_STR "): " str_lit)
 
 //! --------------------------------- ERROR MESSAGES
+#define _INCOMPATIBLE_DIMENSION	"Incompatible dimensions. Different Hilbert space sizes"
+
 #define NOT_CONSTRUCTIBLE	"ERROR 1: input is not constructible and cannot be stored in std::vector"
 #define NOT_ALLOWED_INPUT	"ERROR 2: not allowed input to function"
 #define NOT_CONVERTIBLE		"ERROR 3: not convertible to generic type"
 #define BAD_INHERITANCE		"ERROR 4: given class is not inheriting from the appropriate base or links to class with 'final' keyword"
 #define INCOMPATIBLE_SIZE	"ERROR 5: size of input arrays does not match"
+#define INCOMPATIBLE_DIMENSION	"ERROR 6: " _INCOMPATIBLE_DIMENSION
 
 //! --------------------------------------------------------- EXTRA DEBUG SETUP
 #ifndef NODEBUG
@@ -39,6 +44,8 @@
 void _current_profiling_info();
 
 #if defined(EXTRA_DEBUG)
+	#undef NODEBUG
+	
 	#define DESTRUCTOR_CALL std::cout << FUN_SIGNATURE << "->\tdestructor called" << std::endl << std::endl;
 	#define CONSTRUCTOR_CALL std::cout << FUN_SIGNATURE << "->\tconstructor called" << std::endl << std::endl;
 	#define _debug_start(expr)	expr; (void)_profile_memory_(); (void)_profile_cpu_();
@@ -61,8 +68,8 @@ void _current_profiling_info();
 #endif
 
 //! --------------------------------------------------------- DEBUG SETUP
+#define stringize(x) #x
 #ifndef _assert_
-	#define stringize(x) #x
 	#include <iostream>
 	//<! DEFINE USER ASSERT
 	#ifndef NODEBUG

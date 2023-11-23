@@ -4,26 +4,6 @@ extern int num_of_threads;													// number of threads
 using namespace std;
 
 
-inline void handle_exception(std::exception_ptr eptr, const std::string& message) {
-	try {
-		if (eptr) {
-			std::rethrow_exception(eptr);
-		}
-	}
-	catch (const std::runtime_error& err){
-		_assert_(false, "Runtime error:\t" + std::string(err.what()) + ":\t" + message);
-	} catch (const std::bad_alloc& err){
-		_assert_(false, "Bad alloc error:\t" + std::string(err.what()) + ":\t" + message);
-	} catch (const std::exception& err) {
-		_assert_(false, "Exception:\t" + std::string(err.what()) + ":\t" + message);
-	} catch (...) {
-		_assert_(false, "Unknown error...! " + message);
-	}
-}
-#define BEGIN_CATCH_HANDLER try{
-#define END_CATCH_HANDLER(message) } catch(...){ handle_exception(std::current_exception(), message); };
-
-
 // ----------------------------------------------------------------------------- BINARY TOOLS -----------------------------------------------------------------------------
 
 /// <summary>

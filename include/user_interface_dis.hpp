@@ -6,7 +6,7 @@
 /// @tparam Hamiltonian template model (haamiltonian) type
 template <class Hamiltonian>
 class user_interface_dis : public user_interface<Hamiltonian>{
-	static_check((std::is_base_of_v<_hamiltonian, Hamiltonian>), 
+	static_check((std::is_base_of_v<QHS::_hamiltonian, Hamiltonian>), 
                     "\n" BAD_INHERITANCE "\n\t base class is: hamiltonian_base<element_type, hilbert_space>");
 protected:
     int realisations;									// number of realisations to average on for disordered case - symmetries got 1 

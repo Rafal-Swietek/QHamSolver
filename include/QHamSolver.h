@@ -36,11 +36,14 @@
 #include "metaprograming/structures.hpp"
 #include "miscaleneous/tools.hpp"
 
+
 //<! 
 #include "armadillo_wrapper.hpp"
 
 #include "I_O_streaming/stream_wrapper_base.hpp"
 #include "headers_to_split.h"
+
+#include "runtime_checks/error_handling.hpp"
 
 #include "gcem/include/gcem.hpp"        //<! constexpr library for math functinos
 
@@ -50,7 +53,7 @@
 #include "profiling/cpu.hpp"
 #include "profiling/profilers.hpp"
 
-
+//<! MAIN HEADERS
 #include "SpinOperators.hpp"
 #include "hilbert_space/_base.hpp"
 #include "operators/operator_base.h"
