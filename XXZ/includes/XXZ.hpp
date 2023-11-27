@@ -4,7 +4,7 @@
 #define _XXZ
 
 #include "../../include/hilbert_space/u1.hpp"
-using U1Hilbert = U1_hilbert_space<U1::spin>;
+using U1Hilbert = QHS::U1_hilbert_space<QHS::U1::spin>;
 
 /// @brief Base class for XXZ model 
 /// @tparam _ty element type of matrix
@@ -13,7 +13,7 @@ template <  typename _ty,
             class hilbert
             >
 class XXZbase : 
-    public hamiltonian_base<_ty, hilbert>
+    public QHS::hamiltonian_base<_ty, hilbert>
 {
 protected:
     double _hz = 0.0;                       // uniform longitudinal field
@@ -36,11 +36,11 @@ public:
 
 /// @brief Fully anisotropic spin chain (XXZ)
 class XXZ : 
-    public hamiltonian_base<double, U1Hilbert>
+    public QHS::hamiltonian_base<double, U1Hilbert>
 {
     //<! ----------------------------------------------------- INHERIT TYPEDEFs FROM BASE
-    typedef typename hamiltonian_base<double, U1Hilbert>::matrix        matrix;
-    typedef typename hamiltonian_base<double, U1Hilbert>::sparse_matrix sparse_matrix;
+    typedef typename QHS::hamiltonian_base<double, U1Hilbert>::matrix        matrix;
+    typedef typename QHS::hamiltonian_base<double, U1Hilbert>::sparse_matrix sparse_matrix;
 
     //<! ----------------------------------------------------- MODEL PARAMETERS
 private:

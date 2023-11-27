@@ -7,7 +7,7 @@
 
 #include "../../include/hilbert_space/symmetries.hpp"
 #include "../../include/hilbert_space/u1.hpp"
-using U1Hilbert = U1_hilbert_space<U1::spin>;
+using U1Hilbert = QHS::U1_hilbert_space<QHS::U1::spin>;
 
 // #include "../../include/supersymmetry.hpp"
 #ifdef USE_REAL_SECTORS
@@ -18,11 +18,11 @@ using U1Hilbert = U1_hilbert_space<U1::spin>;
 
 /// @brief Fully anisotropic spin chain (XXZ) with point symmetries
 class XXZsym : 
-    public hamiltonian_base<elem_ty, point_symmetric>
+    public QHS::hamiltonian_base<elem_ty, QHS::point_symmetric>
 {
     //<! ----------------------------------------------------- INHERIT TYPEDEFs FROM BASE
-    typedef typename hamiltonian_base<elem_ty, point_symmetric>::matrix        matrix;
-    typedef typename hamiltonian_base<elem_ty, point_symmetric>::sparse_matrix sparse_matrix;
+    typedef typename QHS::hamiltonian_base<elem_ty, QHS::point_symmetric>::matrix        matrix;
+    typedef typename QHS::hamiltonian_base<elem_ty, QHS::point_symmetric>::sparse_matrix sparse_matrix;
 
     //<! ----------------------------------------------------- MODEL PARAMETERS
 private:
