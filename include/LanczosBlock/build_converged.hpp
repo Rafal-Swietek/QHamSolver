@@ -47,7 +47,7 @@ namespace lanczos
 	inline
 	void BlockLanczos<_ty, converge_type>::_build_lanczos_converged()
 	{
-		try_alloc_matrix(this->H_lanczos, this->matrix_size, this->matrix_size);
+		try_alloc_matrix(this->H_lanczos, this->bundle_size, this->bundle_size);
 
 		arma::Mat<_ty> beta(this->bundle_size, this->bundle_size, arma::fill::zeros);
 		//if (this->mymemory_over_performance)
@@ -83,7 +83,7 @@ namespace lanczos
 			if(j < this->maxiter - 1)
 			{
 				//<! Resize matrices
-				this->H_lanczos.resize((j+2) * this->bundle_size, (j+2) * this->bundle_size);
+				try_realloc_matrix(this->H_lanczos, (j+2) * this->bundle_size, (j+2) * this->bundle_size)
 
 				arma::qr_econ(Vk, beta, W);
 
@@ -91,8 +91,6 @@ namespace lanczos
 				this->H_lanczos.submat((j+1) * this->bundle_size, j * this->bundle_size, (j+2) * this->bundle_size - 1, (j+1) * this->bundle_size - 1) = beta;
 			}
 		}
-		// this->matrix_size = this->lanczos_steps * this->bundle_size;
-		// this->H_lanczos = this->H_lanczos.submat(0, 0, this->lanczos_steps - 1, this->lanczos_steps - 1);
 	}
 
 	/// @brief Routine to build lanczos tri-block-diagonal matrix with re-orthogonalization and krylov space until converged this->l_steps of states
@@ -102,8 +100,8 @@ namespace lanczos
 	inline 
 	void BlockLanczos<_ty, converge_type>::_build_krylov_converged()
 	{
-		try_alloc_matrix(this->krylov_space, this->N, this->matrix_size);
-		try_alloc_matrix(this->H_lanczos, this->matrix_size, this->matrix_size);
+		try_alloc_matrix(this->krylov_space, this->N, this->bundle_size);
+		try_alloc_matrix(this->H_lanczos, this->bundle_size, this->bundle_size);
 		
 		this->krylov_space.cols(0, this->bundle_size-1) = this->initial_bundle;
 		arma::vec E0(this->lanczos_steps, arma::fill::zeros);
@@ -127,7 +125,7 @@ namespace lanczos
 			{
 				double conv = this->_calculate_convergence(E0, beta);
 				_extra_debug( printSeparated(std::cout, "\t", 15, false, this->N, j, conv); )
-				printSeparated(std::cout, "\t", 15, true, this->N, j, conv, arma::norm(beta));
+				// printSeparated(std::cout, "\t", 15, true, this->N, j, conv, arma::norm(beta));
 				if(conv < this->tolerance){
 					// printSeparated(std::cout, "\t", 15, false, this->N, j, conv, conv2);
 					this->lanczos_steps = j;
@@ -142,8 +140,8 @@ namespace lanczos
 				this->orthogonalize(W, j);
 
 				//<! Resize matrices
-				this->H_lanczos.resize(		(j+2) * this->bundle_size, (j+2) * this->bundle_size);
-				this->krylov_space.resize(	this->N, 				   (j+2) * this->bundle_size);
+				try_realloc_matrix(this->H_lanczos,    (j+2) * this->bundle_size, (j+2) * this->bundle_size)
+				try_realloc_matrix(this->krylov_space, this->N, 				  (j+2) * this->bundle_size)
 				
 				arma::qr_econ(Vk, beta, W);
 				
@@ -154,10 +152,6 @@ namespace lanczos
 			}
 
 		}
-		// this->matrix_size = this->lanczos_steps * this->bundle_size;
-
-		// this->H_lanczos = this->H_lanczos.submat(0, 0, this->matrix_size - 1, this->matrix_size - 1);
-		// this->krylov_space = this->krylov_space.cols(0, this->matrix_size - 1);
 	}
 }
 

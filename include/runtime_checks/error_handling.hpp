@@ -67,8 +67,7 @@ void try_allocation(arma::Mat<_ty>& matrix, const std::string& name, u64 n_rows,
 /// @tparam _ty template type for matrix elements
 /// @param matrix reference to matrix
 /// @param name name of referenced to matrix
-/// @param n_rows number of rows to allocate
-/// @param n_cols number of columns to allocate
+/// @param size number of elements to allocate
 template <typename _ty>
 inline
 void try_allocation(arma::Col<_ty>& vector, const std::string& name, u64 size)
@@ -91,3 +90,49 @@ void try_allocation(arma::Col<_ty>& vector, const std::string& name, u64 size)
 /// Macro to allocate matrix with known variable name (make general to include otehr fill-types)
 #define try_alloc_matrix(matrix, n_rows, n_cols)	try_allocation(matrix, std::string(stringize(matrix)), n_rows, n_cols);
 #define try_alloc_vector(vector, size)				try_allocation(vector, std::string(stringize(vector)), size);
+
+//<! --------------------------------------------------------------- RESIZING
+
+/// @brief Handler for re-allocating matrix (catches out_of_memory issues)
+/// @tparam _ty template type for matrix elements
+/// @param matrix reference to matrix
+/// @param name name of referenced to matrix
+/// @param n_rows number of rows to allocate
+/// @param n_cols number of columns to allocate
+template <typename _ty>
+inline
+void try_reallocate(arma::Mat<_ty>& matrix, const std::string& name, u64 n_rows, u64 n_cols)
+{
+	try{
+		matrix.resize(n_rows, n_cols);
+	} catch (...) {
+		handle_exception(std::current_exception(),
+			"\nobject = " + name
+            + "\nmemory size = " + matrix_size(n_cols * n_rows * sizeof(matrix(0, 0)))
+        );
+	}
+}
+
+/// @brief Handler for re-allocating vector (catches out_of_memory issues)
+/// @tparam _ty template type for matrix elements
+/// @param matrix reference to matrix
+/// @param name name of referenced to matrix
+/// @param size number of elements to allocate
+template <typename _ty>
+inline
+void try_reallocate(arma::Col<_ty>& vector, const std::string& name, u64 size)
+{
+	try{
+		vector.resize(size);
+		_extra_debug( std::cout << "\nobject = " << name 
+						<< std::endl << "memory size = " + matrix_size(size * sizeof(vector(0))); )
+	} catch (...) {
+		handle_exception(std::current_exception(),
+			"\nobject = " + name
+            + "\nmemory size = " + matrix_size(size * sizeof(vector(0)))
+        );
+	}
+}
+
+#define try_realloc_matrix(matrix, n_rows, n_cols)	try_reallocate(matrix, std::string(stringize(matrix)), n_rows, n_cols);
+#define try_realloc_vector(vector, size)			try_reallocate(vector, std::string(stringize(vector)), size);

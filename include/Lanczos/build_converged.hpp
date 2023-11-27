@@ -16,11 +16,7 @@ namespace lanczos
 			this->maxiter,
 			arma::fill::zeros
 			);
-		this->H_lanczos = arma::Mat<_ty>(
-			this->maxiter,
-			this->maxiter,
-			arma::fill::zeros
-			);
+		this->H_lanczos = arma::Mat<_ty>(1, 1, arma::fill::zeros);
 
 		//<! set intial steps
 		const u64 N = H.n_cols; //<! dimension of Hilbert space
@@ -57,9 +53,13 @@ namespace lanczos
 			alfa = arma::cdot(fi, fi_next);
 			fi_next = fi_next - alfa * fi - beta * fi_prev;
 
+			//<! Resize matrices
+			try_realloc_matrix(this->H_lanczos, j+1, j+1);
+
 			H_lanczos(j, j) = alfa;
 			H_lanczos(j, j - 1) = beta;
 			H_lanczos(j - 1, j) = my_conjungate(beta);
+
 
 			fi_prev = fi;
 			
@@ -88,10 +88,8 @@ namespace lanczos
 				}
 			}
 		}
-		if(this->lanczos_steps == M)
-			this->lanczos_steps = this->maxiter;
 
-		this->H_lanczos = this->H_lanczos.submat(0, 0, this->lanczos_steps - 1, this->lanczos_steps - 1);
+		// this->H_lanczos = this->H_lanczos.submat(0, 0, this->lanczos_steps - 1, this->lanczos_steps - 1);
 		this->randVec_inKrylovSpace = arma::normalise(this->randVec_inKrylovSpace.rows(0, this->lanczos_steps - 1));
 	}
 
@@ -101,16 +99,8 @@ namespace lanczos
 	inline 
 	void Lanczos<_ty, converge_type>::_build_krylov_converged()
 	{
-		this->krylov_space = arma::Mat<_ty>(
-			this->N,
-			this->maxiter,
-			arma::fill::zeros
-			);
-		this->H_lanczos = arma::Mat<_ty>(
-			this->maxiter,
-			this->maxiter,
-			arma::fill::zeros
-			);
+		this->krylov_space = arma::Mat<_ty>(this->N, 1, arma::fill::zeros);
+		this->H_lanczos = arma::Mat<_ty>(1, 1, arma::fill::zeros);
 
 		this->krylov_space.col(0) = this->initial_random_vec;
 		arma::Col<_ty> fi_next = this->H * krylov_space.col(0);
@@ -125,6 +115,9 @@ namespace lanczos
 		
 		_ty beta = arma::norm(fi_next);
 		for (int j = 1; j < this->maxiter; j++) {
+			//<! Resize matrices
+			try_realloc_matrix(this->H_lanczos,    j+1, 	j+1);
+			try_realloc_matrix(this->krylov_space, this->N, j+1);
 
 			this->krylov_space.col(j) = fi_next / beta;
 
@@ -132,6 +125,7 @@ namespace lanczos
 
 			alfa = arma::cdot(this->krylov_space.col(j), fi_next);
 			this->orthogonalize(fi_next, j);
+
 
 			this->H_lanczos(j, j) = alfa;
 			this->H_lanczos(j, j - 1) = beta;
@@ -162,11 +156,9 @@ namespace lanczos
 				}
 			}
 		}
-		if(this->lanczos_steps == M)
-			this->lanczos_steps = this->maxiter;
 
-		this->H_lanczos = this->H_lanczos.submat(0, 0, this->lanczos_steps - 1, this->lanczos_steps - 1);
-		this->krylov_space = this->krylov_space.cols(0, this->lanczos_steps - 1);
+		// this->H_lanczos = this->H_lanczos.submat(0, 0, this->lanczos_steps - 1, this->lanczos_steps - 1);
+		// this->krylov_space = this->krylov_space.cols(0, this->lanczos_steps - 1);
 
 		this->randVec_inKrylovSpace = this->krylov_space.t() * this->initial_random_vec;
 	}
