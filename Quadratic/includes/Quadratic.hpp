@@ -2,15 +2,15 @@
 #ifndef _ANDERSON
 #define _ANDERSON
 
+#include "../../include/lattices/_base.hpp"
 #if DIM == 1
-    #define lattice_type lattice1D
+    #define lattice_type lattice::lattice1D
 #elif DIM == 2
-    #define lattice_type lattice2D
+    #define lattice_type lattice::lattice2D
 #else
-    #define lattice_type lattice3D
+    #define lattice_type lattice::lattice3D
 #endif
 
-#include "../../include/lattice.hpp"
 /// @brief Model for EBT, Anderson model
 class Quadratic : 
     public QHS::hamiltonian_base<double, QHS::full_hilbert_space>
@@ -21,7 +21,7 @@ class Quadratic :
 
     //<! ----------------------------------------------------- MODEL PARAMETERS
 private:
-    lattice_type lattice;                   // lattice of system (cubic by default)
+    lattice_type _lattice;                  // lattice of system (cubic by default)
     disorder<double> disorder_generator;    // generator for random disorder and couplings
     GOE random_matrix;                      // generator of random matrices (GOE,GUE,...)
     //<! Add GUE case as well, change type of matrix
@@ -38,8 +38,8 @@ private:
     virtual void init() override
     {   
         // initialize lattice
-        this->lattice = lattice_type(this->system_size);
-        this->dim = lattice.volume;
+        this->_lattice = lattice_type(this->system_size);
+        this->dim = this->_lattice.volume;
 
         // initialize disorder
         this->disorder_generator = disorder<double>(this->_seed);
@@ -51,7 +51,7 @@ private:
 public:
     //<! ----------------------------------------------------- CONSTRUCTORS
     Quadratic() = default;
-    Quadratic(std::istream& os);
+    // Quadratic(std::istream& os);
     Quadratic(int L, double J, double w = 0, const u64 seed = std::random_device{}(), double g = 0.0);
 
     //<! ----------------------------------------------------- HAMILTONIAN BUILDERS
@@ -67,7 +67,7 @@ public:
     virtual std::istream& read(std::istream&) override;
 
     //<! ----------------------------------------------------- OTHERS
-    auto& get_lattice() const { return this->lattice; }
+    auto& get_lattice() const { return this->_lattice; }
     auto& get_randGen() const { return this->disorder_generator; }
 
 };

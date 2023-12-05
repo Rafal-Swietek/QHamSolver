@@ -25,6 +25,8 @@ namespace QHS{
                 _ty determinant(const arma::uvec& set_l, const arma::uvec& set_q);
             public:
 
+                static inline arma::uvec set_indices(const boost::dynamic_bitset<>& gaussian_state, int N);
+
                 //------------------------------------------------------------------------------------------------ CONSTRUCTOS
                 ~ManyBodyState() { DESTRUCTOR_CALL; };
                 ManyBodyState() = delete;

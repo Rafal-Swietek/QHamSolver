@@ -1,5 +1,5 @@
 #pragma once
-#include "hilbert_space/u1.hpp"
+
 /// @brief Calculate entanglement entropy in all eigenstates and all subsystem sizes using schmidt decomposition
 /// @tparam Hamiltonian template parameter for current used model
 template <class Hamiltonian>
@@ -394,6 +394,198 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
 	entropies.save(arma::hdf5_name(dir + filename + ".hdf5", "entropy"));
 	single_site_entropy.save(arma::hdf5_name(dir + filename + ".hdf5", "single_site_entropy", arma::hdf5_opts::append));
     std::cout << " - - - - - - FINISHED ENTROPY CALCUVATION IN : " << tim_s(start) << " seconds - - - - - - " << std::endl; // simuVAtion end
+}
+
+/// @brief Calculate entanglement entropy in all eigenstates and all subsystem sizes using schmidt decomposition
+/// @tparam Hamiltonian template parameter for current used model
+template <class Hamiltonian>
+void user_interface_quadratic<Hamiltonian>::diagonal_matrix_elements()
+{
+    clk::time_point start = std::chrono::system_clock::now();
+	
+	#if DIM == 1
+		auto lattice = lattice::lattice1D(this->L);
+	#elif DIM == 2
+		auto lattice = lattice::lattice2D(this->L);
+	#else
+		auto lattice = lattice::lattice3D(this->L);
+	#endif
+	
+	start = std::chrono::system_clock::now();
+
+	arma::ivec neighbours(this->V, arma::fill::value(-1));
+	arma::ivec next_neighbours(this->V, arma::fill::value(-1));
+	for(int ell = 0; ell < this->V; ell++){
+		auto nei = lattice.get_nearest_neighbour(ell);
+		neighbours(ell) = nei;
+
+		nei = lattice.get_next_nearest_neighbour(ell);
+		next_neighbours(ell) = nei;
+	}
+	std::cout << " - - - - - - set lattice and neighbours in : " << tim_s(start) << " s - - - - - - " << std::endl;
+
+	std::string dir = this->saving_dir + "DiagonalMatrixElements" + kPSep + "ManyBody" + kPSep;
+	#ifdef FREE_FERMIONS
+		if(this->op == 0) 		dir += "E=0,Q=0" + kPSep;
+		else if(this->op == 2)	dir += "AllStates" + kPSep;
+		else 					dir += "RandomChoice" + kPSep;
+	#else
+		if(this->op == 2)	dir += "AllStates" + kPSep;
+		else 				dir += "RandomChoice" + kPSep;
+	#endif
+	
+	createDirs(dir);
+	
+	std::string info = this->set_info();
+	std::string filename = info;
+	
+	disorder<double> random_generator(this->seed);
+	double filling = 0.5;
+	const int N = int(this->V * filling);
+
+
+	//<! START REALISATION
+	for(int realis = 0; realis < this->realisations; realis++)
+	{
+		if(realis > 0)
+			this->ptr_to_model->generate_hamiltonian();
+
+		start = std::chrono::system_clock::now();
+    #ifdef ARMA_USE_SUPERLU
+        if(this->ch){
+            this->ptr_to_model->hamiltonian();
+            this->ptr_to_model->diag_sparse(true);
+        } else
+            this->ptr_to_model->diagonalization();
+    
+    #else
+        this->ptr_to_model->diagonalization();
+    #endif
+
+		std::cout << " - - - - - - finished diagonalization in : " << tim_s(start) << " s for realis = " << realis << " - - - - - - " << std::endl; // simuVAtion end
+		start = std::chrono::system_clock::now();
+
+		arma::vec single_particle_energy = this->ptr_to_model->get_eigenvalues();
+		
+		arma::Mat<element_type> orbitals;
+		
+		u64 num_states = this->num_of_points;//ULLPOW(14);
+		std::vector<boost::dynamic_bitset<>> mb_states;
+		#ifdef FREE_FERMIONS
+			if(this->op == 1)		mb_states = QHS::single_particle::mb_config(num_states, this->V, random_generator, N);
+			else if(this->op == 2) 	mb_states = QHS::single_particle::mb_config_all(this->V, N);
+			else					mb_states = QHS::single_particle::mb_config_free_fermion(this->V, N);
+
+			for(int k = 0; k < this->V; k++){
+				single_particle_energy(k) = 2.0 * std::cos(two_pi * double(k) / double(this->V));
+				for(int ell = 0; ell < this->V; ell++)
+					orbitals(ell, k) = std::cos(two_pi * double(k) / double(this->V) * double(ell)) / std::sqrt(this->V);
+					// orbitals(ell, k) = std::exp(-1.0i * two_pi * double(k) / double(this->V) * double(ell)) / std::sqrt(this->V);
+			}
+		#else
+			orbitals = this->ptr_to_model->get_eigenvectors();
+			if(this->op == 2) 	mb_states = QHS::single_particle::mb_config_all(this->V, N);
+			else			 	mb_states = QHS::single_particle::mb_config(num_states, this->V, random_generator, N);
+		#endif
+		
+		std::cout << " - - - - - - finished many-body configurations in : " << tim_s(start) << " s for realis = " << realis << " - - - - - - " << std::endl; // simuVAtion end
+
+		//<! 1-BODY OBSERVABLES
+		arma::Col<element_type> m0(mb_states.size(), arma::fill::zeros);
+
+		arma::Col<element_type> T_nn(mb_states.size(), arma::fill::zeros);
+		arma::Col<element_type> T_nnn(mb_states.size(), arma::fill::zeros);
+		arma::Col<element_type> T_nn_loc(mb_states.size(), arma::fill::zeros);
+		arma::Col<element_type> T_nnn_loc(mb_states.size(), arma::fill::zeros);
+
+		//<! 2-BODY OBSERVABLES
+		arma::Col<element_type> U_nn(mb_states.size(), arma::fill::zeros);
+		arma::Col<element_type> U_nnn(mb_states.size(), arma::fill::zeros);
+		arma::Col<element_type> U_nn_loc(mb_states.size(), arma::fill::zeros);
+		arma::Col<element_type> U_nnn_loc(mb_states.size(), arma::fill::zeros);
+	
+	#pragma omp parallel for
+		for(int idx = 0; idx < mb_states.size(); idx++)
+		{
+			auto state = mb_states[idx];	// get many-body-state
+			auto set_q 	 = QHS::single_particle::slater::ManyBodyState<element_type>::set_indices(state, N);
+			auto unset_q = QHS::single_particle::slater::ManyBodyState<element_type>::set_indices(~state, N);
+			
+			// printSeparated(std::cout, "\t", 20, true, idx, state, ~state);
+			//<! ----
+			for(u64 k2 : unset_q)
+			{
+				//<! 1-BODY OBSERVABLES
+				for(u64 k1 : set_q){
+					for(u64 ell = 0; ell < this->V; ell++){
+						//<! m0
+						for(u64 ell2 = 0; ell2 < this->V; ell2++)
+							m0(idx) += std::real( std::conj( orbitals(ell, k2) ) * orbitals(ell2, k1) );
+
+						//<! 1-BODY OBSERVABLES
+						u64 nei = neighbours(ell);
+						double value = std::real( std::conj( orbitals(ell, k2) ) * orbitals(nei, k1) + std::conj( orbitals(nei, k1) ) * orbitals(ell, k2) );
+						if(nei >= 0){
+							T_nn(idx) += value;
+							if(ell == 0){
+								T_nn_loc(idx) += value;
+							}
+						}
+						nei = next_neighbours(ell);
+						if(nei >= 0){
+							T_nnn(idx) += value;
+							if(ell == 0){
+								T_nnn_loc(idx) += value;
+							}
+						}
+				
+						//<! 2-BODY OBSERVABLES
+						for(u64 q2 : unset_q){
+							for(u64 q1 : set_q){
+								nei = neighbours(ell);
+								value = std::real( std::conj( orbitals(ell, k2) * orbitals(nei, q2) ) * orbitals(ell, k1) * orbitals(nei, q1) );
+								if(nei >= 0){
+									U_nn(idx) += value;
+									if(ell == 0) U_nn_loc(idx) += value;
+								}
+								nei = next_neighbours(ell);
+								if(nei >= 0){
+									U_nnn(idx) += value;
+									if(ell == 0) U_nnn_loc(idx) += value;
+								}
+							}
+						}
+					}
+					//<! ----
+				}				
+			}
+		}
+		m0 /= double(this->V);
+		T_nn /= std::sqrt(this->V);
+		T_nnn /= std::sqrt(this->V);
+		U_nn /= std::sqrt(this->V);
+		U_nnn /= std::sqrt(this->V);
+
+
+		std::string dir_realis = dir + "realisation=" + std::to_string(this->jobid + realis) + kPSep;
+		createDirs(dir_realis);
+		single_particle_energy.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "single particle energy"));
+		m0.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "m0", arma::hdf5_opts::append));
+
+		T_nn.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "T_nn", arma::hdf5_opts::append));
+		T_nnn.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "T_nnn", arma::hdf5_opts::append));
+		T_nn_loc.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "T_nn_loc", arma::hdf5_opts::append));
+		T_nnn_loc.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "T_nnn_loc", arma::hdf5_opts::append));
+
+		U_nn.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "U_nn", arma::hdf5_opts::append));
+		U_nnn.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "U_nnn", arma::hdf5_opts::append));
+		U_nn_loc.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "U_nn_loc", arma::hdf5_opts::append));
+		U_nnn_loc.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "U_nnn_loc", arma::hdf5_opts::append));
+
+		std::cout << " - - - - - - finished realisation realis = " << realis << " in : " << tim_s(start) << " s - - - - - - " << std::endl; // simuVAtion end
+	}
+    
+    std::cout << " - - - - - - FINISHED DIAGONAL MATRIX ELEMENTS CALCUVATION IN : " << tim_s(start) << " seconds - - - - - - " << std::endl; // simuVAtion end
 }
 
 

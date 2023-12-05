@@ -21,11 +21,11 @@ namespace QHS{
             /// @param gaussian_state Input gaussian state (bitset) as quasiparticle product state
             template <typename _ty>
             inline
-            arma::uvec ManyBodyState<_ty>::_set_indices(const boost::dynamic_bitset<>& gaussian_state)
+            arma::uvec ManyBodyState<_ty>::set_indices(const boost::dynamic_bitset<>& gaussian_state, int N)
             {
-                arma::uvec set_idx(this->num_particles, arma::fill::zeros);
+                arma::uvec set_idx(N, arma::fill::zeros);
                 int count = 0;
-                for(int id = 0; id < this->volume; id++){
+                for(int id = 0; id < gaussian_state.size(); id++){
                     if( (bool)gaussian_state[id] ){
                         set_idx(count) = id;
                         count++;
@@ -33,6 +33,16 @@ namespace QHS{
                 }
                 
                 return set_idx;
+            }
+
+            /// @brief Initialize the ManyBodyState class to convert from gaussian to many-body states
+            /// @tparam _ty type of input orbitals
+            /// @param gaussian_state Input gaussian state (bitset) as quasiparticle product state
+            template <typename _ty>
+            inline
+            arma::uvec ManyBodyState<_ty>::_set_indices(const boost::dynamic_bitset<>& gaussian_state)
+            {
+                return set_indices(gaussian_state, this->num_particles);
             }
 
             /// @brief Initialize the ManyBodyState class to convert from gaussian to many-body states

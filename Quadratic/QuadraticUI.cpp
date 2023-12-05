@@ -26,6 +26,9 @@ void ui::make_sim(){
 	case 3:
 		eigenstate_entanglement_degenerate();
 		break;
+	case 4:
+		diagonal_matrix_elements();
+		break;
 	default:
 		#define generate_scaling_array(name) arma::linspace(this->name, this->name + this->name##s * (this->name##n - 1), this->name##n);
 		auto L_list = generate_scaling_array(L);

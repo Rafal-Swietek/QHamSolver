@@ -3,6 +3,8 @@
 #include "user_interface_dis.hpp"
 #include "hilbert_space/u1.hpp"
 
+#include "lattices/_base.hpp"
+
 #include "single_particle/many_body_configurations.hpp"
 #include "single_particle/correlators.hpp"
 #include "single_particle/entanglement.hpp"
@@ -53,7 +55,7 @@ public:
 	virtual void eigenstate_entanglement() 	override;
     virtual void eigenstate_entanglement_degenerate() override;
 	// virtual void analyze_spectra() 			override;
-	// virtual void diagonal_matrix_elements() override;
+	virtual void diagonal_matrix_elements() override;
 };
 
 // include definitions 

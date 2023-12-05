@@ -31,10 +31,10 @@ Quadratic::Quadratic(int L, double J, double w, const u64 seed, double g)
     init(); 
 }
 
-/// @brief Constructor from input stream
-/// @param os input stream
-Quadratic::Quadratic(std::istream& os)
-    { os >> *this; }
+// /// @brief Constructor from input stream
+// /// @param os input stream
+// Quadratic::Quadratic(std::istream& os)
+//     { os >> *this; }
 
 //<! ------------------------------------------------------------------------------ HAMILTONIAN BUILDERS
 
@@ -49,7 +49,7 @@ void Quadratic::create_hamiltonian()
         for(long int j = 0; j < this->dim; j++){
         
             this->H(j, j) = this->_disorder(j);
-            auto neis = lattice.get_neighbours(j);
+            auto neis = this->_lattice.get_neighbours(j);
         
             for(auto& nei : neis){
                 if(nei > 0){
@@ -66,7 +66,7 @@ void Quadratic::create_hamiltonian()
         for(long int j = 0; j < this->dim; j++){
             this->H(j, j) = this->_w * std::cos(two_pi * j * this->_g + phase);
 
-            auto neis = lattice.get_neighbours(j);
+            auto neis = this->_lattice.get_neighbours(j);
             for(auto& nei : neis){
                 if(nei > 0){
                     this->H(j, nei) = -this->_J;
@@ -76,7 +76,7 @@ void Quadratic::create_hamiltonian()
         }
     #elif defined(FREE_FERMIONS)
         for(long int j = 0; j < this->dim; j++){
-            auto neis = lattice.get_neighbours(j);
+            auto neis = this->_lattice.get_neighbours(j);
             for(auto& nei : neis){
                 if(nei > 0){
                     this->H(j, nei) = this->_J;
