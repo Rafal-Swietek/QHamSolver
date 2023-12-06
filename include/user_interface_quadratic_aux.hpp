@@ -509,56 +509,44 @@ void user_interface_quadratic<Hamiltonian>::diagonal_matrix_elements()
 		{
 			auto state = mb_states[idx];	// get many-body-state
 			auto set_q 	 = QHS::single_particle::slater::ManyBodyState<element_type>::set_indices(state, N);
-			auto unset_q = QHS::single_particle::slater::ManyBodyState<element_type>::set_indices(~state, N);
 			
 			// printSeparated(std::cout, "\t", 20, true, idx, state, ~state);
 			//<! ----
-			for(u64 k2 : unset_q)
+			for(u64 ell = 0; ell < this->V; ell++)
 			{
-				//<! 1-BODY OBSERVABLES
-				for(u64 k1 : set_q){
-					for(u64 ell = 0; ell < this->V; ell++){
-						//<! m0
-						for(u64 ell2 = 0; ell2 < this->V; ell2++)
-							m0(idx) += std::real( std::conj( orbitals(ell, k2) ) * orbitals(ell2, k1) );
+				u64 nei 		= neighbours(ell);
+				u64 next_nei 	= next_neighbours(ell);
+				element_type Al = 0., Al_1 = 0., Al_2 = 0., 
+							 Bl_1 = 0., Bl_2 = 0.,
+							 Cl_1 = 0., Cl_2 = 0.;
+				for(u64 q : set_q){
+					Al +=   my_conjungate( orbitals(ell,      q) ) * orbitals(ell, 		q);
+					Al_1 += my_conjungate( orbitals(nei,      q) ) * orbitals(nei, 		q);
+					Al_2 += my_conjungate( orbitals(next_nei, q) ) * orbitals(next_nei, q);
 
-						//<! 1-BODY OBSERVABLES
-						u64 nei = neighbours(ell);
-						double value = std::real( std::conj( orbitals(ell, k2) ) * orbitals(nei, k1) + std::conj( orbitals(nei, k1) ) * orbitals(ell, k2) );
-						if(nei >= 0){
-							T_nn(idx) += value;
-							if(ell == 0){
-								T_nn_loc(idx) += value;
-							}
-						}
-						nei = next_neighbours(ell);
-						if(nei >= 0){
-							T_nnn(idx) += value;
-							if(ell == 0){
-								T_nnn_loc(idx) += value;
-							}
-						}
-				
-						//<! 2-BODY OBSERVABLES
-						for(u64 q2 : unset_q){
-							for(u64 q1 : set_q){
-								nei = neighbours(ell);
-								value = std::real( std::conj( orbitals(ell, k2) * orbitals(nei, q2) ) * orbitals(ell, k1) * orbitals(nei, q1) );
-								if(nei >= 0){
-									U_nn(idx) += value;
-									if(ell == 0) U_nn_loc(idx) += value;
-								}
-								nei = next_neighbours(ell);
-								if(nei >= 0){
-									U_nnn(idx) += value;
-									if(ell == 0) U_nnn_loc(idx) += value;
-								}
-							}
-						}
-					}
-					//<! ----
-				}				
+					Bl_1 += my_conjungate( orbitals(ell, q) ) * orbitals(nei, 	   q);
+					Bl_2 += my_conjungate( orbitals(ell, q) ) * orbitals(next_nei, q);
+
+					Cl_1 += my_conjungate( orbitals(ell, q) * orbitals(nei, 	 q) ) * orbitals(ell, q) * orbitals(nei, 	  q);
+					Cl_2 += my_conjungate( orbitals(ell, q) * orbitals(next_nei, q) ) * orbitals(ell, q) * orbitals(next_nei, q);
+					
+					for(u64 ell2 = 0; ell2 < this->V; ell2++)
+						m0(idx) += my_conjungate( orbitals(ell, q) ) * orbitals(ell2, q);
+				}
+				T_nn(idx)  += Bl_1 + my_conjungate(Bl_1);
+				T_nnn(idx) += Bl_2 + my_conjungate(Bl_2);
+				U_nn(idx)  += Al * Al_1 + Bl_1 * my_conjungate(Bl_1) + Cl_1;
+				U_nnn(idx) += Al * Al_2 + Bl_2 * my_conjungate(Bl_2) + Cl_2;
+
+				if(ell == 0){
+					T_nn_loc(idx)  += Bl_1 + my_conjungate(Bl_1);
+					T_nnn_loc(idx) += Bl_2 + my_conjungate(Bl_2);
+					U_nn_loc(idx)  += Al * Al_1 + Bl_1 * my_conjungate(Bl_1) + Cl_1;
+					U_nnn_loc(idx) += Al * Al_2 + Bl_2 * my_conjungate(Bl_2) + Cl_2;
+				}
 			}
+			//<! ----
+				
 		}
 		m0 /= double(this->V);
 		T_nn /= std::sqrt(this->V);
