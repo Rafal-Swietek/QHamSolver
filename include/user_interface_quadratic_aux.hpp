@@ -490,6 +490,8 @@ void user_interface_quadratic<Hamiltonian>::diagonal_matrix_elements()
 		
 		std::cout << " - - - - - - finished many-body configurations in : " << tim_s(start) << " s for realis = " << realis << " - - - - - - " << std::endl; // simuVAtion end
 
+		arma::vec energy(mb_states.size(), arma::fill::zeros);
+
 		//<! 1-BODY OBSERVABLES
 		arma::Col<element_type> m0(mb_states.size(), arma::fill::zeros);
 
@@ -510,6 +512,10 @@ void user_interface_quadratic<Hamiltonian>::diagonal_matrix_elements()
 			auto state = mb_states[idx];	// get many-body-state
 			auto set_q 	 = QHS::single_particle::slater::ManyBodyState<element_type>::set_indices(state, N);
 			
+			energy(idx) = 0.;
+			for(u64 q : set_q)
+				energy(idx) += single_particle_energy(q);
+
 			// printSeparated(std::cout, "\t", 20, true, idx, state, ~state);
 			//<! ----
 			for(u64 ell = 0; ell < this->V; ell++)
@@ -558,6 +564,7 @@ void user_interface_quadratic<Hamiltonian>::diagonal_matrix_elements()
 		std::string dir_realis = dir + "realisation=" + std::to_string(this->jobid + realis) + kPSep;
 		createDirs(dir_realis);
 		single_particle_energy.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "single particle energy"));
+		energy.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "many-body energy", arma::hdf5_opts::append));
 		m0.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "m0", arma::hdf5_opts::append));
 
 		T_nn.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "T_nn", arma::hdf5_opts::append));
