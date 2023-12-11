@@ -523,8 +523,8 @@ void user_interface_quadratic<Hamiltonian>::diagonal_matrix_elements()
 				u64 nei 		= neighbours(ell);
 				u64 next_nei 	= next_neighbours(ell);
 				element_type Al = 0., Al_1 = 0., Al_2 = 0., 
-							 Bl_1 = 0., Bl_2 = 0.,
-							 Cl_1 = 0., Cl_2 = 0.;
+							 Bl_1 = 0., Bl_2 = 0.;
+							//  Cl_1 = 0., Cl_2 = 0.;
 				for(u64 q : set_q){
 					Al +=   my_conjungate( orbitals(ell,      q) ) * orbitals(ell, 		q);
 					Al_1 += my_conjungate( orbitals(nei,      q) ) * orbitals(nei, 		q);
@@ -533,22 +533,22 @@ void user_interface_quadratic<Hamiltonian>::diagonal_matrix_elements()
 					Bl_1 += my_conjungate( orbitals(ell, q) ) * orbitals(nei, 	   q);
 					Bl_2 += my_conjungate( orbitals(ell, q) ) * orbitals(next_nei, q);
 
-					Cl_1 += my_conjungate( orbitals(ell, q) * orbitals(nei, 	 q) ) * orbitals(ell, q) * orbitals(nei, 	  q);
-					Cl_2 += my_conjungate( orbitals(ell, q) * orbitals(next_nei, q) ) * orbitals(ell, q) * orbitals(next_nei, q);
+					// Cl_1 += my_conjungate( orbitals(ell, q) * orbitals(nei, 	 q) ) * orbitals(ell, q) * orbitals(nei, 	  q);
+					// Cl_2 += my_conjungate( orbitals(ell, q) * orbitals(next_nei, q) ) * orbitals(ell, q) * orbitals(next_nei, q);
 					
 					for(u64 ell2 = 0; ell2 < this->V; ell2++)
 						m0(idx) += my_conjungate( orbitals(ell, q) ) * orbitals(ell2, q);
 				}
 				T_nn(idx)  += Bl_1 + my_conjungate(Bl_1);
 				T_nnn(idx) += Bl_2 + my_conjungate(Bl_2);
-				U_nn(idx)  += Al * Al_1 + Bl_1 * my_conjungate(Bl_1) + Cl_1;
-				U_nnn(idx) += Al * Al_2 + Bl_2 * my_conjungate(Bl_2) + Cl_2;
+				U_nn(idx)  += Al * Al_1 - Bl_1 * my_conjungate(Bl_1);// + Cl_1;
+				U_nnn(idx) += Al * Al_2 - Bl_2 * my_conjungate(Bl_2);// + Cl_2;
 
 				if(ell == 0){
 					T_nn_loc(idx)  += Bl_1 + my_conjungate(Bl_1);
 					T_nnn_loc(idx) += Bl_2 + my_conjungate(Bl_2);
-					U_nn_loc(idx)  += Al * Al_1 + Bl_1 * my_conjungate(Bl_1) + Cl_1;
-					U_nnn_loc(idx) += Al * Al_2 + Bl_2 * my_conjungate(Bl_2) + Cl_2;
+					U_nn_loc(idx)  += Al * Al_1 - Bl_1 * my_conjungate(Bl_1);// + Cl_1;
+					U_nnn_loc(idx) += Al * Al_2 - Bl_2 * my_conjungate(Bl_2);// + Cl_2;
 				}
 			}
 			//<! ----

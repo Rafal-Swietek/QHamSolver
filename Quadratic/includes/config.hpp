@@ -15,21 +15,28 @@
     #define MODEL 1
 #endif
 
-
 //------------------- Translate Macro
 
 #if MODEL == 0
     #define ANDERSON
-    #pragma message("Chosen Anderson model {DIM}-dimensional!")
+    #define print_model(x)  "Chosen Anderson model in " #x "-dimensions!"
+    #define pprint_model(x) print_model(x)
 #elif MODEL == 1
     #define SYK
-    #pragma message("Chosen SYK2 model with GOE matrix elements in {DIM}-dimensions!")
+    #define print_model(x) "Chosen SYK2 model with GOE matrix elements in " #x "-dimensions!"
+    #define pprint_model(x) print_model(x)
 #elif MODEL == 2
     #define AUBRY_ANDRE
-    #pragma message("Chosen Aubry-Andre model with phi=0 in {DIM}-dimensions!")
+    #define print_model(x) "Chosen Aubry-Andre model with phi=0 in " #x "-dimensions!"
+    #define pprint_model(x) print_model(x)
 #elif MODEL == 3
     #define FREE_FERMIONS
-    #pragma message("Chosen Free fermion model {DIM}-dimensional!")
+    #define print_model(x) "Chosen Free fermion model in " #x "-dimensions!"
+    #define pprint_model(x) print_model(x)
 #else
-    #pragma message("No model chosen!!! Leaving empty matrix")
+    #define print_model(x) "DEFAULT: Chosen SYK2 model with GOE matrix elements in " #x "-dimensions!"
+    #define pprint_model(x) print_model(x)
 #endif
+
+
+#pragma message(pprint_model(DIM))
