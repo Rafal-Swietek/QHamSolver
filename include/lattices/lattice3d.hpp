@@ -72,20 +72,18 @@ namespace lattice
         override
         {
             // go right-front (x++, y++, z)
-            if(site % this->volume == this->volume - 1){
-                if(this->boundary_condition) return 0;
+            if(site % this->A == this->A - 1){
+                if(this->boundary_condition) return site - this->A + 1;
                 else return -1;
-            }
-            else if(site % this->A == this->A - 1){
-                if(this->boundary_condition) return 0;
+            } else if(site % this->Lx == this->Lx - 1){          // move across X boundary
+                if(this->boundary_condition) return site + 1;
                 else return -1;
-            }
-            else if(site % this->A >= this->A - this->Lx){     // move across Y boundary
+            } else if(site % this->A >= this->A - this->Lx){     // move across Y boundary
                 if(this->boundary_condition) return site + 1 - this->Lx * (this->Ly - 1);
                 else return -1;
             }
             else 
-                return site + 1;                                         // includes moving across X boundary
+                return site + this->Lx + 1;                    // includes moving across X boundary
         }
 
         /// @brief Get all nearest neighbour to given input site (in all directions)
