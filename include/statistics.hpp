@@ -261,7 +261,7 @@ typical_level_spacing(
 [[nodiscard]]
 inline 
 std::pair<double, double> 
-spectral_form_factor(
+spectral_form_factor_raw(
     const arma::vec& eigenvalues,   //<! eigenvalues to generate SFF
     double t,                       //<! time point at which SFF calculated
     double beta = 0.0               //<! inverse temperature 
@@ -323,7 +323,7 @@ spectral_form_factor(
 	for (long i = 0; i < sff.size(); i++){
         double sff_temp = 0;
 		if((eta < 0.0 || eta > 1.0) || beta > 0)
-            std::tie(sff_temp, Z) = spectral_form_factor(eigenvalues, times(i), beta);
+            std::tie(sff_temp, Z) = spectral_form_factor_raw(eigenvalues, times(i), beta);
         else
             std::tie(sff_temp, Z) = spectral_form_factor_filter(eigenvalues, times(i), eta);
         sff(i) = sff_temp;

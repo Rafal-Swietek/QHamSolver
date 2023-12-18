@@ -24,7 +24,7 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement()
 
 
 	// arma::Col<int> subsystem_sizes = arma::conv_to<arma::Col<int>>::from(arma::linspace(0, this->V / 2 - 1, this->V / 2));
-	arma::Col<int> subsystem_sizes = arma::Col<int>({this->V / 2});
+	arma::Col<int> subsystem_sizes = arma::Col<int>({this->V / 4, this->V / 2});
 	std::cout << subsystem_sizes(0) << "...\t" << subsystem_sizes(subsystem_sizes.size() - 1) << std::endl;
 
 	arma::vec entropies(subsystem_sizes.size(), arma::fill::zeros);
@@ -34,10 +34,12 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement()
 
 	double filling = 0.5;
 	const long N = int(filling * this->V);
-    auto _hilbert_space = QHS::U1_hilbert_space<QHS::U1::charge, true>(this->V, N);
-	size_t dim = _hilbert_space.get_hilbert_space_size();
-
 	disorder<double> random_generator(this->seed);
+	
+	int time_end = (int)std::ceil(std::log10(5*this->V));
+	arma::vec times = arma::logspace(-2, time_end, 5000);
+	arma::mat sff(times.size(), subsystem_sizes.size(), arma::fill::zeros);
+	arma::vec Z(subsystem_sizes.size(), arma::fill::zeros);
 
 // #pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
 	for(int realis = 0; realis < this->realisations; realis++)
@@ -66,6 +68,8 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement()
 		arma::vec S(subsystem_sizes.size(), arma::fill::zeros);
 		arma::vec S_site(subsystem_sizes.size(), arma::fill::zeros);
 
+		arma::mat sff_r(times.size(), subsystem_sizes.size(), arma::fill::zeros);
+		arma::vec Z_r(subsystem_sizes.size(), arma::fill::zeros);
 		u64 num_states = this->num_of_points;//ULLPOW(14);
 		std::vector<boost::dynamic_bitset<>> mb_states;
 		#ifdef FREE_FERMIONS
@@ -107,8 +111,9 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement()
 		omp_set_num_threads(1);
 		std::cout << outer_threads << "\t\t" << omp_get_num_threads() << std::endl;
 		
-		for(auto& VA : subsystem_sizes)
+		for(int VA_idx = 0; VA_idx < subsystem_sizes.size(); VA_idx++)
 		{
+			auto VA = subsystem_sizes(VA_idx);
 			auto start_VA = std::chrono::system_clock::now();
 			
 			start_VA = std::chrono::system_clock::now();
@@ -120,38 +125,6 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement()
 		#pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
 			for(u64 n = 0; n < num_states; n++){
 				auto state_n = mb_states[n];
-
-				arma::cx_vec fullstate(ULLPOW(this->V), arma::fill::zeros);
-
-				// Fill state with appropriate values --------------------------------------------------
-				
-				arma::uvec set_q(N, arma::fill::zeros);
-				int count = 0;
-				for(int id = 0; id < this->V; id++){
-					if( (bool)state_n[id] ){
-						set_q(count) = id;
-						count++;
-					}
-				}
-				// printSeparated(std::cout, "\t", 20, true, state_n, set_q.t());
-				for(long k = 0; k < dim; k++){
-					u64 state_idx = _hilbert_space(k);
-					boost::dynamic_bitset<> base_state(this->V, state_idx);
-				
-					arma::uvec set_l(N, arma::fill::zeros);
-					count = 0;
-					for(int id = 0; id < this->V; id++){
-						if( (bool)base_state[this->V - 1 - id] ){
-							set_l(count) = id;
-							count++;
-						}
-					}
-
-					// printSeparated(std::cout, "\t", 20, false, base_state, set_l.t());
-					auto W = orbitals.submat(set_l, set_q);
-					auto eigs = arma::eig_gen(W);
-					fullstate(state_idx) = arma::prod(eigs);
-				}
 				
 				//<! Generate ope-body density matrix rho -> then do correlator J
 				arma::cx_mat J_m(VA, VA, arma::fill::zeros);
@@ -159,33 +132,46 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement()
 				QHS::single_particle::correlators::one_body(orbitals, state_n, VA, J_m, lambda, 1.0);
 				J_m = 2.0 * J_m - arma::eye(VA, VA);
 
-				auto lambdas = arma::eig_sym(J_m);
+				arma::vec lambdas = arma::eig_sym(J_m);
 				double S_temp = QHS::single_particle::entanglement::vonNeumann(lambdas);
 				
-				fullstate = arma::normalise(fullstate);
-				double entropy_test = entropy::schmidt_decomposition(fullstate, VA, this->V);
+				//<! Entanglement Hamiltonian eigenvalues
+				arma::vec E_ent = (lambdas + 1.0) / 2.0;
+				E_ent = arma::log( (1 - E_ent) / E_ent);
+				auto [sff_tmp, Z_tmp] = statistics::spectral_form_factor(E_ent, times, 0.0, -1.0);
 				#pragma omp critical
 				{
 					entropy 			+= S_temp;
 					entropy_single_site += QHS::single_particle::entanglement::vonNeumann_helper(2.0 * std::real(lambda) - 1.0);
+
+					sff_r.col(VA_idx) += sff_tmp;
+					Z_r(VA_idx) += Z_tmp;
 				}
 				// if( std::abs(entropyyy - entropy_test) > 1e-14)
-				printSeparated(std::cout, "\t", 20, true, VA, mb_states[n], S_temp, entropy_test, entropy_test - S_temp, entropy_test / S_temp);
+				// printSeparated(std::cout, "\t", 20, true, VA, mb_states[n], S_temp, entropy_test, entropy_test - S_temp, entropy_test / S_temp);
 			}
-			S(VA - subsystem_sizes(0)) 			= entropy / (double)num_states;					// entanglement of subsystem VA
-			S_site(VA - subsystem_sizes(0)) 	= entropy_single_site / double(num_states);		// single site entanglement at site VA
+			S(VA_idx) 		= entropy / (double)num_states;					// entanglement of subsystem VA
+			S_site(VA_idx) 	= entropy_single_site / double(num_states);		// single site entanglement at site VA
 
+			sff_r(VA_idx) /= double(num_states);
+			Z_r(VA_idx) /= double(num_states);
     		std::cout << " - - - - - - finished entropy size VA: " << VA << " in time:" << tim_s(start_VA) << " s - - - - - - " << std::endl; // simuVAtion end
 		}
+
+		entropies += S;
+		single_site_entropy += S_site;
+		sff += sff_r;
+		Z += Z_r;
+		for(int VA_idx = 0; VA_idx < subsystem_sizes.size(); VA_idx++)
+			sff_r.col(VA_idx) /= Z_r(VA_idx);
 
 		if(this->realisations > 1){
 			std::string dir_realis = dir + "realisation=" + std::to_string(this->jobid + realis) + kPSep;
 			createDirs(dir_realis);
 			S.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "entropy"));
 			S_site.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "single_site_entropy", arma::hdf5_opts::append));
+			sff_r.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "sff", arma::hdf5_opts::append));
 		}
-		entropies += S;
-		single_site_entropy += S_site;
 		
 		counter++;
     	omp_set_num_threads(this->thread_number);
@@ -199,6 +185,7 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement()
 	filename += "_jobid=" + std::to_string(this->jobid);
 	entropies.save(arma::hdf5_name(dir + filename + ".hdf5", "entropy"));
 	single_site_entropy.save(arma::hdf5_name(dir + filename + ".hdf5", "single_site_entropy", arma::hdf5_opts::append));
+	sff.save(arma::hdf5_name(dir + filename + ".hdf5", "sff", arma::hdf5_opts::append));
     std::cout << " - - - - - - FINISHED ENTROPY CALCUVATION IN : " << tim_s(start) << " seconds - - - - - - " << std::endl; // simuVAtion end
 }
 
@@ -539,8 +526,8 @@ void user_interface_quadratic<Hamiltonian>::diagonal_matrix_elements()
 					// Cl_1 += my_conjungate( orbitals(ell, q) * orbitals(nei, 	 q) ) * orbitals(ell, q) * orbitals(nei, 	  q);
 					// Cl_2 += my_conjungate( orbitals(ell, q) * orbitals(next_nei, q) ) * orbitals(ell, q) * orbitals(next_nei, q);
 					
-					for(u64 ell2 = 0; ell2 < this->V; ell2++)
-						m0(idx) += my_conjungate( orbitals(ell, q) ) * orbitals(ell2, q);
+					for(u64 ell2 = 0; ell2 < ell; ell2++)
+						m0(idx) += my_conjungate( orbitals(ell, q) ) * orbitals(ell2, q) + my_conjungate( orbitals(ell2, q) ) * orbitals(ell, q);
 				}
 				T_nn(idx)  += Bl_1 + my_conjungate(Bl_1);
 				T_nnn(idx) += Bl_2 + my_conjungate(Bl_2);
