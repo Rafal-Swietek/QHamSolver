@@ -252,10 +252,25 @@ typical_level_spacing(
     u64 size = std::distance(begin, end);
 #pragma omp parallel for reduction(+: omega_H_typ)
 	for (auto it = begin; it != end; ++it) {
-		omega_H_typ += log(*std::next(it) - *it);
+		omega_H_typ += std::log(*std::next(it) - *it);
 	}
 	return exp(omega_H_typ / double(size));
 }
+//<! typical level spacing between iterators
+[[nodiscard]]
+inline
+double
+typical_level_spacing(
+    const arma::vec& E
+    ){
+    arma::vec diff(E.size()-1, arma::fill::zeros);
+#pragma omp parallel for
+	for (long k = 0; k < diff.size(); k++) {
+		diff(k) = E(k+1) - E(k);
+	}
+	return arma::median(diff);
+}
+
 // ----------------------------------------- SPECTRAL FORM FACTOR (SFF)
 //<! Finite-Temperature sff at time-point
 [[nodiscard]]
@@ -264,7 +279,7 @@ std::pair<double, double>
 spectral_form_factor_raw(
     const arma::vec& eigenvalues,   //<! eigenvalues to generate SFF
     double t,                       //<! time point at which SFF calculated
-    double beta = 0.0               //<! inverse temperature 
+    double beta = 0.0               //<! inverse temperature
     ){
     const size_t N = eigenvalues.size();
 	double sff_re = 0, sff_im = 0;

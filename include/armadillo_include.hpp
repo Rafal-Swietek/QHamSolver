@@ -27,6 +27,7 @@ DISABLE_OVERFLOW;
 	#pragma message ("not recognized compiler to disable armadillo library warnings");
 #endif
 
+#define ARMA_OPENMP_THREADS 256
 #include <armadillo>
 #undef ARMA_USE_SUPERLU
 
