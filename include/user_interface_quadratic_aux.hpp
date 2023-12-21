@@ -23,8 +23,9 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement()
 	std::string filename = info;// + "_subsize=" + std::to_string(VA);
 
 
-	arma::Col<int> subsystem_sizes = arma::conv_to<arma::Col<int>>::from(arma::linspace(0, this->V / 2, this->V / 2 + 1));
-	// arma::Col<int> subsystem_sizes = arma::Col<int>({this->V / 4, this->V / 2});
+	// arma::Col<int> subsystem_sizes = arma::conv_to<arma::Col<int>>::from(arma::linspace(0, this->V / 2, this->V / 2 + 1));
+	arma::Col<int> small_subsystem = arma::linspace<arma::Col<int>>(0, min(this->V / 2 - 1, 50), min(this->V / 2 - 1, 50) + 1);
+	arma::Col<int> subsystem_sizes = arma::join_cols(small_subsystem, arma::Col<int>({this->V / 2}));
 	std::cout << subsystem_sizes(0) << "...\t" << subsystem_sizes(subsystem_sizes.size() - 1) << std::endl;
 
 	arma::vec entropies(subsystem_sizes.size(), arma::fill::zeros);
@@ -37,7 +38,7 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement()
 	disorder<double> random_generator(this->seed);
 	
 	// int time_end = (int)std::ceil(std::log10(5*this->V));
-	arma::vec times = arma::logspace(log10(1.0 / (this->V)), 2, 5000);
+	arma::vec times = arma::logspace(log10(1.0 / (this->V))-1, 1, 5000);
 	arma::vec sff(times.size(), arma::fill::zeros);
 	double Z = 0;
 
@@ -105,13 +106,15 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement()
 		num_states = mb_states.size();
 		
 		arma::vec E(num_states, arma::fill::zeros);
-		
+		arma::vec gap_ratio(num_states, arma::fill::zeros);
+
 		std::cout << " - - - - - - finished many-body configurations in : " << tim_s(start) << " s for realis = " << realis << " - - - - - - " << std::endl;
 		std::cout << "Number of states = \t\t" << num_states << std::endl << std::endl; 
 		// outer_threads = this->thread_number;
 		// omp_set_num_threads(1);
 		// std::cout << outer_threads << "\t\t" << omp_get_num_threads() << std::endl;
 		
+	// #pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
 		for(int VA_idx = 0; VA_idx < subsystem_sizes.size(); VA_idx++)
 		{
 			auto VA = subsystem_sizes(VA_idx);
@@ -122,14 +125,14 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement()
 			double entropy_single_site = 0;
 			double entropy = 0;
 
-
 		// #pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
 			for(u64 n = 0; n < num_states; n++){
 				auto state_n = mb_states[n];
 				E(n) = 0;
-				for(long i = 0; i < state_n.size(); i++)
+				for(long i = 0; i < state_n.size(); i++){
 					if(state_n[i])
 						E(n) += single_particle_energy(i);
+				}
 				//<! Generate ope-body density matrix rho -> then do correlator J
 				arma::cx_mat J_m(VA, VA, arma::fill::zeros);
 				cpx lambda = 0.0;
@@ -145,8 +148,29 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement()
 					E_ent = arma::log( (1 - E_ent) / E_ent);
 					arma::uvec X = arma::find_nan(E_ent);
 					if( X.size() == 0){
-						double tH = statistics::typical_level_spacing(E_ent);
-						E_ent /= tH;
+						u64 E_av_idx = spectrals::get_mean_energy_index(E_ent);
+						const u64 num = E_ent.size() < 1000? 0.25 * E_ent.size() : 0.5 * E_ent.size();
+						double r_tmp = 0.0;
+						double wH = 0.0;
+						int countttt = 0;
+						for(int i = (E_av_idx - num / 2); i < (E_av_idx + num / 2); i++){
+							const double gap1 = E_ent(i) - E_ent(i - 1);
+							wH += gap1;
+
+							const double gap2 = E_ent(i + 1) - E_ent(i);
+							const double min = std::min(gap1, gap2);
+							const double max = std::max(gap1, gap2);
+							if (abs(gap1) <= 1e-15 || abs(gap2) <= 1e-15){ 
+								std::cout << "Index: " << i << std::endl;
+								_assert_(false, "Found degeneracy, while doing r-statistics!\n");
+							}
+							r_tmp += min / max;
+							countttt++;
+						}
+						gap_ratio(n) = r_tmp / double(countttt);		// Unbounded spectrum -> problems in gap ratio?
+						// double wH = statistics::typical_level_spacing(E_ent) / two_pi;
+						wH = wH / double(countttt) / two_pi;
+						E_ent /= wH;
 						auto [sff_tmp, Z_tmp] = statistics::spectral_form_factor(E_ent, times, 0.0, -1.0);
 						X = arma::find_nan(sff_tmp);
 						if( X.size() == 0){
@@ -180,13 +204,17 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement()
 		// for(int VA_idx = 0; VA_idx < subsystem_sizes.size(); VA_idx++)
 		// 	sff_r.col(VA_idx) /= Z_r(VA_idx);
 
-		if(this->realisations > 1){
+		// if(this->realisations > 1)
+		{
 			std::string dir_realis = dir + "realisation=" + std::to_string(this->jobid + realis) + kPSep;
 			createDirs(dir_realis);
 			S.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "entropy"));
 			S_site.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "single_site_entropy", arma::hdf5_opts::append));
 			arma::vec({Z_r}).save(arma::hdf5_name(dir_realis + filename + ".hdf5", "Z", arma::hdf5_opts::append));
 			sff_r.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "sff", arma::hdf5_opts::append));
+			gap_ratio.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "gap ratio", arma::hdf5_opts::append));
+			subsystem_sizes.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "VA", arma::hdf5_opts::append));
+			E.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "energy", arma::hdf5_opts::append));
 		}
 		
 		counter++;
@@ -206,6 +234,7 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement()
 		entropies.save(arma::hdf5_name(dir + filename + ".hdf5", "entropy"));
 		single_site_entropy.save(arma::hdf5_name(dir + filename + ".hdf5", "single_site_entropy", arma::hdf5_opts::append));
 		sff.save(arma::hdf5_name(dir + filename + ".hdf5", "sff", arma::hdf5_opts::append));
+		subsystem_sizes.save(arma::hdf5_name(dir + filename + ".hdf5", "VA", arma::hdf5_opts::append));
 	#endif
     std::cout << " - - - - - - FINISHED ENTROPY CALCUVATION IN : " << tim_s(start) << " seconds - - - - - - " << std::endl; // simuVAtion end
 }
