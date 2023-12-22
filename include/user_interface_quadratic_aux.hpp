@@ -106,7 +106,7 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement()
 		num_states = mb_states.size();
 		
 		arma::vec E(num_states, arma::fill::zeros);
-		arma::vec gap_ratio(num_states, arma::fill::zeros);
+		// arma::vec gap_ratio(num_states, arma::fill::zeros);
 
 		std::cout << " - - - - - - finished many-body configurations in : " << tim_s(start) << " s for realis = " << realis << " - - - - - - " << std::endl;
 		std::cout << "Number of states = \t\t" << num_states << std::endl << std::endl; 
@@ -150,26 +150,7 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement()
 					if( X.size() == 0){
 						u64 E_av_idx = spectrals::get_mean_energy_index(E_ent);
 						const u64 num = E_ent.size() < 1000? 0.25 * E_ent.size() : 0.5 * E_ent.size();
-						double r_tmp = 0.0;
-						double wH = 0.0;
-						int countttt = 0;
-						for(int i = (E_av_idx - num / 2); i < (E_av_idx + num / 2); i++){
-							const double gap1 = E_ent(i) - E_ent(i - 1);
-							wH += gap1;
-
-							const double gap2 = E_ent(i + 1) - E_ent(i);
-							const double min = std::min(gap1, gap2);
-							const double max = std::max(gap1, gap2);
-							if (abs(gap1) <= 1e-15 || abs(gap2) <= 1e-15){ 
-								std::cout << "Index: " << i << std::endl;
-								_assert_(false, "Found degeneracy, while doing r-statistics!\n");
-							}
-							r_tmp += min / max;
-							countttt++;
-						}
-						gap_ratio(n) = r_tmp / double(countttt);		// Unbounded spectrum -> problems in gap ratio?
-						// double wH = statistics::typical_level_spacing(E_ent) / two_pi;
-						wH = wH / double(countttt) / two_pi;
+						double wH = statistics::typical_level_spacing(E_ent) / two_pi;
 						E_ent /= wH;
 						auto [sff_tmp, Z_tmp] = statistics::spectral_form_factor(E_ent, times, 0.0, -1.0);
 						X = arma::find_nan(sff_tmp);
@@ -212,7 +193,7 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement()
 			S_site.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "single_site_entropy", arma::hdf5_opts::append));
 			arma::vec({Z_r}).save(arma::hdf5_name(dir_realis + filename + ".hdf5", "Z", arma::hdf5_opts::append));
 			sff_r.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "sff", arma::hdf5_opts::append));
-			gap_ratio.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "gap ratio", arma::hdf5_opts::append));
+			// gap_ratio.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "gap ratio", arma::hdf5_opts::append));
 			subsystem_sizes.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "VA", arma::hdf5_opts::append));
 			E.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "energy", arma::hdf5_opts::append));
 		}
