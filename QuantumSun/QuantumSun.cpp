@@ -124,18 +124,18 @@ void QuantumSun::create_hamiltonian()
 		u64 base_state = this->_hilbert_space(k);
 		for (int j = this->grain_size; j < this->system_size; j++)  // sum over spin d.o.f
         {
-            int pos_in_array = j - this->grain_size;                // array index of localised spin
+            const int pos_in_array = j - this->grain_size;                // array index of localised spin
 
 			/* disorder on localised spins */
             #if CONF_DISORDER == 0
-                auto [val, Sz_k] = operators::sigma_z(base_state, this->system_size, { j });
+                auto [val, Sz_k] = operators::sigma_z(base_state, this->system_size, j);
 			    this->set_hamiltonian_elements(k, this->_disorder(pos_in_array) * real(val), Sz_k);
             #endif
 
 			/* coupling of localised spins to GOE grain */
 			int nei = random_neigh(pos_in_array);
-		    auto [val1, Sx_k] = operators::sigma_x(base_state, this->system_size, { j });
-		    auto [val2, SxSx_k] = operators::sigma_x(Sx_k, this->system_size, { nei });
+		    auto [val1, Sx_k] = operators::sigma_x(base_state, this->system_size, j);
+		    auto [val2, SxSx_k] = operators::sigma_x(Sx_k, this->system_size, nei);
 			this->set_hamiltonian_elements(k, this->_J * this->_long_range_couplings(pos_in_array) * real(val1 * val2), SxSx_k);
 		}
 	}
@@ -177,15 +177,15 @@ std::ostream& QuantumSun::write(std::ostream& os) const
     printSeparated(os, "\t", 16, true, "Hamiltonian:", "H = R + J\u03A3_i \u03B1^{u_j} S^x_i S^x_i+1 + \u03A3_i h_i S^z_i\t\t u_j in [j - \u03B6, j + \u03B6]");
     printSeparated(os, "\t", 16, true, "----------------------------------------------------------------------------------------------------");
     printSeparated(os, "\t", 16, true, "Parameters:");
-    printSeparated(os, "\t", 16, true, "L", this->system_size);
-    printSeparated(os, "\t", 16, true, "grain size", this->grain_size);
+    printSeparated(os, "\t", 16, true, "L,", this->system_size);
+    printSeparated(os, "\t", 16, true, "grain size,", this->grain_size);
 
-    printSeparated(os, "\t", 16, true, "J", this->_J);
-    printSeparated(os, "\t", 16, true, "\u03B1", this->_alfa);
-    printSeparated(os, "\t", 16, true, "\u03B3", this->_gamma);
-    printSeparated(os, "\t", 16, true, "w", this->_w);
-    printSeparated(os, "\t", 16, true, "hz", this->_hz);
-    printSeparated(os, "\t", 16, true, "\u03B6", this->_zeta);
+    printSeparated(os, "\t", 16, true, "J,", this->_J);
+    printSeparated(os, "\t", 16, true, "\u03B1,", this->_alfa);
+    printSeparated(os, "\t", 16, true, "\u03B3,", this->_gamma);
+    printSeparated(os, "\t", 16, true, "w,", this->_w);
+    printSeparated(os, "\t", 16, true, "hz,", this->_hz);
+    printSeparated(os, "\t", 16, true, "\u03B6,", this->_zeta);
     //printSeparated(os, "\t", 16, true, "disorder", this->_disorder.t());
 
     printSeparated(os, "\t", 16, true, "    seed", this->_seed);

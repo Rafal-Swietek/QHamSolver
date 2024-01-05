@@ -66,118 +66,18 @@ void ui::make_sim(){
 
 
 
-
-/// @brief 
-void ui::diagonal_matrix_elements(){
-	
-	std::string dir = this->saving_dir + "DiagonalMatrixElements" + kPSep + "SigmaZ" + kPSep;
-	createDirs(dir);
-
-	clk::time_point start = std::chrono::system_clock::now();
-
-	const size_t dim = this->ptr_to_model->get_hilbert_size();
-	//------- PREAMBLE
-	std::string info = this->set_info();
-
-	auto create_operator = [&](std::initializer_list<op_type> operators, arma::cx_vec prefactors = arma::cx_vec()) 
-	{
-		arma::sp_cx_mat opMatrix(dim, dim);
-		arma::cx_vec pre = prefactors.is_empty()? arma::cx_vec(this->L, arma::fill::ones) : prefactors;
-		assert(pre.size() == this->L && "Input array of different size than system size!");
-	#pragma omp parallel for
-		for (long int k = 0; k < dim; k++) {
-			u64 base_state = (k);
-			for (int j = 0; j < this->L; j++) {
-				for (auto& op : operators) {
-					cpx value; u64 new_idx;
-					std::tie(value, new_idx) = op(base_state, this->L, { j });
-					
-					u64 idx = (new_idx);
-					if(idx > dim) continue;
-				#pragma omp critical
-					opMatrix(idx, k) += value * pre(j);
-				}
-			}
-		}
-		return opMatrix / (this->L);
-	};
-
-	arma::cx_vec imbal(this->L, arma::fill::zeros);
-	for(int i = 0; i < this->L; i++)
-		imbal(i) = (i % 2 == 0)? 1. : -1.;
-
-	arma::sp_cx_mat sigmaZ = create_operator( {operators::sigma_z} );
-	arma::sp_cx_mat imbalance = create_operator( {operators::sigma_z}, imbal );
-
-	arma::vec energies(dim, arma::fill::zeros);
-	arma::cx_vec diag_elemZ(dim, arma::fill::zeros);
-	arma::cx_vec diag_elem_imb(dim, arma::fill::zeros);
-#pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
-	for(int realis = 0; realis < this->realisations; realis++)
-	{
-		const auto start_loop = std::chrono::system_clock::now();
-		auto new_ptr_t = QHamSolver<QuantumSun>(  
-												this->L,                    //<! system size
-                                                this->J,                    //<! coupling of grain to spins
-                                                this->alfa,                 //<! coupling decay parameter
-                                                this->gamma,                //<! strength of ergodic bubble
-                                                this->w,                    //<! disorder on spins (bandwidth control)
-                                                this->h,                    //<! uniform field on spins
-                                                this->seed,                 //<! random seed
-                                                this->grain_size + realis,           //<! size of ergodic grain
-                                                this->zeta,                 //<! randomness on positions for decaying coupling
-                                                this->initiate_avalanche,   //<!  initiate avalanche with first coupling=1
-												normalize_grain				//<!  keep grain with unit HS norm
-                                            ); 
-		new_ptr_t.diagonalization();
-
-		std::cout << "\t\t - - - - - - FINISHED DIAGONALIZATION IN : " << tim_s(start_loop) << " seconds\n\t\t\t Total time : " << tim_s(start) << " s - - - - - - " << std::endl;
-		arma::mat V = new_ptr_t.get_eigenvectors();
-		arma::cx_vec diag_elemZ_realis(dim, arma::fill::zeros);
-		arma::cx_vec diag_elem_imb_realis(dim, arma::fill::zeros);
-		
-	#pragma omp parallel for
-		for(long k = 0; k < dim; k++){
-			arma::vec state = new_ptr_t.get_eigenState(k);
-			arma::cx_vec new_state = sigmaZ * state;
-			diag_elemZ_realis(k) = dot_prod(state, new_state);
-			new_state = imbalance * state;
-			diag_elem_imb_realis(k) = dot_prod(state, new_state);
-		}
-
-		#pragma omp critical
-		{
-			diag_elemZ += diag_elemZ_realis;
-			diag_elem_imb += diag_elem_imb_realis;
-			energies += new_ptr_t.get_eigenvalues();
-		}
-
-		std::cout << "\t\t - - - - - - FINISHED MATRIX ELEMENTS IN : " << tim_s(start_loop) << " seconds\n\t\t\t Total time : " << tim_s(start) << " s - - - - - - " << std::endl;
-	}
-	energies /= double(this->realisations);
-	diag_elemZ /= double(this->realisations);
-	diag_elem_imb /= double(this->realisations);
-
-	std::string filename = info + "_0,2W";
-	energies.save(arma::hdf5_name(dir + filename + ".hdf5", "energies"));
-	diag_elemZ.save(arma::hdf5_name(dir + filename + ".hdf5", "sigmaZ", arma::hdf5_opts::append));
-	diag_elem_imb.save(arma::hdf5_name(dir + filename + ".hdf5", "imbalance", arma::hdf5_opts::append));
-	// FINISH Sz local
-}
-
-
 // -------------------------------------------------------------------------------------------------------------------------------------
 // ---------------------------------------------------------------------------------------------------------------- IMPLEMENTATION OF UI
 
 /// @brief Create unique pointer to model with current parameters in class
 typename ui::model_pointer ui::create_new_model_pointer(){
-    return std::make_unique<QHamSolver<QuantumSun>>(this->L_loc, this->J, this->alfa, this->gamma, this->w, this->h, 
+    return std::make_unique<QHS::QHamSolver<QuantumSun>>(this->L_loc, this->J, this->alfa, this->gamma, this->w, this->h, 
 																	this->seed, this->grain_size, this->zeta, this->initiate_avalanche, normalize_grain); 
 }
 
 /// @brief Reset member unique pointer to model with current parameters in class
 void ui::reset_model_pointer(){
-    this->ptr_to_model.reset(new QHamSolver<QuantumSun>(this->L_loc, this->J, this->alfa, this->gamma, this->w, this->h, 
+    this->ptr_to_model.reset(new QHS::QHamSolver<QuantumSun>(this->L_loc, this->J, this->alfa, this->gamma, this->w, this->h, 
 																	this->seed, this->grain_size, this->zeta, this->initiate_avalanche, normalize_grain)); 
 }
 

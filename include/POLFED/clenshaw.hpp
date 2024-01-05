@@ -152,7 +152,6 @@ namespace polfed{
             // perform recurence relation in loop
             for(int n = K; n > 0; n--){
                 _extra_debug( auto start = std::chrono::system_clock::now(); )
-                auto start = std::chrono::system_clock::now();
                 bk = coeff(n) * states + 2.0 * matrix * bk_1 - bk_2;
                 bk_2 = bk_1;
                 bk_1 = bk;

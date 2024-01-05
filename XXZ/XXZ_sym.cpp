@@ -20,7 +20,7 @@ void XXZsym::init()
     // initialize hilbert space
     _debug_start( start = std::chrono::system_clock::now(); )
     this->_hilbert_space = tensor(
-                            point_symmetric( this->system_size, 
+                            QHS::point_symmetric( this->system_size, 
                                             this->symmetry_generators, 
                                             this->_boundary_condition,
                                             this->syms.k_sym,

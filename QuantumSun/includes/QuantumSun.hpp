@@ -9,11 +9,11 @@
 
 /// @brief Model for EBT, QuantumSun model
 class QuantumSun : 
-    public hamiltonian_base<double, full_hilbert_space>
+    public QHS::hamiltonian_base<double, QHS::full_hilbert_space>
 {
     //<! ----------------------------------------------------- INHERIT TYPEDEFs FROM BASE
-    typedef typename hamiltonian_base<double, full_hilbert_space>::matrix        matrix;
-    typedef typename hamiltonian_base<double, full_hilbert_space>::sparse_matrix sparse_matrix;
+    typedef typename QHS::hamiltonian_base<double, QHS::full_hilbert_space>::matrix        matrix;
+    typedef typename QHS::hamiltonian_base<double, QHS::full_hilbert_space>::sparse_matrix sparse_matrix;
 
     //<! ----------------------------------------------------- MODEL PARAMETERS
 private:
@@ -43,7 +43,7 @@ private:
     virtual void init() override
     {   
         // initialize hilbert space
-        this->_hilbert_space = full_hilbert_space(this->system_size);
+        this->_hilbert_space = QHS::full_hilbert_space(this->system_size);
         this->dim = this->_hilbert_space.get_hilbert_space_size();
 
         // initialize disorder

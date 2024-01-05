@@ -483,7 +483,8 @@ void user_interface_dis<Hamiltonian>::eigenstate_entanglement()
 				// somehow needs L-LA (computer sees bit representation the opposite way, i.e. take B subsystem)
 				S(n, LA) 		= entropy::schmidt_decomposition(this->cast_state(state), this->L - LA, this->L);	// bipartite entanglement at subsystem size LA
 				state = P * this->cast_state(state);
-				S_site(n, LA) 	= entropy::schmidt_decomposition(state, this->L - 1, this->L);	// single site entanglement at site LA
+				if(LA < this->L)
+					S_site(n, LA) 	= entropy::schmidt_decomposition(state, this->L - 1, this->L);	// single site entanglement at site LA
 
 				//double S2 = entropy::vonNeumann(state, LA, this->L);
 				// #pragma omp critical

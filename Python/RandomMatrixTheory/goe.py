@@ -3,6 +3,20 @@ import numpy as np
 from scipy.special import iv as BesselI
 
 
+
+def spectral_form_factor(x : np.array):
+    """
+    GOE shape of sff in thermodynamic limit
+    
+    Parameters:
+    -----------------
+        x : np.array
+            numpy array with datapoints (times defined for unfolded data)
+    """
+    return np.array([2 * a - a * np.log(1 + 2 * a) if a < 1 else 2 - a * np.log( (2 * a + 1) / (2 * a - 1) ) for a in x])
+
+
+
 def eigs(N, normalize = True):
 
     """

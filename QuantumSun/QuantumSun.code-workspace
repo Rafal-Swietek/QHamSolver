@@ -9,13 +9,9 @@
 	],
 	"settings": {
 		"files.exclude": {
-			"**/.git": true,
-			"**/.svn": true,
-			"**/.hg": true,
-			"**/CVS": true,
-			"**/.DS_Store": true,
-			"**/Thumbs.db": true,
-			"results/": true
+			"results/": true,
+			"results_conf_dis/": true,
+			"results_conf_dis_sort/": true
 		},
 		"files.associations": {
 			"*.txt": "swift",

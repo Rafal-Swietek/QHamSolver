@@ -26,21 +26,29 @@ void ui::make_sim(){
     opts.tol = this->tol;
     opts.maxiter = this->l_maxiter;
 
-    printSeparated(std::cout, "\t", 20, true, "L", "dim", "Hamiltonian", "diag (only E)", "Lanczos", "arma::lanczos", "Block s=5", "Block s=10", "Block s=20");
+    // printSeparated(std::cout, "\t", 20, true, "L", "dim", "Hamiltonian", "diag (only E)", "Lanczos", "arma::lanczos", "Block s=5", "Block s=10", "Block s=20");
+    printSeparated(std::cout, "\t", 20, true, "L", "dim", "Hamiltonian", "polfed s=10", "polfed s=20", "polfed s=50");
     // printSeparated(std::cout, "\t", 20, true, "dim", 16, 32, 64, 128, 256, 512, 1024);
     for(int Ll = this->L; Ll < this->L + this->Ln * this->Ls; Ll += this->Ls){
         this->L = Ll;
-        std::cout << " -------------------------------------------------------------------------------------------------------------------------------------------------- L=" << this->L << std::endl;
+        // std::cout << " -------------------------------------------------------------------------------------------------------------------------------------------------- L=" << this->L << std::endl;
         clk::time_point start = std::chrono::system_clock::now();
         this->ptr_to_model = create_new_model_pointer();
-        this->ptr_to_model->diagonalization(false);
-        arma::vec E2 = this->ptr_to_model->get_eigenvalues();
-        // printSeparated(std::cout, "\t", 20, false, L, this->ptr_to_model->get_hilbert_size(), tim_s(start));
+        // this->ptr_to_model->diagonalization(false);
+        // arma::vec E2 = this->ptr_to_model->get_eigenvalues();
+        printSeparated(std::cout, "\t", 20, false, L, this->ptr_to_model->get_hilbert_size(), tim_s(start));
         auto H = this->ptr_to_model->get_hamiltonian();
         u64 dim = this->ptr_to_model->get_hilbert_size();
-        this->l_steps = dim / 20;
-        auto polfed = polfed::POLFED<ui::element_type>(H, this->l_steps, this->l_bundle, 10, this->tol, 0.25, this->seed, this->reorthogonalize);
-        
+        // this->l_steps = dim / 100;
+
+        for(int s : {this->l_bundle}){
+            std::cout.flush();
+            start = std::chrono::system_clock::now();
+            auto polfed = polfed::POLFED<ui::element_type>(H, this->l_steps, s, 10, this->tol, 0.25, this->seed, this->reorthogonalize);
+            auto [E, V] = polfed.eig();
+            printSeparated(std::cout, "\t", 20, false, tim_s(start));
+        }
+        std::cout << std::endl;
         // std::cout << E - E2.rows(idx, idx + E.size()-1);
         // std::cout << this->ptr_to_model->get_eigenvalues().t()
         // auto lancz_block = lanczos::BlockLanczos<ui::element_type>(H, this->l_steps, this->l_bundle, this->l_maxiter, this->tol, this->seed, this->reorthogonalize);
@@ -53,12 +61,12 @@ void ui::make_sim(){
 
         // std::cout << lancz_block.get_eigenvalues() - lancz_block2.get_eigenvalues();
 
-        // return;
+        continue;
         
         // start = std::chrono::system_clock::now();
-        // this->ptr_to_model->diagonalization(false);
+        // // this->ptr_to_model->diagonalization(false);
         // printSeparated(std::cout, "\t", 20, false, tim_s(start));
-        // auto E = this->ptr_to_model->get_eigenvalues();
+        // // auto E = this->ptr_to_model->get_eigenvalues();
 
         // auto lancz = lanczos::Lanczos<ui::element_type>(H, this->l_steps, this->l_maxiter, this->tol, this->seed, this->reorthogonalize);
         // start = std::chrono::system_clock::now();
@@ -91,7 +99,7 @@ void ui::make_sim(){
         // printSeparated(std::cout, "\t", 20, false, tim_s(start));
         
         // arma::vec Eblocklancz;
-        // for(int s : {this->l_bundle, 2 * this->l_bundle, 4 * this->l_bundle}){
+        // for(int s : {this->l_bundle}){
         //     std::cout.flush();
 
         //     auto lancz_block = lanczos::BlockLanczos<ui::element_type>(H, this->l_steps, s, this->l_maxiter, this->tol, this->seed, this->reorthogonalize);
@@ -102,12 +110,15 @@ void ui::make_sim(){
 
         //     Eblocklancz = lancz_block.get_eigenvalues(); //.col(0, 50);
         // }
-
         // std::cout << std::endl;
-        // for(int k = 0; k < this->l_steps; k++)
-        //     printSeparated(std::cout, "\t", 20, true, E(k), Elancz(k), Esp(k), Eblocklancz(k));
-        // std::cout << std::endl;
-        // std::cout << E.t() << Elancz.t() << Esp.t() << Eblocklancz.t() << std::endl;
+        
+        // // for(int k = 0; k < this->l_steps; k++)
+        // //     printSeparated(std::cout, "\t", 20, true, E(k), Elancz(k), Esp(k), Eblocklancz(k));
+        // // std::cout << E.t() << Elancz.t() << Esp.t() << Eblocklancz.t() << std::endl;
+        // double dE = arma::max(Esp - Eblocklancz.rows(0, this->l_steps-1));
+        // if(std::abs(dE) > 1e-13){
+        //     std::cout << "<dE> = " << dE << std::endl;
+        // }
     }
     // compare_energies();
     return;
@@ -245,7 +256,7 @@ void ui::compare_energies()
 	v_1d<std::string> symms;
     auto kernel = [&](int k, int p, int zx)
     {
-        auto symmetric_model = std::make_unique<QHamSolver<XXZsym>>(this->boundary_conditions, this->L, this->J1, this->J2, this->delta1, this->delta2, this->hz, k, p, zx, this->syms.Sz);
+        auto symmetric_model = std::make_unique<QHS::QHamSolver<XXZsym>>(this->boundary_conditions, this->L, this->J1, this->J2, this->delta1, this->delta2, this->hz, k, p, zx, this->syms.Sz);
         if(symmetric_model->get_hilbert_size() > 0){
             symmetric_model->diagonalization(false);
             arma::vec E = symmetric_model->get_eigenvalues();
@@ -257,7 +268,7 @@ void ui::compare_energies()
     };
     loopSymmetrySectors(kernel);
 
-    auto full_model = std::make_unique<QHamSolver<XXZ>>(this->boundary_conditions, this->L, this->J1, this->J2, this->delta1, this->delta2, this->hz, this->syms.Sz);
+    auto full_model = std::make_unique<QHS::QHamSolver<XXZ>>(this->boundary_conditions, this->L, this->J1, this->J2, this->delta1, this->delta2, this->hz, this->syms.Sz);
     full_model->diagonalization(false);
     arma::vec E_dis = full_model->get_eigenvalues();
     
@@ -275,13 +286,13 @@ void ui::compare_energies()
 /// @brief Compaer full hamiltonian to the reconstructed one from symmetry sectors
 void ui::compare_hamiltonian()
 {   
-    auto full_model = std::make_unique<QHamSolver<XXZ>>(this->boundary_conditions, this->L, this->J1, this->J2, this->delta1, this->delta2, this->hz, this->syms.Sz);
+    auto full_model = std::make_unique<QHS::QHamSolver<XXZ>>(this->boundary_conditions, this->L, this->J1, this->J2, this->delta1, this->delta2, this->hz, this->syms.Sz);
     arma::sp_mat Hfull = full_model->get_hamiltonian();
     const u64 dim = full_model->get_hilbert_size();
     arma::sp_cx_mat H(dim, dim);
     auto kernel = [&](int k, int p, int zx)
     {
-        auto symmetric_model = std::make_unique<QHamSolver<XXZsym>>(this->boundary_conditions, this->L, this->J1, this->J2, this->delta1, this->delta2, this->hz, k, p, zx, this->syms.Sz);
+        auto symmetric_model = std::make_unique<QHS::QHamSolver<XXZsym>>(this->boundary_conditions, this->L, this->J1, this->J2, this->delta1, this->delta2, this->hz, k, p, zx, this->syms.Sz);
         auto U = symmetric_model->get_model_ref().get_hilbert_space().symmetry_rotation();
         arma::sp_cx_mat Hsym = cast_cx_sparse(symmetric_model->get_hamiltonian());
         H += U * Hsym * U.t();
@@ -309,7 +320,7 @@ void ui::check_symmetry_generators()
     if(this->hz == 0 && this->syms.Sz == 0.0)
         sym_group.emplace_back(op::_spin_flip_x_symmetry(this->L, this->syms.zx_sym));
     
-    point_symmetric hilbert( this->L, sym_group, this->boundary_conditions, this->syms.k_sym, 0);
+    QHS::point_symmetric hilbert( this->L, sym_group, this->boundary_conditions, this->syms.k_sym, 0);
     auto group = hilbert.get_symmetry_group();
     for(auto& idx : {1, 130, 33, 71, 756}){
         for(auto& G : group){
@@ -442,18 +453,18 @@ ui::jE_mat_elem_kernel(
 /// @brief Create unique pointer to model with current parameters in class
 typename ui::model_pointer ui::create_new_model_pointer(){
     #ifdef USE_SYMMETRIES
-        return std::make_unique<QHamSolver<XXZsym>>(this->boundary_conditions, this->L, this->J1, this->J2, this->delta1, this->delta2, this->hz, this->syms.k_sym, this->syms.p_sym, this->syms.zx_sym, this->syms.Sz);
+        return std::make_unique<QHS::QHamSolver<XXZsym>>(this->boundary_conditions, this->L, this->J1, this->J2, this->delta1, this->delta2, this->hz, this->syms.k_sym, this->syms.p_sym, this->syms.zx_sym, this->syms.Sz);
     #else
-        return std::make_unique<QHamSolver<XXZ>>(this->boundary_conditions, this->L, this->J1, this->J2, this->delta1, this->delta2, this->hz, this->syms.Sz, this->add_parity_breaking, this->w, this->seed);
+        return std::make_unique<QHS::QHamSolver<XXZ>>(this->boundary_conditions, this->L, this->J1, this->J2, this->delta1, this->delta2, this->hz, this->syms.Sz, this->add_parity_breaking, this->w, this->seed);
     #endif
 }
 
 /// @brief Reset member unique pointer to model with current parameters in class
 void ui::reset_model_pointer(){
     #ifdef USE_SYMMETRIES
-        return this->ptr_to_model.reset(new QHamSolver<XXZsym>(this->boundary_conditions, this->L, this->J1, this->J2, this->delta1, this->delta2, this->hz, this->syms.k_sym, this->syms.p_sym, this->syms.zx_sym, this->syms.Sz));
+        return this->ptr_to_model.reset(new QHS::QHamSolver<XXZsym>(this->boundary_conditions, this->L, this->J1, this->J2, this->delta1, this->delta2, this->hz, this->syms.k_sym, this->syms.p_sym, this->syms.zx_sym, this->syms.Sz));
     #else
-        return this->ptr_to_model.reset(new QHamSolver<XXZ>(this->boundary_conditions, this->L, this->J1, this->J2, this->delta1, this->delta2, this->hz, this->syms.Sz, this->add_parity_breaking, this->w, this->seed));
+        return this->ptr_to_model.reset(new QHS::QHamSolver<XXZ>(this->boundary_conditions, this->L, this->J1, this->J2, this->delta1, this->delta2, this->hz, this->syms.Sz, this->add_parity_breaking, this->w, this->seed));
     #endif
 }
 

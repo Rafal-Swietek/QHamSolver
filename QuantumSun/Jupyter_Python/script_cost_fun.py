@@ -10,96 +10,60 @@ import pandas as pd
 import copy
 import sys
 import os
+import h5py
+from tools import *
 
 my_path = "../../Python/"
 if my_path not in sys.path:
     sys.path.append(my_path)
  
-for place in sys.path: 
-    print(place)
+# for place in sys.path: 
+#     print(place)
 
-import costfun.costfun as cost
+from costfun import run as cost_run
+# import costfun.run as cost_run
 import importlib as imp
 def reload_modules():
-    imp.reload(cost)
+    imp.reload(cost_run)
 
 if __name__ == '__main__':
 
-    FOLDED = False
-    L=14
+    L_total=15
     J=1.0
-    alfa=1.00
+    alfa=1.0
     h=0.0
     w=2.0
-    zeta=0.2
-    M=3
-    gamma=3.0
-    ini_ave=1
+    zeta=0.0
+    N=3
+    gamma=1.0
+    ini_ave=0
+    
+    nu = 500
     
     seed = int(sys.argv[1])
+    if len(sys.argv) > 1:   N = int(sys.argv[2])
+    else:                   N = 3
 
-    COLLAPSE_WITH_GAMMA = 1
- 
-    params = None
+    sizes = np.arange(11, 17)
 
-    if COLLAPSE_WITH_GAMMA: 
-        params = np.linspace(1.0, 4.0, 13) 
-        L = int(sys.argv[2])
-        
-        _suffix = f"_L={L:d},M={M:d},alfa={alfa},zeta={zeta},ini_ave={ini_ave}"
-        with open(f"results/disorder_L={L:d},M={M:d},alfa={alfa},zeta={zeta},ini_ave={ini_ave}_gamma=1.0,4.0,0.25.npy", 'rb') as file: w_plot = np.load(file, allow_pickle=True)
-        with open(f"results/gap_ratio_L={L:d},M={M:d},alfa={alfa},zeta={zeta},ini_ave={ini_ave}_gamma=1.0,4.0,0.25.npy", 'rb') as file: gaps = np.load(file, allow_pickle=True)
-        with open(f"results/thouless_L={L:d},M={M:d},alfa={alfa},zeta={zeta},ini_ave={ini_ave}_gamma=1.0,4.0,0.25.npy", 'rb') as file: taus = np.load(file, allow_pickle=True)
-    else:
-        params = np.array([10, 11, 12, 13, 14])
-        gamma = float(sys.argv[2])
-    
-        _suffix = f'_gamma={gamma},M={M:d},alfa={alfa},zeta={zeta},ini_ave={ini_ave}'
-        with open(f'results/disorder_gamma={gamma},M={M:d},alfa={alfa},zeta={zeta},ini_ave={ini_ave}_L=10_14.npy', 'rb') as file: w_plot = np.load(file, allow_pickle=True)
-        with open(f'results/gap_ratio_gamma={gamma},M={M:d},alfa={alfa},zeta={zeta},ini_ave={ini_ave}_L=10_14.npy', 'rb') as file: gaps = np.load(file, allow_pickle=True)
-        with open(f'results/thouless_gamma={gamma},M={M:d},alfa={alfa},zeta={zeta},ini_ave={ini_ave}_L=10_14.npy', 'rb') as file: taus = np.load(file, allow_pickle=True)
-    
-    idx = 0
-    xdata = [wx[idx:] for wx in w_plot]
-
-    def calculate_and_save(scaling_ansatz, crit_fun = 'free'):
-        
-        ydata = [r[idx:] for r in gaps]
-        par, crit_pars, costfun, status = cost.get_crit_points(x=np.array(xdata), y=np.array(ydata), vals=params, crit_fun=crit_fun, scaling_ansatz=scaling_ansatz, seed=seed)
-        print("GapRatio", scaling_ansatz, crit_fun, par, crit_pars, costfun)
-
-        suffix = _suffix + "_critfun=%s_ansatz=%s_seed=%d"%(crit_fun, scaling_ansatz, seed)
-        # if costfun > 3: 
-        #     status = False
-        #     assert False, "Cost function too high: CF = %d"%costfun
-        if status:
-            filename = "cost_fun_results/GapRatio" + suffix
-            data = {
-                "costfun": costfun,
-                "crit exp": par
-            }
-            for i in range(len(crit_pars)):
-                data["x_%d"%i] = crit_pars[i]
-            np.savez(filename, **data)
-
-        ydata = np.log10(1.0 / taus)
-        ydata = [tTh[idx:] for tTh in ydata]
-        par, crit_pars, costfun, status = cost.get_crit_points(x=np.array(xdata), y=np.array(ydata), vals=params, crit_fun=crit_fun, scaling_ansatz=scaling_ansatz, seed=seed)
-        print("ThoulessTime", scaling_ansatz, crit_fun, par, crit_pars, costfun)
-        
-        # if costfun > 3: 
-        #     status = False
-        #     assert False, "Cost function too high: CF = %d"%costfun
-        if status:
-            filename = "cost_fun_results/ThoulessTime" + suffix
-            data = {
-                "costfun": costfun,
-                "crit exp": par
-            }
-            for i in range(len(crit_pars)):
-                data["x_%d"%i] = crit_pars[i]
-            np.savez(filename, **data)
-
-    for crits in ['free', 'power_law', 'lin']:
-        for scales in ['KT', 'RG', 'classic']:
-            calculate_and_save(scaling_ansatz = scales, crit_fun = crits)
+    disorder = []
+    gap_ratio = []
+    S_p1 = []
+    for L_total in sizes:
+        L = L_total - N
+        name = f"./collected data/results/nu={nu}/" + f'_L={L},N={N},gamma={gamma},alfa={alfa}.hdf5'
+        if os.path.exists(name):
+            with h5py.File(name, "r") as file:
+                disorder.append( np.array(file.get('disorder')) )
+                gap_ratio.append( np.array(file.get('gap_ratio')) )
+                S_p1.append( np.array(file.get('single_site_entropy'))[-1] )
+        else:
+            print(name)
+    gap_ratio   = np.array(gap_ratio)
+    S_p1        = np.array(S_p1)
+    print(sizes.shape)
+    print(gap_ratio.shape)
+    print(S_p1.shape)
+    for crits in ['free', 'lin', 'power_law']:
+        cost_run.find_collapse(x = disorder, y = gap_ratio, vals = sizes, name = "GapRatio",    crit_fun = crits, seed = seed )
+        cost_run.find_collapse(x = disorder, y = S_p1,      vals = sizes, name = "Entropy_p=1", crit_fun = crits, seed = seed )

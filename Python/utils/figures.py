@@ -77,7 +77,7 @@ def set_plot_elements(axis, xlim =[None, None], ylim=[None, None], xlabel = None
         else: axis.set_ylim([y2, y1])
 
 # axes[0,1].legend(frameon=0, fontsize=16, loc='upper left', handletextpad=0.25, handlelength = 1.25, bbox_to_anchor=(-0.02,1.03))
-def set_legend(axis, fontsize = 16, loc = 'best', anchor = None):
+def set_legend(axis, fontsize = 16, loc = 'best', anchor = None, **kwargs):
     """
     Setting plot legend
     ---------------------------
@@ -101,6 +101,6 @@ def set_legend(axis, fontsize = 16, loc = 'best', anchor = None):
         elif loc == 'lower center': anchor = (0.5, -0.02)
         elif loc == 'lower right': anchor = (1.02, -0.02)
         else:
-            axis.legend(frameon=0, fontsize=fontsize, loc=loc, handletextpad=0.25, handlelength = 1.25)
+            axis.legend(frameon=0, fontsize=fontsize, loc=loc, handletextpad=0.25, handlelength = 1.25, **kwargs)
             return;
-    axis.legend(frameon=0, fontsize=fontsize, loc=loc, handletextpad=0.25, handlelength = 1.25, bbox_to_anchor=anchor)
+    axis.legend(frameon=0, fontsize=fontsize, loc=loc, handletextpad=0.25, handlelength = 1.25, bbox_to_anchor=anchor, **kwargs)

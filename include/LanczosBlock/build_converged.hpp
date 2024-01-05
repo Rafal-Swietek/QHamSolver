@@ -70,7 +70,7 @@ namespace lanczos
 			if(j > this->lanczos_steps / this->bundle_size && (j - this->lanczos_steps / this->bundle_size) % 10 == 0)
 			{	
 				double conv = this->_calculate_convergence(E0, beta);
-				_extra_debug( printSeparated(std::cout, "\t", 15, false, this->N, j, conv, conv2); )
+				_extra_debug( printSeparated(std::cout, "\t", 15, false, this->N, j, conv); )
 				if(conv < this->tolerance){
 					// printSeparated(std::cout, "\t", 15, false, this->N, j, conv, conv2);
 					this->lanczos_steps = j;

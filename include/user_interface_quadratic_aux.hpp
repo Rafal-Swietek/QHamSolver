@@ -148,8 +148,6 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement()
 					E_ent = arma::log( (1 - E_ent) / E_ent);
 					arma::uvec X = arma::find_nan(E_ent);
 					if( X.size() == 0){
-						u64 E_av_idx = spectrals::get_mean_energy_index(E_ent);
-						const u64 num = E_ent.size() < 1000? 0.25 * E_ent.size() : 0.5 * E_ent.size();
 						double wH = statistics::typical_level_spacing(E_ent) / two_pi;
 						E_ent /= wH;
 						auto [sff_tmp, Z_tmp] = statistics::spectral_form_factor(E_ent, times, 0.0, -1.0);

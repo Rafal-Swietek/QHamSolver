@@ -103,7 +103,7 @@ std::istream& Quadratic::read(std::istream& os)
 /// @param os input stream to read parameters
 std::ostream& Quadratic::write(std::ostream& os) const
 {
-    printSeparated(os, "\t", 16, true, "Model:", "Quadratic mdoel - d-dimensional");
+    printSeparated(os, "\t", 16, true, "Model:", "Quadratic model - d-dimensional");
     os << std::endl;
     printSeparated(os, "\t", 16, true, "Hamiltonian:", "H = J\u03A3_<i,j> A_ij c^+_i c_j + h.c + \u03A3_i h_i n_i");
     printSeparated(os, "\t", 16, true, "----------------------------------------------------------------------------------------------------");

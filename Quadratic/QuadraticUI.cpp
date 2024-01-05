@@ -51,7 +51,8 @@ void ui::make_sim(){
 						std::cout << " - - START NEW ITERATION:\t\t par = "; // simuVAtion end
 						printSeparated(std::cout, "\t", 16, true, this->L, this->J, this->w, this->g);
 						
-						eigenstate_entanglement_degenerate();
+						eigenstate_entanglement(); continue;
+						// eigenstate_entanglement_degenerate();
 						// average_sff();
 						std::cout << "\t\t - - - - - - FINISHED ITERATION IN : " << tim_s(start_loop) << " seconds\n\t\t\t Total time : " << tim_s(start) << " s - - - - - - " << std::endl; // simuVAtion end
 		}}}}

@@ -12,7 +12,7 @@
 				"-o",
 				"${workspaceFolder}/QSun.o",
 				"-larmadillo", "-lsuperlu",
-				"-lpthread", "-lm",
+				"-lpthread", "-lm", "-lhdf5",
 				"-fomit-frame-pointer", "-O3",
 				"-fdiagnostics-color=always", "-lomp",
 				"-DMY_MAC"
