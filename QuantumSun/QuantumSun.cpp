@@ -88,8 +88,8 @@ void QuantumSun::create_hamiltonian()
 
 	/* Create GOE Matrix */
 	arma::mat H_grain = this->_gamma * this->grain.generate_matrix(dim_erg);
-    if(this->_norm_grain)
-        H_grain /= std::sqrt(ULLPOW(this->grain_size) + 1);
+    // if(this->_norm_grain)
+    H_grain /= std::sqrt(ULLPOW(this->grain_size) + 1);
 
     /* Create random couplings */
     this->_long_range_couplings = arma::vec(this->num_of_spins, arma::fill::zeros);

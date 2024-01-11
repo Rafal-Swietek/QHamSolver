@@ -19,7 +19,13 @@ template <typename _type>
 inline
 std::complex<_type> my_conjungate(std::complex<_type> x) { return std::conj(x); }
 
+//<! TODO: CLEAN UP AND MAKE USE OF ENUM CLASS SO EACH FUNCTION CAN ACCESS SCHMIDT DECOMPOSITION
 namespace entanglement{
+
+    enum class method{
+        schmidt_decomposition,
+        reduced_density_matrix
+    };
 
     /// @brief Calculate the reduced density matrix of a subsystem with set size
     /// @tparam _ty template element type
@@ -47,7 +53,7 @@ namespace entanglement{
         for (long long n = 0; n < N; n++) {						// loop over configurational basis
             long long counter = 0;
             u64 p_n = std::get<0>(permutation(n));
-            for (long long m = p_n % dimB; m < N; m += dimB) {		// pick out state with same B side (last L-A_size bits)
+            for (long long m = p_n % dimB; m < N; m += dimB) {		    // pick out state with same B side (last L-A_size bits)
                 long idx = p_n / dimB;							        // find index of state with same B-side (by dividing the last bits are discarded)
                 rho(idx, counter) += my_conjungate(state(p_n)) * state(m);
                 counter++;										        // increase counter to move along reduced basis
@@ -56,47 +62,31 @@ namespace entanglement{
     	return rho;	
     }
 
-
-    // /// @brief Calculate the reduced density matrix of a subsystem with set size for global symmetries (like U(1))
-    // /// @tparam _ty template element type
-    // /// @param state input state to calculate reduced matrix for
+    // /// @brief Calculates the Schmidt decomposition of a wavefunction and returns the Schmidt values
+    // /// @tparam _ty input state type
+    // /// @param state input state in full Hilbert space
     // /// @param A_size subsystem size
     // /// @param L system size
-    // /// @param full_map mapping to reduced hilbert space basis
-    // /// @param permutation permutation from partition to bipartition (i.e. (ones are subsystem A), 00110101 -> p(i) = {2, 3, 5, 7, 0, 1, 4, 6} )
-    // /// @return Reduced density matrix for input state
+    // /// @return entanglement entropy
     // template <typename _ty>
     // inline
-    // auto reduced_density_matrix_sym(
+    // auto schmidt_decomposition(
     //     const arma::Col<_ty>& state,
     //     int A_size,
-    //     unsigned int L,
-    //     const v_1d<u64>& full_map,
-    //     std::string bit_mask = ""
-    //     ) 
-    //     -> arma::Mat<_ty>
-    //     {
-    // 	// set subsytsems size
+    //     unsigned int L
+    //     )
+    // {
     // 	const long long dimA = (ULLPOW( (block_size *      A_size ) ));
     // 	const long long dimB = (ULLPOW( (block_size * (L - A_size)) ));
-    //     const long long full_dim = dimA * dimB;
-    //     const long long N = full_map.size();
-    //     auto find_index = [&](u64 index){   return binary_search(full_map, 0, N - 1, index);  };
-    // 	arma::Mat<_ty> rho(dimA, dimA, arma::fill::zeros);
-    // 	for (long long n = 0; n < N; n++) {						// loop over configurational basis
-    // 		long long counter = 0;
-    //         const u64 true_n = full_map[n];
-    // 		for (long long j = true_n % dimB; j < full_dim; j += dimB) {	// pick out state with same B side (last L-A_size bits)
-    // 			long idx = true_n / dimB;
-    //             long long m = find_index(j);
-    //             if(m >= 0)
-    //                 rho(idx, counter) += my_conjungate(state(n)) * state(m);
-    //             counter++;  // increase counter to move along reduced basis
-    // 		}
-    // 	}
-    // 	return rho;	
-    // }
 
+    //     // reshape array to matrix
+    //     arma::Mat<_ty> rho = arma::reshape(state, dimA, dimB);
+
+    //     // get schmidt coefficients from singular-value-decomposition
+    //     arma::vec schmidt_coeff = arma::svd(rho);
+
+    //     return arma::square(schmidt_coeff);
+    // }
 };
 
 
@@ -245,3 +235,51 @@ namespace entropy{
         return entropy;
     }
 };
+
+
+
+
+
+
+
+
+
+    // /// @brief Calculate the reduced density matrix of a subsystem with set size for global symmetries (like U(1))
+    // /// @tparam _ty template element type
+    // /// @param state input state to calculate reduced matrix for
+    // /// @param A_size subsystem size
+    // /// @param L system size
+    // /// @param full_map mapping to reduced hilbert space basis
+    // /// @param permutation permutation from partition to bipartition (i.e. (ones are subsystem A), 00110101 -> p(i) = {2, 3, 5, 7, 0, 1, 4, 6} )
+    // /// @return Reduced density matrix for input state
+    // template <typename _ty>
+    // inline
+    // auto reduced_density_matrix_sym(
+    //     const arma::Col<_ty>& state,
+    //     int A_size,
+    //     unsigned int L,
+    //     const v_1d<u64>& full_map,
+    //     std::string bit_mask = ""
+    //     ) 
+    //     -> arma::Mat<_ty>
+    //     {
+    // 	// set subsytsems size
+    // 	const long long dimA = (ULLPOW( (block_size *      A_size ) ));
+    // 	const long long dimB = (ULLPOW( (block_size * (L - A_size)) ));
+    //     const long long full_dim = dimA * dimB;
+    //     const long long N = full_map.size();
+    //     auto find_index = [&](u64 index){   return binary_search(full_map, 0, N - 1, index);  };
+    // 	arma::Mat<_ty> rho(dimA, dimA, arma::fill::zeros);
+    // 	for (long long n = 0; n < N; n++) {						// loop over configurational basis
+    // 		long long counter = 0;
+    //         const u64 true_n = full_map[n];
+    // 		for (long long j = true_n % dimB; j < full_dim; j += dimB) {	// pick out state with same B side (last L-A_size bits)
+    // 			long idx = true_n / dimB;
+    //             long long m = find_index(j);
+    //             if(m >= 0)
+    //                 rho(idx, counter) += my_conjungate(state(n)) * state(m);
+    //             counter++;  // increase counter to move along reduced basis
+    // 		}
+    // 	}
+    // 	return rho;	
+    // }
