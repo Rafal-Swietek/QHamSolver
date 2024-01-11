@@ -38,33 +38,34 @@ def find_collapse(x, y, vals, name, crit_fun = 'free', seed = None, wH = None):
 
     print("seed = ", seed)
 
-    dir = "CriticalParameters"
+    dir = "CriticalParameters/raw/"
     try:
         os.mkdir(dir)
     except OSError as error:
         print(error)   
 
     def calculate_and_save(scaling_ansatz, crit_fun = 'free'):
-        suffix = "_critfun=%s_ansatz=%s_seed=%d"%(crit_fun, scaling_ansatz, seed)
+        suffix = "_critfun=%s_ansatz=%s_seed=%d.hdf5"%(crit_fun, scaling_ansatz, seed)
 
         #-- calculate gap ratio collapse
         par, crit_pars, costfun, status = cost.get_crit_points(x=x, y=y, vals=vals, crit_fun=crit_fun, scaling_ansatz=scaling_ansatz, seed=seed, wH=wH)
         print(name, "\t", par, crit_pars, costfun, status)
         crit_pars = np.array(crit_pars)
-        if costfun > 3: 
+        if costfun > 10: 
             status = "Failed"
             assert False, "Cost function too high: CF = %d"%costfun
         if status:
             filename = dir + os.sep + name + suffix
             
             hf = h5py.File(filename, 'w')
-            hf.create_dataset('crit_pars', crit_pars.shape, data = crit_pars)
+            hf.create_dataset('crit_pars',  crit_pars.shape, data = crit_pars)
+            hf.create_dataset('vals',       vals.shape,      data = vals)
             hf['costfun']  = costfun
             hf['crit exp'] = par
             hf.close()
 
     calculate_and_save(scaling_ansatz='classic',    crit_fun=crit_fun)
-    calculate_and_save(scaling_ansatz='FGR',        crit_fun=crit_fun)
     calculate_and_save(scaling_ansatz='KT',         crit_fun=crit_fun)
     calculate_and_save(scaling_ansatz='RG',         crit_fun=crit_fun)
+    # calculate_and_save(scaling_ansatz='FGR',        crit_fun=crit_fun)
     # calculate_and_save(scaling_ansatz='spacing', crit_fun='free')

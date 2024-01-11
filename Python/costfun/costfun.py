@@ -219,7 +219,7 @@ def prepare_bounds(x, crit_fun, scaling_ansatz, vals):
             if x_max is None or _x_ > x_max:   x_max = _x_
             if x_min is None or _x_ < x_min:    x_min = _x_
             
-    bounds = [(0.2, 5.)] if scaling_ansatz == 'FGR' or scaling_ansatz == 'spacing' else [(0.1, 10.)]
+    bounds = [(0.2, 5.)] if scaling_ansatz == 'FGR' or scaling_ansatz == 'spacing' else [(0.0, 100.)]
     #-- number of bounds is number of different scaling parameters
     if crit_fun == 'free':  
         for i in range(len(vals)):  
@@ -233,11 +233,11 @@ def prepare_bounds(x, crit_fun, scaling_ansatz, vals):
     #-- power law and inverse function have 3 paramters
     elif crit_fun == 'power_law' or crit_fun == 'inv':   
         for i in range(3):
-            bounds.append((-10., 10.))
+            bounds.append((-1000., 1000.))
     #-- logarithmic and its inverse function have 2 paramters
     elif crit_fun == 'log' or crit_fun == 'inv_log' or crit_fun == 'lin':   
         for i in range(2):
-            bounds.append((-10., 10.))
+            bounds.append((-1000., 1000.))
     return bounds
 
 
@@ -267,8 +267,8 @@ def get_crit_points(x, y, vals, crit_fun='free', scaling_ansatz = 'classic', see
                                     scale_func=scaling_ansatz, 
                                     crit_func=crit_fun,
                                     bnds=bounds,
-                                    population_size=1e3,
-                                    maxiterarions=1e4, workers=10,
+                                    population_size=1e2,
+                                    maxiterarions=1e3, workers=10,
                                     seed = seed,
                                     wH = wH
                                 )

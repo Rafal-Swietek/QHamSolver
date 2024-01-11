@@ -44,19 +44,23 @@ if __name__ == '__main__':
     if len(sys.argv) > 1:   N = int(sys.argv[2])
     else:                   N = 3
 
-    sizes = np.arange(11, 17)
+    sizes = np.arange(11, 17) - N
+    r_min=0.42
 
     disorder = []
     gap_ratio = []
     S_p1 = []
-    for L_total in sizes:
-        L = L_total - N
-        name = f"./collected data/results/nu={nu}/" + f'_L={L},N={N},gamma={gamma},alfa={alfa}.hdf5'
+    suffix = f',N={N},gamma={gamma},alfa={alfa}'
+    for L in sizes:
+        # L = L_total - N
+        name = f"./collected data/results/nu={nu}/" + f'_L={L}{suffix}.hdf5'
         if os.path.exists(name):
             with h5py.File(name, "r") as file:
-                disorder.append( np.array(file.get('disorder')) )
-                gap_ratio.append( np.array(file.get('gap_ratio')) )
-                S_p1.append( np.array(file.get('single_site_entropy'))[-1] )
+                r = np.array(file.get('gap_ratio'))
+
+                S_p1.append( np.array(file.get('single_site_entropy'))[-2][r > r_min] )
+                disorder.append( np.array(file.get('disorder'))[r > r_min] )
+                gap_ratio.append( r[r > r_min] )
         else:
             print(name)
     gap_ratio   = np.array(gap_ratio)
@@ -65,5 +69,5 @@ if __name__ == '__main__':
     print(gap_ratio.shape)
     print(S_p1.shape)
     for crits in ['free', 'lin', 'power_law']:
-        cost_run.find_collapse(x = disorder, y = gap_ratio, vals = sizes, name = "GapRatio",    crit_fun = crits, seed = seed )
-        cost_run.find_collapse(x = disorder, y = S_p1,      vals = sizes, name = "Entropy_p=1", crit_fun = crits, seed = seed )
+        cost_run.find_collapse(x = disorder, y = gap_ratio, vals = sizes, name = "GapRatio" + suffix,    crit_fun = crits, seed = seed )
+        cost_run.find_collapse(x = disorder, y = S_p1,      vals = sizes, name = "Entropy_p=1" + suffix, crit_fun = crits, seed = seed )

@@ -419,6 +419,10 @@ XYZ/results*/*
 
 QuantumSun/Jupyter_Python/RESULTS/*
 XYZ/Jupyter_Python/RESULTS/*
+XYZ/Jupyter_Python/RESULTS2/
+XYZ/Jupyter_Python/RESULTS_XXZ/
+XYZ/Jupyter_Python/RESULTS_XXZ2/
+
 include/.DS_Store
 QuantumSun/.DS_Store
 */Jupyter_Python/collected data/
