@@ -17,7 +17,6 @@ using namespace std;
 /// <returns></returns>
 template <class T>
 inline u64 binary_search(const std::vector<T>& arr, u64 l_point, u64 r_point, T element) {
-	_assert_(l_point < arr.size(), "What?");
 	if (r_point >= arr.size()) {
 		return -1;
 	}
@@ -35,7 +34,6 @@ inline u64 binary_search(const std::vector<T>& arr, u64 l_point, u64 r_point, T 
 
 template <>
 inline u64 binary_search(const std::vector<double>& arr, u64 l_point, u64 r_point, double element) {
-	_assert_(l_point < arr.size(), "What?");
 	if (r_point >= arr.size()) {
 		return -1;
 	}
