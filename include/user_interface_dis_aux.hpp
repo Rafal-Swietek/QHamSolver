@@ -611,8 +611,8 @@ void user_interface_dis<Hamiltonian>::eigenstate_entanglement_degenerate()
 			#pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
 				for(u64 unused = 0; unused < this->mu; unused++)
 				{
-					arma::Col<int> indices = random_generator.create_random_vec<int>(gamma_a, min_idx, max_idx);
-					int id = random_generator.random_uni<int>(0, gamma_a-1);
+					arma::Col<int> indices = random_generator.create_random_vec<int, dist::uniform>(gamma_a, min_idx, max_idx);
+					int id = random_generator.uniform_dist<int>(1, gamma_a-1);
 
 					arma::cx_vec state(dim, arma::fill::zeros);
 					arma::cx_vec coeff = Haar.col(id) / std::sqrt(arma::cdot(Haar.col(id), Haar.col(id)));

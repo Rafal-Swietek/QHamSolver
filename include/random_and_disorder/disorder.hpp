@@ -10,6 +10,7 @@ template <typename _ty>
 class disorder : public randomGen{
 
     typedef arma::Col<_ty> disorder_vec;
+    typedef arma::Mat<_ty> random_mat;
 
 protected:
 
@@ -33,16 +34,47 @@ public:
 //<! ------------------------------------------------------------------------ GENERATE DISORDER WITH VARIOUS DISTRIBUTIONS
     
     //<! ---------------------------------- UNIFORM DISTRIBUTION
-    /// @brief 
-    /// @param length 
-    /// @param _bound 
-    /// @return 
+    /// @brief Generate random array with uniformly distributed values
+    /// @param length size of array
+    /// @param _bound values contained in [- _bound, _bound]
+    /// @return array with uniform random numbers
     disorder_vec uniform(u64 length, _ty _bound)
-        { return this->template create_random_vec<_ty>(length, _bound); }
+        { return this->template create_random_vec<_ty, dist::uniform>(length, _bound); }
 
+    /// @brief Generate random array with uniformly distributed values
+    /// @param length size of array
+    /// @param _min minimal value of distribution
+    /// @param _max maximal value of distribution
+    /// @return array with uniform random numbers
     disorder_vec uniform(u64 length, _ty _min, _ty _max)
-        { return this->template create_random_vec<_ty>(length, _min, _max); }
+        { return this->template create_random_vec<_ty, dist::uniform>(length, _min, _max); }
 
+    /// @brief Generate random matrix with uniformly distributed values
+    /// @param length size of matrix
+    /// @param _min minimal value of distribution
+    /// @param _max maximal value of distribution
+    /// @return matrix with uniform random numbers
+    random_mat uniform_matrix(u64 length, _ty _min, _ty _max)
+        { return this->template random_matrix<_ty, dist::uniform>(length, _min, _max); }
+
+
+    //<! ---------------------------------- GAUSSIAN DISTRIBUTION
+    /// @brief Generate random array with values filled due to gaussian distribution
+    /// @param length lenght of array (size of state)
+    /// @param _mean mean value of distribution
+    /// @param _var variance of distribution
+    /// @return array with random numbers
+    disorder_vec gaussian(u64 length, _ty _mean, _ty _var)
+        { return this->template create_random_vec<_ty, dist::normal>(length, _mean, _var); }
+
+    /// @brief Generate random matrix with values filled due to gaussian distribution
+    /// @param length size of matrix (length x length)
+    /// @param _mean mean value of distribution
+    /// @param _var variance of distribution
+    /// @return matrix with gaussian random numbers
+    random_mat gaussian_matrix(u64 length, _ty _mean, _ty _var)
+        { return this->template random_matrix<_ty, dist::normal>(length, _mean, _var); }
+    
     //<! ---------------------------------- QUASIPERIODIC DISTRIBUTION
     disorder_vec quasiperiodic(_ty amplitude, _ty phi);
 
@@ -78,12 +110,13 @@ public:
 
 
 //<! ----------------------------------------------------------------------------------------------- ROUTINES WITH DISORDER
+template <dist dist_type> 
 inline void checkRandom(unsigned int seed) 
 {
-	disorder<double> my_gen(seed);
-	std::cout << "test randoms \n" << my_gen.random_uni<double>(0., 1.) << "\t" << my_gen.random_uni<double>(0., 1.) << "\t" << my_gen.random_uni<double>(0., 1.) << std::endl;
+	disorder<double> my_gen(seed); 
+	std::cout << "test randoms \n" << my_gen.distribution<double, dist_type>(0., 1.) << "\t" << my_gen.distribution<double, dist_type>(0., 1.) << "\t" << my_gen.distribution<double, dist_type>(0., 1.) << std::endl;
 	my_gen = disorder<double>(seed);
 	std::cout << "reset seed!" << std::endl;
-	std::cout << my_gen.random_uni<double>(0., 1.) << "\t" << my_gen.random_uni<double>(0., 1.) << "\t" << my_gen.random_uni<double>(0., 1.) << std::endl;
+	std::cout << my_gen.distribution<double, dist_type>(0., 1.) << "\t" << my_gen.distribution<double, dist_type>(0., 1.) << "\t" << my_gen.distribution<double, dist_type>(0., 1.) << std::endl;
 	std::cout << "Same? Good continue!\n\n";
 }
