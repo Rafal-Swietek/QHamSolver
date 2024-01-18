@@ -82,7 +82,6 @@ void pertIsing::create_hamiltonian()
 	        }
 	    }
 	}
-    std::cout << arma::mat(this->H) << std::endl;
     // add SUSY ground state energy (const shift) and invert (minus sign in front of hamiltonian)
     // this->H = -this->H + this->_J1 * (this->system_size - int(this->_boundary_condition)) * (2 + Jz) / 4. * arma::eye(this->dim, this->dim);
     // if(this->_boundary_condition)
