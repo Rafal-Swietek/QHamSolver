@@ -6,7 +6,7 @@
 #include "typedef_functions.h"
 //--------------------------------------------------------------------------------
 //------------------------------------------------MULTIPLICATION OF STD::FUNCTIONS
-namespace op {
+namespace QOps {
 	//! function behavior: f*g == f(g(n,...),...)
 	//! f*g |n> = f*g_nm |m> = f_mk * g_nm |k>
 	// multiplication for generic input functions

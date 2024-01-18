@@ -1,6 +1,6 @@
 #pragma once
 
-namespace op{
+namespace QOps{
 
 using genOp = generic_operator<>;
 using locOp = generic_operator<int>;

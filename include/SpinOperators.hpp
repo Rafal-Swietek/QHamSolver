@@ -7,7 +7,17 @@
 const double _Spin = SPIN;
 
 namespace operators{
-    
+    /// @brief Sigma X operator on input site
+	/// @param base_vec Input state to act SigmaX on
+	/// @param L system size
+	/// @param site site to act operator
+	/// @return pair of return value and resulting state
+	inline
+    std::pair<cpx, u64> 
+    sigma_0(u64 base_vec, unsigned int L, int site) {
+		return std::make_pair(_Spin, base_vec);
+	};
+
 	/// @brief Sigma X operator on input site
 	/// @param base_vec Input state to act SigmaX on
 	/// @param L system size

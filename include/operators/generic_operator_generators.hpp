@@ -1,6 +1,6 @@
 #pragma once
 
-namespace op{
+namespace QOps{
 
     /// @brief Creates permutation generator for permutation p
     /// @param L system size

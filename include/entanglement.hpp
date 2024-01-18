@@ -40,7 +40,7 @@ namespace entanglement{
         const arma::Col<_ty>& state,
         int A_size,
         unsigned int L,
-        op::generic_operator<> permutation = op::generic_operator<>()
+        QOps::generic_operator<> permutation = QOps::generic_operator<>()
         ) 
         -> arma::Mat<_ty> 
         {
@@ -106,7 +106,7 @@ namespace entropy{
         const arma::Col<_ty>& state,
         int A_size,
         unsigned int L,
-        op::generic_operator<> permutation = op::generic_operator<>()
+        QOps::generic_operator<> permutation = QOps::generic_operator<>()
         ){
     	arma::Mat<_ty> rho = entanglement::reduced_density_matrix(state, A_size, L, permutation);
                                                  //full_map.empty()?  : entaglement::reduced_density_matrix_sym(state, A_size, L, full_map);
@@ -135,7 +135,7 @@ namespace entropy{
     arma::vec vonNeumann(
         const arma::Col<_ty>& state,
         unsigned int L,
-        op::generic_operator<> permutation
+        QOps::generic_operator<> permutation
     ){
     	arma::vec _entropy(L - 1, arma::fill::zeros);
     //#pragma omp parallel for
@@ -160,7 +160,7 @@ namespace entropy{
         int A_size,
         unsigned int L,
         int alfa,
-        op::generic_operator<> permutation
+        QOps::generic_operator<> permutation
         ) {
         _assert_(alfa > 1, "Only alfa>=2 powers are possible");
     	arma::Mat<_ty> rho = entanglement::reduced_density_matrix(state, A_size, L, permutation);
@@ -187,7 +187,7 @@ namespace entropy{
         const arma::Col<_ty>& state,
         int A_size,
         unsigned int L,
-        op::generic_operator<> permutation
+        QOps::generic_operator<> permutation
         ) {
     	arma::Mat<_ty> rho = entanglement::reduced_density_matrix(state, A_size, L, permutation);
                                                  //full_map.empty()?  : entaglement::reduced_density_matrix_sym(state, A_size, L, full_map);

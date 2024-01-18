@@ -2,7 +2,7 @@
 
 //! --------------------------------------------------------------------------------
 //! --------------------------------------------------------BUILT-IN OPERATORS CLASS
-namespace op {
+namespace QOps {
 
 	enum class __builtin_operators {
 		e,		  // neutral element

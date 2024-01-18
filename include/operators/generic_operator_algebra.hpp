@@ -2,7 +2,7 @@
 //! Header file to define algebra of operators<_ty...> class. Overloaded multiplication operators, addition and substraction.
 //!  - uses the general funAlgebra.h to mimic algebra on std::function
 //!  - 
-namespace op {
+namespace QOps {
 
 	//! ------------------------------------------------------------------------------------------------ MULTIPLICATION
 	//! ----------------------------------------------------------- with another class instance

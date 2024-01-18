@@ -1,6 +1,6 @@
 #pragma once
 
-namespace op {
+namespace QOps {
 	typedef std::pair<u64, cpx> return_type;		// return type of operator, resulting state and value
 
 	//<! std::function type-wrapper

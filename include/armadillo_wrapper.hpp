@@ -12,6 +12,16 @@ template <typename matrix>
 matrix commutator(const matrix& A, const matrix& B)
 	{ return A * B - B * A; }
 
+//<! Checks if the two input matrices commute (return unit if not)
+template <typename _ty>
+bool commute(const arma::SpMat<_ty>& A, const arma::SpMat<_ty>& B)
+	{ return !arma::Mat<_ty>( A * B - B * A ).is_zero(1e-14); }
+
+//<! Checks if the two input matrices anticommute (return unit if not)
+template <typename _ty>
+bool anticommute(const arma::SpMat<_ty>& A, const arma::SpMat<_ty>& B)
+	{ return !arma::Mat<_ty>( A * B + B * A ).is_zero(1e-14); }
+
 /// @brief Calculate Hilbert-Schmidt norm for input matrix
 /// @tparam _ty element type of input matrix
 /// @param A input matrix

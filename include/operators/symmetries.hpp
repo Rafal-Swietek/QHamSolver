@@ -1,7 +1,7 @@
 #pragma once
 
 //#define NOP
-namespace op{
+namespace QOps{
     
     /// @brief Create generic_operator<> for symmetry generator
     /// @param L system size (defines hilbert space)

@@ -1,6 +1,6 @@
 #pragma once
 
-namespace op {
+namespace QOps {
 
 
 	// For changin to arbitrary output value

@@ -19,7 +19,7 @@ namespace QHS{
 
 	/// @brief 
 	class point_symmetric : public hilbert_space_base{
-		v_1d<op::genOp> _symmetry_group;
+		v_1d<QOps::genOp> _symmetry_group;
 		v_1d<elem_ty> _normalisation;
 		v_1d<int> _sectors;
 
@@ -28,7 +28,7 @@ namespace QHS{
 		int _pos_of_parity = -1;	//<! position of parity generator in input symmetries (if not present put -1)
 		bool _real_k_sector = 1;	//<! is the k_sector real or complex?, i.e. k = 0, pi
 		
-		void generate_symmetry_goup(const v_1d<op::genOp>& sym_gen);
+		void generate_symmetry_group(const v_1d<QOps::genOp>& sym_gen);
 		auto get_symmetry_normalization(u64 base_idx) const -> elem_ty;
 
 		/// @brief 
@@ -38,7 +38,7 @@ namespace QHS{
 		typedef std::pair<u64, elem_ty> return_type;		// return type of operator, resulting state and value
 	public:
 		point_symmetric() = default;
-		point_symmetric(unsigned int L, const v_1d<op::genOp>& sym_gen, int _BC = 1, int k_sector = 0, int pos_of_parity = -1);
+		point_symmetric(unsigned int L, const v_1d<QOps::genOp>& sym_gen, int _BC = 1, int k_sector = 0, int pos_of_parity = -1);
 		
 		virtual void create_basis() override;
 
@@ -115,7 +115,7 @@ namespace QHS{
 	/// @param k_sec quasimomentum symmetyr sector
 	/// @param pos_of_parity position of parity in sym_gen (if not present -> -1, by default -1)
 	inline
-	point_symmetric::point_symmetric(unsigned int L, const v_1d<op::genOp>& sym_gen, int _BC, int k_sec, int pos_of_parity)
+	point_symmetric::point_symmetric(unsigned int L, const v_1d<QOps::genOp>& sym_gen, int _BC, int k_sec, int pos_of_parity)
 	{
 		this->system_size = L;
 		this->_boundary_cond = _BC;
@@ -128,7 +128,7 @@ namespace QHS{
 		// set position of parity symmetry in list of generators
 		this->_pos_of_parity = pos_of_parity;
 
-		this->generate_symmetry_goup(sym_gen);
+		this->generate_symmetry_group(sym_gen);
 		this->init();
 	}
 
@@ -137,10 +137,10 @@ namespace QHS{
 	/// @param sym_gen list of symmetry generators (shall not include translation! )
 	inline
 	void 
-	point_symmetric::generate_symmetry_goup(const v_1d<op::genOp>& sym_gen_in)
+	point_symmetric::generate_symmetry_group(const v_1d<QOps::genOp>& sym_gen_in)
 	{
-		this->_symmetry_group = v_1d<op::genOp>();
-		v_1d<op::genOp> sym_gen = sym_gen_in;
+		this->_symmetry_group = v_1d<QOps::genOp>();
+		v_1d<QOps::genOp> sym_gen = sym_gen_in;
 
 		// remove parity for complex quasimomentum sectors
 		if (!this->_real_k_sector && this->_pos_of_parity >= 0){
@@ -153,7 +153,7 @@ namespace QHS{
 			this->_sectors.emplace_back((int)std::real(chi(G)));
 
 		// add neutral element
-		this->_symmetry_group.push_back(op::genOp(this->system_size));
+		this->_symmetry_group.push_back(QOps::genOp(this->system_size));
 		
 		// set combinations of available symmetries
 		const int NUM_OF_GENERATORS = sym_gen.size();
@@ -162,7 +162,7 @@ namespace QHS{
 			bitmask.resize(NUM_OF_GENERATORS, 0);   	// N - K trailing 0's
 			// std:: cout << k << "\t\t" << bitmask << std::endl;
 			do {
-				op::genOp sym_temp(this->system_size);
+				QOps::genOp sym_temp(this->system_size);
 				for (int i = 0; i < NUM_OF_GENERATORS; ++i) // [0..N-1] integers
 					if (bitmask[i] == 1)
 						sym_temp %= sym_gen[i];
@@ -174,21 +174,21 @@ namespace QHS{
 		
 		// set combination of all syms with all translations
 		if (this->_boundary_cond == 0) {
-			v_1d<op::genOp> sym_group_copy = this->_symmetry_group;
-			op::genOp translation = op::_translation_symmetry(this->system_size, this->k_sector);
+			v_1d<QOps::genOp> sym_group_copy = this->_symmetry_group;
+			QOps::genOp translation = QOps::_translation_symmetry(this->system_size, this->k_sector);
 			for (int l = 1; l < this->system_size; l++) 
 			{
+				// QOps::genOp translation = QOps::_translation_symmetry(this->system_size, this->k_sector, l);
 				for (auto& G : sym_group_copy)
 					this->_symmetry_group.push_back(translation % G);
 
-				//this->_symmetry_group.push_back(translation);
-				translation %= op::_translation_symmetry(this->system_size, this->k_sector);
+				translation %= QOps::_translation_symmetry(this->system_size, this->k_sector);
 			}
 
 			//<! append quasimomentum sector
 			this->_sectors.emplace_back(this->k_sector);
 		}
-
+		// std::cout << this->_sectors.size() << "\t\t" << this->_symmetry_group.size() << std::endl;
 	}
 
 	/// @brief Find super-equivalent class (SEC) representative for given set of states related by symmetry transformations
@@ -337,6 +337,9 @@ namespace QHS{
 
 		}
 		this->dim = this->mapping.size();
+		for(u64 idx : this->mapping)
+			std::cout << idx << " ";
+		std::cout << std::endl;
 	}
 
 

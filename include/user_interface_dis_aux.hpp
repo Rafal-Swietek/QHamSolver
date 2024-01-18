@@ -470,7 +470,7 @@ void user_interface_dis<Hamiltonian>::eigenstate_entanglement()
 				if(l != LA % this->L)
 					p[l] = (l < (LA % this->L) )? l + 1 : l;
 			std::cout << p << std::endl;
-			auto permutation = op::_permutation_generator(this->L, p);
+			auto permutation = QOps::_permutation_generator(this->L, p);
 			arma::sp_mat P = arma::real(permutation.to_matrix( ULLPOW(this->L) ));
 
 			std::cout << " - - - - - - set permutation matrix for LA = " << LA << " in : " << tim_s(start) << " s for realis = " << realis << " - - - - - - " << std::endl;
@@ -597,7 +597,7 @@ void user_interface_dis<Hamiltonian>::eigenstate_entanglement_degenerate()
 				if(l != LA % this->L)
 					p[l] = (l < (LA % this->L) )? l + 1 : l;
 			std::cout << p << std::endl;
-			auto permutation = op::_permutation_generator(this->L, p);
+			auto permutation = QOps::_permutation_generator(this->L, p);
 			arma::sp_mat P = arma::real(permutation.to_matrix( size ));
 
 			std::cout << " - - - - - - set permutation matrix for LA = " << LA << " in : " << tim_s(start_LA) << " s for realis = " << realis << " - - - - - - " << std::endl;
@@ -695,11 +695,11 @@ void user_interface_dis<Hamiltonian>::diagonal_matrix_elements()
 
 	int Ll = this->L;
 	auto kernel1 = [Ll](u64 state){ auto [val, num] = operators::sigma_x(state, Ll, Ll / 2 ); return std::make_pair(num, val); };
-	auto SigmaX_op = op::generic_operator<>(this->L, std::move(kernel1), 1.0);
+	auto SigmaX_op = QOps::generic_operator<>(this->L, std::move(kernel1), 1.0);
 	auto SigmaX = SigmaX_op.to_matrix(dim);
 
 	auto kernel2 = [Ll](u64 state){ auto [val, num] = operators::sigma_z(state, Ll, Ll / 2 ); return std::make_pair(num, val); };
-	auto SigmaZ_op = op::generic_operator<>(this->L, std::move(kernel2), 1.0);
+	auto SigmaZ_op = QOps::generic_operator<>(this->L, std::move(kernel2), 1.0);
 	auto SigmaZ = SigmaZ_op.to_matrix(dim);
 
 	int counter = 0;

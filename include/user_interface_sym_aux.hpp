@@ -28,7 +28,7 @@ void user_interface_sym<Hamiltonian>::diagonalize(){
         std::cout << "\t\t	--> finished saving Hamiltonian for " << info << " - in time : " << tim_s(start) << "s" << std::endl;
 
         const auto U = this->ptr_to_model->get_model_ref().get_hilbert_space().symmetry_rotation();
-        auto V = U * this->ptr_to_model->get_eigenvectors();
+        arma::Mat<element_type> V = U * this->ptr_to_model->get_eigenvectors();
         V.save(arma::hdf5_name(name, "eigenvectors", arma::hdf5_opts::append));
         std::cout << "\t\t	--> finished saving eigenvectors for " << info << " - in time : " << tim_s(start) << "s" << std::endl;
     }
@@ -355,7 +355,7 @@ void user_interface_sym<Hamiltonian>::diagonal_matrix_elements(){
     arma::Col<double> Sq0_diagmat(size, arma::fill::zeros);
     
     arma::cx_vec jE_diagmat(size, arma::fill::zeros);
-    auto check_spin = op::__builtins::get_digit(Ll);
+    auto check_spin = QOps::__builtins::get_digit(Ll);
 
 #pragma omp parallel for
     for(long n = 0; n < size; n++){

@@ -13,7 +13,7 @@ namespace susy{
     inline
     arma::SpMat<elem_ty> 
     create_supercharge(int size, arma::SpMat<elem_ty> q, bool boundary_cond,
-                            point_symmetric _hilbert_space_1, point_symmetric _hilbert_space_2) 
+                            QHS::point_symmetric _hilbert_space_1, QHS::point_symmetric _hilbert_space_2) 
     {
         
         //auto check_spin = op::__builtins::get_digit(size);
@@ -68,9 +68,9 @@ namespace susy{
         {
         
         #if defined(USE_REAL_SECTORS) || !defined(USE_SYMMETRIES)
-            arma::sp_mat T = arma::real(op::_translation_symmetry(size + 1, 0).to_matrix(dim2));
+            arma::sp_mat T = arma::real(QOps::_translation_symmetry(size + 1, 0).to_matrix(dim2));
         #else
-            arma::sp_cx_mat T = (op::_translation_symmetry(size + 1, 0).to_matrix(dim2));
+            arma::sp_cx_mat T = (QOps::_translation_symmetry(size + 1, 0).to_matrix(dim2));
         #endif
             u64 dim_rest = ULLPOW(size - 1);
             arma::SpMat<elem_ty> Q0 = arma::kron(arma::eye<arma::SpMat<elem_ty>>(dim_rest, dim_rest), q);
@@ -90,7 +90,7 @@ namespace susy{
     template <typename elem_ty>
     inline
     arma::SpMat<elem_ty> 
-    hamiltonian(int size, arma::SpMat<elem_ty>  q, bool boundary_cond, point_symmetric _hilbert_space) 
+    hamiltonian(int size, arma::SpMat<elem_ty>  q, bool boundary_cond, QHS::point_symmetric _hilbert_space) 
     {
 
         u64 dim = ULLPOW(size);
@@ -113,9 +113,9 @@ namespace susy{
             int k_sec = size % 2 == 0? size / 2 : 0;
             auto U = _hilbert_space.symmetry_rotation();
         #if defined(USE_REAL_SECTORS) || !defined(USE_SYMMETRIES)
-            arma::sp_mat T = arma::real(op::_translation_symmetry(size, k_sec).to_matrix(dim));
+            arma::sp_mat T = arma::real(QOps::_translation_symmetry(size, k_sec).to_matrix(dim));
         #else
-            arma::sp_cx_mat T = (op::_translation_symmetry(size, k_sec).to_matrix(dim));
+            arma::sp_cx_mat T = (QOps::_translation_symmetry(size, k_sec).to_matrix(dim));
         #endif
 
             H += T * ham * T.t();

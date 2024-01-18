@@ -1,6 +1,6 @@
 #pragma once
 
-namespace op{
+namespace QOps{
 
     /// @brief 
     /// @tparam ..._ty 
