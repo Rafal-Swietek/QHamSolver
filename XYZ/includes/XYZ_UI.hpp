@@ -100,12 +100,13 @@ namespace XYZ_UI{
 			v_1d<int> zzsec = (this->use_flip_Z())? v_1d<int>({-1, 1}) : v_1d<int>({1});
             std::cout << this->L << "\t\t" << this->hx << "\t\t" << zxsec << std::endl;
             std::cout << this->L << "\t\t" << this->hz << "\t\t" << zzsec << std::endl;
-		#pragma omp parallel for num_threads(outer_threads)// schedule(dynamic)
-        #ifdef USE_REAL_SECTORS
-            for(int ks : (this->L%2 || this->boundary_conditions? v_1d<int>({0}) : v_1d<int>({0, (int)this->L/2})) ){
-        #else
-			for (int ks = 1; ks < k_end; ks++) {
-        #endif
+		// #pragma omp parallel for num_threads(outer_threads)// schedule(dynamic)
+        // #ifdef USE_REAL_SECTORS
+        //     for(int ks : (this->L%2 || this->boundary_conditions? v_1d<int>({0}) : v_1d<int>({0, (int)this->L/2})) ){
+        // #else
+		// 	for (int ks = 1; ks < k_end; ks++) {
+        // #endif
+			for (int ks = 0; ks < this->L; ks++) {
 				v_1d<int> psec = k_real_sec(ks)? v_1d<int>({-1, 1}) : v_1d<int>({1});
                 std::cout << ks << "\t\t" << psec << std::endl;
                 for(auto& ps : psec){
@@ -132,7 +133,7 @@ namespace XYZ_UI{
         jE_mat_elem_kernel(
             const arma::Col<element_type>& state1, 
             const arma::Col<element_type>& state2,
-            int i, u64 k, const op::_ifun& check_spin
+            int i, u64 k, const QOps::_ifun& check_spin
             ) override;
     };
 }

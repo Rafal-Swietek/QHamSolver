@@ -22,8 +22,8 @@ void ui::make_sim(){
 
     this->ptr_to_model = create_new_model_pointer();
 
-    // compare_energies();
-    // return;
+    compare_energies();
+    return;
     // // std::cout << arma::linspace(0, ULLPOW(this->L)-1, ULLPOW(this->L)).t() << std::endl;
 	// // std::cout << arma::mat(this->energy_current()) << std::endl;
     // // return;
@@ -31,10 +31,10 @@ void ui::make_sim(){
     // this->ptr_to_model->diagonalization();
     auto H = this->ptr_to_model->get_hamiltonian();
 
-    auto lancz = lanczos::Lanczos<ui::element_type>(H, this->l_steps, this->l_realis, this->seed, this->reorthogonalize);
-    lancz.convergence(this->saving_dir, this->set_info());
-    auto lancz_block = lanczos::BlockLanczos<ui::element_type>(H, this->l_steps, this->l_realis, this->l_bundle, this->seed, this->reorthogonalize);
-    lancz_block.convergence(this->saving_dir, this->set_info());
+    // auto lancz = lanczos::Lanczos<ui::element_type>(H, this->l_steps, this->l_realis, this->seed, this->reorthogonalize);
+    // lancz.convergence(this->saving_dir, this->set_info());
+    // auto lancz_block = lanczos::BlockLanczos<ui::element_type>(H, this->l_steps, this->l_realis, this->l_bundle, this->seed, this->reorthogonalize);
+    // lancz_block.convergence(this->saving_dir, this->set_info());
     // for(this->L = 10; this->L < 18; this->L++){
     //     this->reset_model_pointer();
     //     auto H = this->ptr_to_model->get_dense_hamiltonian();
@@ -182,7 +182,7 @@ void ui::compare_energies()
 	v_1d<std::string> symms;
     auto kernel = [&](int k, int p, int zx, int zz)
     {
-        auto symmetric_model = std::make_unique<QHamSolver<XYZsym>>(this->boundary_conditions, this->L, this->J1, this->J2, this->delta1, this->delta2, this->eta1, this->eta2,
+        auto symmetric_model = std::make_unique<QHS::QHamSolver<XYZsym>>(this->boundary_conditions, this->L, this->J1, this->J2, this->delta1, this->delta2, this->eta1, this->eta2,
                                                                         this->hx, this->hz, k, p, zz, zx, this->add_edge_fields);
         symmetric_model->diagonalization(false);
         arma::vec E = symmetric_model->get_eigenvalues();
@@ -193,7 +193,7 @@ void ui::compare_energies()
     };
     loopSymmetrySectors(kernel);
 
-    auto full_model = std::make_unique<QHamSolver<XYZ>>(this->boundary_conditions, this->L, this->J1, this->J2, this->delta1, this->delta2, this->eta1, this->eta2,
+    auto full_model = std::make_unique<QHS::QHamSolver<XYZ>>(this->boundary_conditions, this->L, this->J1, this->J2, this->delta1, this->delta2, this->eta1, this->eta2,
                                                             this->hx, this->hz, 0, this->add_edge_fields);
     full_model->diagonalization(false);
     arma::vec E_dis = full_model->get_eigenvalues();// + this->J1 * (this->L - int(this->boundary_conditions)) * (3 + this->eta1 * this->eta1) / 8.;
@@ -212,14 +212,14 @@ void ui::compare_energies()
 /// @brief Compaer full hamiltonian to the reconstructed one from symmetry sectors
 void ui::compare_hamiltonian()
 {   
-    auto full_model = std::make_unique<QHamSolver<XYZ>>(this->boundary_conditions, this->L, this->J1, this->J2, this->delta1, this->delta2, this->eta1, this->eta2,
+    auto full_model = std::make_unique<QHS::QHamSolver<XYZ>>(this->boundary_conditions, this->L, this->J1, this->J2, this->delta1, this->delta2, this->eta1, this->eta2,
                                                             this->hx, this->hz, 0, this->add_edge_fields);
     arma::sp_mat Hfull = full_model->get_hamiltonian();
     const u64 dim = full_model->get_hilbert_size();
     arma::sp_cx_mat H(dim, dim);
     auto kernel = [&](int k, int p, int zx, int zz)
     {
-        auto symmetric_model = std::make_unique<QHamSolver<XYZsym>>(this->boundary_conditions, this->L, this->J1, this->J2, this->delta1, this->delta2, this->eta1, this->eta2,
+        auto symmetric_model = std::make_unique<QHS::QHamSolver<XYZsym>>(this->boundary_conditions, this->L, this->J1, this->J2, this->delta1, this->delta2, this->eta1, this->eta2,
                                                                         this->hx, this->hz, k, p, zz, zx, this->add_edge_fields);
         auto U = symmetric_model->get_model_ref().get_hilbert_space().symmetry_rotation();
         arma::sp_cx_mat Hsym = cast_cx_sparse(symmetric_model->get_hamiltonian());
@@ -240,17 +240,17 @@ void ui::compare_hamiltonian()
 /// @brief 
 void ui::check_symmetry_generators()
 {
-    v_1d<op::genOp> sym_group;
+    v_1d<QOps::genOp> sym_group;
     // parity symmetry
-    sym_group.emplace_back(op::_parity_symmetry(this->L, this->syms.p_sym));
+    sym_group.emplace_back(QOps::_parity_symmetry(this->L, this->syms.p_sym));
 
     // spin flips
     if(this->hz == 0)
-        sym_group.emplace_back(op::_spin_flip_x_symmetry(this->L, this->syms.zx_sym));
+        sym_group.emplace_back(QOps::_spin_flip_x_symmetry(this->L, this->syms.zx_sym));
     if(this->hx == 0  && (this->L % 2 == 0 || this->hz != 0))
-        sym_group.emplace_back(op::_spin_flip_z_symmetry(this->L, this->syms.zz_sym));
+        sym_group.emplace_back(QOps::_spin_flip_z_symmetry(this->L, this->syms.zz_sym));
     
-    point_symmetric hilbert( this->L, sym_group, this->boundary_conditions, this->syms.k_sym, 0);
+    QHS::point_symmetric hilbert( this->L, sym_group, this->boundary_conditions, this->syms.k_sym, 0);
     auto group = hilbert.get_symmetry_group();
     for(auto& idx : {1, 130, 33, 71, 756}){
         for(auto& G : group){
@@ -279,18 +279,18 @@ arma::SpMat<ui::element_type> ui::create_supercharge(bool dagger){
 
         int k_sec = size % 2 == 0? size / 2 : 0;
 
-        std::vector<op::genOp> sym_gen;
-        sym_gen.emplace_back(op::_parity_symmetry(size, p_sym));
-        sym_gen.emplace_back(op::_spin_flip_z_symmetry(size, z_sym));
+        std::vector<QOps::genOp> sym_gen;
+        sym_gen.emplace_back(QOps::_parity_symmetry(size, p_sym));
+        sym_gen.emplace_back(QOps::_spin_flip_z_symmetry(size, z_sym));
         
-        auto _hilbert_space_1 = point_symmetric(size, sym_gen, this->boundary_conditions, k_sec, 0);
+        auto _hilbert_space_1 = QHS::point_symmetric(size, sym_gen, this->boundary_conditions, k_sec, 0);
 
-        sym_gen = std::vector<op::genOp>();
-        sym_gen.emplace_back(op::_parity_symmetry(size + 1, size % 2 == 0? -p_sym : p_sym));
-        sym_gen.emplace_back(op::_spin_flip_z_symmetry(size + 1, -z_sym));
+        sym_gen = std::vector<QOps::genOp>();
+        sym_gen.emplace_back(QOps::_parity_symmetry(size + 1, size % 2 == 0? -p_sym : p_sym));
+        sym_gen.emplace_back(QOps::_spin_flip_z_symmetry(size + 1, -z_sym));
         
         k_sec = (size + 1) % 2 == 0? (size + 1) / 2 : 0;
-        auto _hilbert_space_2 = point_symmetric(size + 1, sym_gen, this->boundary_conditions, k_sec, 0);
+        auto _hilbert_space_2 = QHS::point_symmetric(size + 1, sym_gen, this->boundary_conditions, k_sec, 0);
         
         return susy::create_supercharge(size, q, this->boundary_conditions, _hilbert_space_1, _hilbert_space_2);
     #else
@@ -302,7 +302,7 @@ arma::SpMat<ui::element_type> ui::create_supercharge(bool dagger){
 arma::sp_mat ui::energy_current(){
 
     const size_t dim_max = ULLPOW(this->L);
-    auto check_spin = op::__builtins::get_digit(this->L);
+    auto check_spin = QOps::__builtins::get_digit(this->L);
     if(this->J2 != 0.0 || this->delta2 != 0)
         assert(false && "Energy current implemented only for integrable case, no nearest neighbour terms yet!");
     double Jx = this->J1 * (1 - this->eta1);
@@ -363,7 +363,7 @@ ui::element_type
 ui::jE_mat_elem_kernel(
             const arma::Col<element_type>& state1, 
             const arma::Col<element_type>& state2,
-            int i, u64 k, const op::_ifun& check_spin
+            int i, u64 k, const QOps::_ifun& check_spin
             )
 {
     ui::element_type result = ui::element_type(0);
@@ -421,10 +421,10 @@ ui::jE_mat_elem_kernel(
 /// @brief Create unique pointer to model with current parameters in class
 typename ui::model_pointer ui::create_new_model_pointer(){
     #ifdef USE_SYMMETRIES
-        return std::make_unique<QHamSolver<XYZsym>>(this->boundary_conditions, this->L, this->J1, this->J2, this->delta1, this->delta2, this->eta1, this->eta2,
+        return std::make_unique<QHS::QHamSolver<XYZsym>>(this->boundary_conditions, this->L, this->J1, this->J2, this->delta1, this->delta2, this->eta1, this->eta2,
                                                     this->hx, this->hz, this->syms.k_sym, this->syms.p_sym, this->syms.zx_sym, this->syms.zz_sym, this->add_edge_fields);
     #else
-        return std::make_unique<QHamSolver<XYZ>>(this->boundary_conditions, this->L, this->J1, this->J2, this->delta1, this->delta2, this->eta1, this->eta2,
+        return std::make_unique<QHS::QHamSolver<XYZ>>(this->boundary_conditions, this->L, this->J1, this->J2, this->delta1, this->delta2, this->eta1, this->eta2,
                                                     this->hx, this->hz, this->add_parity_breaking, this->add_edge_fields, this->w, this->seed); 
     #endif
 }
@@ -432,10 +432,10 @@ typename ui::model_pointer ui::create_new_model_pointer(){
 /// @brief Reset member unique pointer to model with current parameters in class
 void ui::reset_model_pointer(){
     #ifdef USE_SYMMETRIES
-        return this->ptr_to_model.reset(new QHamSolver<XYZsym>(this->boundary_conditions, this->L, this->J1, this->J2, this->delta1, this->delta2, this->eta1, this->eta2,
+        return this->ptr_to_model.reset(new QHS::QHamSolver<XYZsym>(this->boundary_conditions, this->L, this->J1, this->J2, this->delta1, this->delta2, this->eta1, this->eta2,
                                                     this->hx, this->hz, this->syms.k_sym, this->syms.p_sym, this->syms.zx_sym, this->syms.zz_sym, this->add_edge_fields)); 
     #else
-        return this->ptr_to_model.reset(new QHamSolver<XYZ>(this->boundary_conditions, this->L, this->J1, this->J2, this->delta1, this->delta2, this->eta1, this->eta2,
+        return this->ptr_to_model.reset(new QHS::QHamSolver<XYZ>(this->boundary_conditions, this->L, this->J1, this->J2, this->delta1, this->delta2, this->eta1, this->eta2,
                                                             this->hx, this->hz, this->add_parity_breaking, this->add_edge_fields, this->w, this->seed)); 
     #endif
 }
@@ -685,7 +685,7 @@ void ui::printAllOptions() const{
     // empty.save(arma::hdf5_name(this->saving_dir + this->set_info({"k", "p", "zx", "zz"}) + ".hdf5", "(empty)"));
     // auto kernel = [&](int k, int p, int zx, int zz)
     // {
-    //     auto symmetric_model = std::make_unique<QHamSolver<XYZsym>>(this->boundary_conditions, this->L, this->J1, this->J2, this->delta1, this->delta2, this->eta1, this->eta2,
+    //     auto symmetric_model = std::make_unique<QHS::QHamSolver<XYZsym>>(this->boundary_conditions, this->L, this->J1, this->J2, this->delta1, this->delta2, this->eta1, this->eta2,
     //                                                                     this->hx, this->hz, k, p, zz, zx, this->add_edge_fields);
     //     symmetric_model->diagonalization();
     //     arma::vec E = (symmetric_model->get_eigenvalues());
@@ -743,15 +743,15 @@ void ui::printAllOptions() const{
     
 //     v_1d<double> Esym;
 // 	v_1d<std::string> symms;
-//     auto check_spin = op::__builtins::get_digit(this->L);
+//     auto check_spin = QOps::__builtins::get_digit(this->L);
 //     auto kernel = [&](int k, int p, int zx, int zz)
 //     {
-//         std::vector<op::genOp> sym_gen;
-//         sym_gen.emplace_back(op::_parity_symmetry(this->L, p));
-//         if(this->hz == 0 && (this->L % 2 == 0 || this->hx != 0)) sym_gen.emplace_back(op::_spin_flip_x_symmetry(this->L, zx));
-//         if(this->hx == 0) sym_gen.emplace_back(op::_spin_flip_z_symmetry(this->L, zz));
+//         std::vector<QOps::genOp> sym_gen;
+//         sym_gen.emplace_back(QOps::_parity_symmetry(this->L, p));
+//         if(this->hz == 0 && (this->L % 2 == 0 || this->hx != 0)) sym_gen.emplace_back(QOps::_spin_flip_x_symmetry(this->L, zx));
+//         if(this->hx == 0) sym_gen.emplace_back(QOps::_spin_flip_z_symmetry(this->L, zz));
         
-//         auto _hilbert_space = point_symmetric(this->L, sym_gen, this->boundary_conditions, k, 0);
+//         auto _hilbert_space = QHS::point_symmetric(this->L, sym_gen, this->boundary_conditions, k, 0);
 //         auto G = _hilbert_space.get_symmetry_group();
 //         u64 dim = _hilbert_space.get_hilbert_space_size();
 //         arma::vec E(dim);
@@ -855,9 +855,9 @@ void ui::printAllOptions() const{
     
     // clk::time_point starter = std::chrono::system_clock::now();
 
-    // auto model = std::make_unique<QHamSolver<XYZsym>>(this->boundary_conditions, this->L, this->J1, 0.0, Jz, this->delta2, this->eta1, this->eta2, 0, 0,
+    // auto model = std::make_unique<QHS::QHamSolver<XYZsym>>(this->boundary_conditions, this->L, this->J1, 0.0, Jz, this->delta2, this->eta1, this->eta2, 0, 0,
     //                                                              k_sec, this->syms.p_sym, this->syms.zx_sym, this->syms.zz_sym, this->add_edge_fields);
-    // //auto model = std::make_unique<QHamSolver<XYZ>>(this->boundary_conditions, this->L, this->J1, 0.0, Jz, this->delta2, this->eta1, this->eta2, 0.0, 0.0, this->add_parity_breaking, this->add_edge_fields); 
+    // //auto model = std::make_unique<QHS::QHamSolver<XYZ>>(this->boundary_conditions, this->L, this->J1, 0.0, Jz, this->delta2, this->eta1, this->eta2, 0.0, 0.0, this->add_parity_breaking, this->add_edge_fields); 
     // model->diagonalization();
     // std::cout << " - - - - - - FINISHED DIAGONALIZATION IN : " << tim_s(starter) << " seconds - - - - - - " << std::endl; // simulation end
     // starter = std::chrono::system_clock::now();

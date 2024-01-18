@@ -15,7 +15,7 @@ void XYZsym::init()
     this->set_symmetry_generators();
 
     // initialize hilbert space
-    this->_hilbert_space = point_symmetric( this->system_size, 
+    this->_hilbert_space = QHS::point_symmetric( this->system_size, 
                                             this->symmetry_generators, 
                                             this->_boundary_condition,
                                             this->syms.k_sym,
@@ -86,15 +86,15 @@ XYZsym::XYZsym(std::istream& os)
 void XYZsym::set_symmetry_generators()
 {   
     // parity symmetry
-    this->symmetry_generators.emplace_back(op::_parity_symmetry(this->system_size, this->syms.p_sym));
+    this->symmetry_generators.emplace_back(QOps::_parity_symmetry(this->system_size, this->syms.p_sym));
 
     // spin flips (only for even L both can be used)
     if(this->_hx == 0)
-        this->symmetry_generators.emplace_back(op::_spin_flip_z_symmetry(this->system_size, this->syms.zz_sym));
+        this->symmetry_generators.emplace_back(QOps::_spin_flip_z_symmetry(this->system_size, this->syms.zz_sym));
     
     if(this->_hz == 0 && !this->_add_edge_fields)
         if(this->system_size % 2 == 0 || this->_hx != 0) // for odd system sizes enter only if previous symmetry not taken
-            this->symmetry_generators.emplace_back(op::_spin_flip_x_symmetry(this->system_size, this->syms.zx_sym));
+            this->symmetry_generators.emplace_back(QOps::_spin_flip_x_symmetry(this->system_size, this->syms.zx_sym));
 }
 
 //<! ------------------------------------------------------------------------------ HAMILTONIAN BUILDERS

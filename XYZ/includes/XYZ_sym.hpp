@@ -15,15 +15,15 @@
 
 /// @brief Fully anisotropic spin chain (XYZ) with point symmetries
 class XYZsym : 
-    public hamiltonian_base<elem_ty, point_symmetric>
+    public QHS::hamiltonian_base<elem_ty, QHS::point_symmetric>
 {
     //<! ----------------------------------------------------- INHERIT TYPEDEFs FROM BASE
-    typedef typename hamiltonian_base<elem_ty, point_symmetric>::matrix        matrix;
-    typedef typename hamiltonian_base<elem_ty, point_symmetric>::sparse_matrix sparse_matrix;
+    typedef typename QHS::hamiltonian_base<elem_ty, QHS::point_symmetric>::matrix        matrix;
+    typedef typename QHS::hamiltonian_base<elem_ty, QHS::point_symmetric>::sparse_matrix sparse_matrix;
 
     //<! ----------------------------------------------------- MODEL PARAMETERS
 private:
-    v_1d<op::genOp> symmetry_generators;    // list of symmetry generators
+    v_1d<QOps::genOp> symmetry_generators;    // list of symmetry generators
 
     double _hz = 0.5;                       // uniform longitudinal field
     double _hx = 0.5;                       // uniform transverse field
