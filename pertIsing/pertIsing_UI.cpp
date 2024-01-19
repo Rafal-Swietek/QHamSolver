@@ -32,13 +32,16 @@ void ui::make_sim(){
 	case 1:
 		eigenstate_entanglement();
 		break;
-    case 2:
+	case 2:
+		spectral_form_factor();
+		break;
+    case 3:
         diagonal_matrix_elements();
         break;
-	case 3:
+	case 4:
 		eigenstate_entanglement_degenerate();
 		break;
-	case 4:
+	case 5:
 		diagonal_matrix_elements();
 		break;
 	default:

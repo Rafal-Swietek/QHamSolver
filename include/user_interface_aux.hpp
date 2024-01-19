@@ -302,26 +302,32 @@ void user_interface<Hamiltonian>::parse_cmd_options(int argc, std::vector<std::s
 /// @param _suffix string suffix used distinct different realisations
 /// @return returns arma::vec of eigenvalues
 template <class Hamiltonian>
-arma::vec user_interface<Hamiltonian>::get_eigenvalues(std::string _suffix, bool diag_if_empty) 
+arma::vec user_interface<Hamiltonian>::get_eigenvalues(std::string prefix, bool diag_if_empty) 
 {
 	arma::vec eigenvalues;
 	std::string dir = this->saving_dir + "DIAGONALIZATION" + kPSep;
 	createDirs(dir);
-	std::string name = dir + this->set_info({});
+	std::string name = dir + prefix + this->set_info({});
 	bool loaded;
 	#pragma omp critical
 	{
-		loaded = eigenvalues.load(arma::hdf5_name(name + _suffix + ".hdf5", "eigenvalues/dataset"));
+		loaded = eigenvalues.load(arma::hdf5_name(name + ".hdf5", "eigenvalues/dataset"));
 		if(!loaded)
-			loaded = eigenvalues.load(arma::hdf5_name(name + ".hdf5", "eigenvalues/" + _suffix));
-		if(!loaded && diag_if_empty){
-			ptr_to_model->diagonalization(false);
-			eigenvalues = ptr_to_model->get_eigenvalues();	
+			loaded = eigenvalues.load(arma::hdf5_name(name + ".hdf5", "eigenvalues/"));
+		name = this->saving_dir + "Entropy/Eigenstate" + kPSep + prefix + this->set_info({});
+		if(!loaded)
+			loaded = eigenvalues.load(arma::hdf5_name(name + ".hdf5", "energies"));
+		if(!loaded){
+			std::cout << "Not found:\t" << name << std::endl;
+			if(diag_if_empty){
+				ptr_to_model->diagonalization(false);
+				eigenvalues = ptr_to_model->get_eigenvalues();	
+			}
 		}
 	}
 	// save eigenvalues (yet unsaved)
-	if(!loaded && diag_if_empty)
-		eigenvalues.save(arma::hdf5_name(name + _suffix + ".hdf5", "eigenvalues"));
+	// if(!loaded && diag_if_empty)
+	// 	eigenvalues.save(arma::hdf5_name(name + _suffix + ".hdf5", "eigenvalues"));
 
 	return eigenvalues;
 }

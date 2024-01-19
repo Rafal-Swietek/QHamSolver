@@ -66,7 +66,8 @@ void pertIsing::create_hamiltonian()
     const double rescale = 1. / (this->system_size * std::log(this->system_size));
     for (size_t k = 0; k < this->dim; k++) {
 		size_t base_state = this->_hilbert_space(k);
-	    for (int i = 0; i < this->system_size; i++) {
+	    for (int i = 0; i < this->system_size; i++) 
+        {
             //<! random fields
             auto [Sz_i, _] = operators::sigma_z(base_state, this->system_size, i);
             this->H(k, k) += this->_disorder(i) * std::real(Sz_i);
