@@ -23,6 +23,7 @@ void ui::make_sim(){
 		break;
 	case 2:
 		eigenstate_entanglement();
+		spectral_form_factor();
 		break;
 	case 3:
 		multifractality();
