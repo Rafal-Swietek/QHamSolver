@@ -33,8 +33,13 @@ QuantumSun::QuantumSun(int L, double J, double alfa, double gamma,
     this->_gamma = gamma;
     
     this->_hz = hz;
+    
     //<! disorder terms
-    this->_w = w;
+    if constexpr (scaled_disorder == 1)
+        this->_w = w * this->num_of_spins / 2.0;
+    else
+        this->_w = w;
+    
     this->_seed = seed;
 
     this->_initiate_avalanche = initiate_avalanche;
@@ -76,11 +81,10 @@ void QuantumSun::create_hamiltonian()
 	const size_t dim_erg = ULLPOW( (this->grain_size) );
 
     this->H = sparse_matrix(this->dim, this->dim);
-    #if CONF_DISORDER == 1
+    if constexpr (conf_disorder == 1)
         this->_disorder = disorder_generator.uniform(dim_loc, this->_hz - this->_w, this->_hz + this->_w);
-    #else
+    else
         this->_disorder = disorder_generator.uniform(this->num_of_spins, this->_hz - this->_w, this->_hz + this->_w);
-    #endif
     
 	
     /* Create random neighbours for coupling hamiltonian */
@@ -95,21 +99,21 @@ void QuantumSun::create_hamiltonian()
     this->_long_range_couplings = arma::vec(this->num_of_spins, arma::fill::zeros);
     if(this->_alfa > 0){
         if(this->_alfa < 1.0){
-            double u_j = 1 + disorder_generator.random_uni<double>(-this->_zeta, this->_zeta);
+            double u_j = 1 + disorder_generator.uniform_dist<double>(-this->_zeta, this->_zeta);
             this->_long_range_couplings(0) = this->_initiate_avalanche? 1.0 : std::pow(this->_alfa, u_j);
             for (int j = 1; j < this->num_of_spins; j++){
                 int pos = j + 1 - (int)this->_initiate_avalanche; // if initiate avalanche next coupling alfa, not alfa^2
-                double u_j = pos + disorder_generator.random_uni<double>(-this->_zeta, this->_zeta);
+                double u_j = pos + disorder_generator.uniform_dist<double>(-this->_zeta, this->_zeta);
                 this->_long_range_couplings(j) = std::pow(this->_alfa, u_j);
             }
         } else {
             this->_long_range_couplings = arma::vec(this->num_of_spins, arma::fill::ones);
             //this->_disorder = arma::sort(this->_disorder, "ascend");
-            #if CONF_DISORDER == 0
+            if constexpr (conf_disorder == 0){
                 auto permut = sort_permutation(this->_disorder, [](const double a, const double b)
                                     { return std::abs(a) < std::abs(b); });
                 apply_permutation(this->_disorder, permut);
-            #endif
+            }
         }
     }
     #ifdef EXTRA_DEBUG
@@ -127,10 +131,10 @@ void QuantumSun::create_hamiltonian()
             const int pos_in_array = j - this->grain_size;                // array index of localised spin
 
 			/* disorder on localised spins */
-            #if CONF_DISORDER == 0
+            if constexpr (conf_disorder == 0){
                 auto [val, Sz_k] = operators::sigma_z(base_state, this->system_size, j);
 			    this->set_hamiltonian_elements(k, this->_disorder(pos_in_array) * real(val), Sz_k);
-            #endif
+            }
 
 			/* coupling of localised spins to GOE grain */
 			int nei = random_neigh(pos_in_array);
@@ -139,10 +143,10 @@ void QuantumSun::create_hamiltonian()
 			this->set_hamiltonian_elements(k, this->_J * this->_long_range_couplings(pos_in_array) * real(val1 * val2), SxSx_k);
 		}
 	}
-    #if CONF_DISORDER == 1
+    if constexpr (conf_disorder == 1){
         arma::mat H_loc = arma::kron(arma::eye(dim_erg, dim_erg), arma::mat(arma::diagmat(this->_disorder)));
         this->H = this->H + H_loc;
-    #endif
+    }
 	this->H = this->H + arma::kron(H_grain, arma::eye(dim_loc, dim_loc));
 }
 

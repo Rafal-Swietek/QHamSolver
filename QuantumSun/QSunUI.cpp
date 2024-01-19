@@ -137,11 +137,10 @@ void ui::parse_cmd_options(int argc, std::vector<std::string> argv)
     this->set_option(this->grain_size, argv, choosen_option, true);
 
 	this->L = this->L_loc + this->grain_size;
-	#if CONF_DISORDER == 1
+	if constexpr (conf_disorder == 1)
     	this->saving_dir = "." + kPSep + "results_conf_dis" + kPSep;
-	#else
+	else
     	this->saving_dir = "." + kPSep + "results" + kPSep;
-	#endif
 }
 
 
@@ -209,9 +208,17 @@ void ui::print_help() const {
 /// @brief 
 void ui::printAllOptions() const{
     user_interface_dis<QuantumSun>::printAllOptions();
-    std::cout << "QUANTUM SUN:\n\t\t" << "H = \u03B3R + J \u03A3_i \u03B1^{u_i} S^x_i S^x_i+1 + \u03A3_i h_i S^z_i" << std::endl << std::endl;
+	std::cout << "QUANTUM SUN:\n\t\t" << "H = \u03B3R + J \u03A3_i \u03B1^{u_i} S^x_i S^x_i+1 + ";
+	if constexpr (conf_disorder == 1)
+    	std::cout << "\u03A3_n h_n |n><n|" << std::endl << std::endl;
+	else
+		std::cout << "\u03A3_i h_i S^z_i" << std::endl << std::endl;
 	std::cout << "u_i \u03B5 [j - \u03B6, j + \u03B6]"  << std::endl;
-	std::cout << "h_i \u03B5 [h - w, h + w]" << std::endl;
+	if constexpr (scaled_disorder == 1)
+    	std::cout << "h_i \u03B5 [h - W', h + W']\t W'=2w/L" << std::endl;
+	else
+		std::cout << "h_i \u03B5 [h - w, h + w]" << std::endl;
+	
 
 	std::cout << "------------------------------ CHOSEN QuantumSun OPTIONS:" << std::endl;
     std::cout 
@@ -223,9 +230,13 @@ void ui::printAllOptions() const{
 		  << "\u03B3 = " << this->gamma << std::endl
 		  << "h  = " << this->h << std::endl
 		  << "hs = " << this->hs << std::endl
-		  << "hn = " << this->hn << std::endl
-		  << "w  = " << this->w << std::endl
-		  << "ws = " << this->ws << std::endl
+		  << "hn = " << this->hn << std::endl;
+	if constexpr (scaled_disorder == 1)
+    	std::cout << "W'=2w/L= " << this->w << std::endl;
+	else
+		std::cout << "w = " << this->w << std::endl;
+		
+	std::cout << "ws = " << this->ws << std::endl
 		  << "wn = " << this->wn << std::endl
 		  << "\u03B1  = " << this->alfa << std::endl
 		  << "\u03B1s = " << this->alfas << std::endl
@@ -247,8 +258,12 @@ std::string ui::set_info(std::vector<std::string> skip, std::string sep) const
         if(this->alfa < 1.0) name += ",zeta=" + to_string_prec(this->zeta);
         
 		name += ",alfa=" + to_string_prec(this->alfa) + \
-            ",h=" + to_string_prec(this->h) + \
-            ",w=" + to_string_prec(this->w);
+            ",h=" + to_string_prec(this->h);
+        if constexpr (scaled_disorder == 1)
+			name += ",W'=" + to_string_prec(this->w);
+		else
+			name += ",w=" + to_string_prec(this->w);
+		
         if(this->initiate_avalanche) name += ",ini_ave";
 
 		auto tmp = split_str(name, ",");
