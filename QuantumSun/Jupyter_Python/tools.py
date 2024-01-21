@@ -19,9 +19,10 @@ def order_of_magnitude(a_value):
     
     return _size
     
-def info_raw(L, N, J, gamma, zeta, alfa, h, w, ini_ave = 0, use_old = False):
+def info_raw(L, N, J, gamma, zeta, alfa, h, w, ini_ave = 0, use_old = False, scaled_disorder = False):
+    wname = "W'" if scaled_disorder else 'w'
     arr = [J, gamma, zeta, alfa, h, w] if alfa < 1.0 else [J, gamma, alfa, h, w]
-    names = ['J', 'g', 'zeta', 'alfa', 'h', 'w'] if alfa < 1.0 else ['J', 'g', 'alfa', 'h', 'w']
+    names = ['J', 'g', 'zeta', 'alfa', 'h', wname] if alfa < 1.0 else ['J', 'g', 'alfa', 'h', wname]
     info = "_L=%d,N=%d"%(L,N)
     for i, var in enumerate(arr):
         n = order_of_magnitude2(var) if use_old else order_of_magnitude(var)
@@ -29,8 +30,8 @@ def info_raw(L, N, J, gamma, zeta, alfa, h, w, ini_ave = 0, use_old = False):
     if ini_ave: info += ",ini_ave"
     return info
 
-def info(L, N, J, gamma, zeta, alfa, h, w, ini_ave = 0, use_old = False, ext = '.dat'):
-    return info_raw(L, N, J, gamma, zeta, alfa, h, w, ini_ave, use_old) + ext
+def info(L, N, J, gamma, zeta, alfa, h, w, ini_ave = 0, use_old = False, scaled_disorder = False, ext = '.dat'):
+    return info_raw(L, N, J, gamma, zeta, alfa, h, w, ini_ave, use_old, scaled_disorder) + ext
 
 
 def legend_label(name, value):
