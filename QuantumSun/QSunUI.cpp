@@ -9,10 +9,10 @@ namespace QSunUI{
 
 void ui::make_sim(){
     printAllOptions();
+	clk::time_point start = std::chrono::system_clock::now();
     
 	this->ptr_to_model = this->create_new_model_pointer();
 	
-	clk::time_point start = std::chrono::system_clock::now();
     switch (this->fun)
 	{
 	case 0: 
@@ -23,39 +23,49 @@ void ui::make_sim(){
 		break;
 	case 2:
 		eigenstate_entanglement();
-		spectral_form_factor();
 		break;
 	case 3:
 		multifractality();
 		break;
+	case 4:
+		entanglement_evolution();
+		break;
 	default:
 		#define generate_scaling_array(name) arma::linspace(this->name, this->name + this->name##s * (this->name##n - 1), this->name##n);
-		auto L_list = generate_scaling_array(L);
+		
 		auto J_list = generate_scaling_array(J);
 		auto alfa_list = generate_scaling_array(alfa);
 		auto h_list = generate_scaling_array(h);
 		auto w_list = generate_scaling_array(w);
 		auto gamma_list = generate_scaling_array(gamma);
 
+		auto L_list = arma::linspace(this->L_loc, this->L_loc + this->Ls * (this->Ln - 1), this->Ln);
+		std::cout << L_list.t() << std::endl;
+		
 		for (auto& L_locx : L_list){
 			for (auto& alfax : alfa_list){
 				for (auto& hx : h_list){
 					for(auto& Jx : J_list){
 						for(auto& wx : w_list){
-							for(auto& gammax : gamma_list){
-								this->L_loc = L_locx;
+							for(auto& gammax : gamma_list)
+							{
+								this->L_loc = L_locx;	
+								this->L = L_locx + this->grain_size;
+
 								this->alfa = alfax;
 								this->h = hx;
 								this->J = Jx;
 								this->w = wx;
 								this->gamma = gammax;
 								this->site = this->L / 2.;
+								
 								this->reset_model_pointer();
 								const auto start_loop = std::chrono::system_clock::now();
 								std::cout << " - - START NEW ITERATION:\t\t par = "; // simulation end
-								printSeparated(std::cout, "\t", 16, true, this->L, this->J, this->alfa, this->h, this->w, this->gamma);
-
-								average_sff();
+								printSeparated(std::cout, "\t", 16, true, this->L_loc, this->J, this->alfa, this->h, this->w, this->gamma);
+								
+								entanglement_evolution();
+								//average_sff();
 								std::cout << "\t\t - - - - - - FINISHED ITERATION IN : " << tim_s(start_loop) << " seconds\n\t\t\t Total time : " << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
 						}}}}}}
         std::cout << "Add default function" << std::endl;
@@ -139,9 +149,9 @@ void ui::parse_cmd_options(int argc, std::vector<std::string> argv)
 
 	this->L = this->L_loc + this->grain_size;
 	if constexpr (conf_disorder == 1)
-    	this->saving_dir = "." + kPSep + "results_conf_dis" + kPSep;
+    	this->saving_dir = this->dir_prefix + "." + kPSep + "results_conf_dis" + kPSep;
 	else
-    	this->saving_dir = "." + kPSep + "results" + kPSep;
+    	this->saving_dir = this->dir_prefix + "." + kPSep + "results" + kPSep;
 }
 
 

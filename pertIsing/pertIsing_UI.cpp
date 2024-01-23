@@ -45,11 +45,11 @@ void ui::make_sim(){
 		diagonal_matrix_elements();
 		break;
 	default:
-		#define generate_scaling_array(name) arma::linspace(this->name, this->name + this->name##s * (this->name##n - 1), this->name##n)
-        #define for_loop(param, var) for (auto& param : generate_scaling_array(var))
+		auto L_list = arma::linspace(this->L, this->L + this->Ls * (this->Ln - 1), this->Ln);
+        auto g_list = arma::linspace(this->g, this->g + this->gs * (this->gn - 1), this->gn);
 
-        for_loop(system_size, L){ 
-            for_loop(gx, g){           
+        for(int system_size : L_list){ 
+            for(double gx : g_list){   
                 
         {
             this->L = system_size;
@@ -66,7 +66,8 @@ void ui::make_sim(){
 
             diagonal_matrix_elements();
             std::cout << "\t\t - - - - - - FINISHED ITERATION IN : " << tim_s(start_loop) << " seconds\n\t\t\t Total time : " << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
-        }}}
+        }
+        }}
         std::cout << "Add default function" << std::endl;
 	}
 	std::cout << " - - - - - - FINISHED CALCULATIONS IN : " << tim_s(start) << " seconds - - - - - - " << std::endl; // simulation end
