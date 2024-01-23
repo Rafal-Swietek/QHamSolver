@@ -241,7 +241,7 @@ void user_interface_sym<Hamiltonian>::eigenstate_entanglement_degenerate()
     std::cout << th_num << "\t\t" << omp_get_num_threads() << std::endl;
     auto seed = std::random_device{}();
 
-	disorder<double> random_generator(seed);
+	disorder<int> random_generator(seed);
 	CUE random_matrix(seed);
         // auto start_LA = std::chrono::system_clock::now();
     for(int gamma_a = 1; gamma_a <= this->num_of_points; gamma_a++)
@@ -253,8 +253,8 @@ void user_interface_sym<Hamiltonian>::eigenstate_entanglement_degenerate()
     #pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
         for(u64 unused = 0; unused < this->mu; unused++)
         {
-            arma::Col<int> indices = random_generator.create_random_vec<int>(gamma_a, min_idx, max_idx);
-            int id = random_generator.random_uni<int>(0, gamma_a-1);
+            arma::Col<int> indices = random_generator.uniform(gamma_a, min_idx, max_idx);
+            int id = random_generator.uniform_dist<int>(0, gamma_a-1);
 
             arma::cx_vec state(U.n_cols, arma::fill::zeros);
             arma::cx_vec coeff = Haar.col(id) / std::sqrt(arma::cdot(Haar.col(id), Haar.col(id)));

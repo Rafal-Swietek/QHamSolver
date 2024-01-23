@@ -75,7 +75,7 @@ namespace lanczos
 					conv = arma::mean(arma::abs(Econv - E0));
 					E0 = Econv;
 				} else if constexpr (converge_type == converge::states){ 
-					arma::Row<_ty> conv2 = arma::abs(beta * Vconv.cols(0, this->lanczos_steps-1).row(Vconv.n_rows - 1));
+					arma::Row<double> conv2 = arma::abs(beta * Vconv.cols(0, this->lanczos_steps-1).row(Vconv.n_rows - 1));
 					conv = arma::max(conv2);
 				} else{
 					static_check((converge_type == converge::energies) || (converge_type == converge::states), "Not implemented other convergence criteria");
@@ -143,7 +143,7 @@ namespace lanczos
 					conv = arma::mean(arma::abs(Econv - E0));
 					E0 = Econv;
 				} else if constexpr (converge_type == converge::states){ 
-					arma::Row<_ty> conv2 = arma::abs(beta * Vconv.cols(0, this->lanczos_steps-1).row(Vconv.n_rows - 1));
+					arma::Row<double> conv2 = arma::abs(beta * Vconv.cols(0, this->lanczos_steps-1).row(Vconv.n_rows - 1));
 					conv = arma::max(conv2);
 				} else{
 					static_check((converge_type == converge::energies) || (converge_type == converge::states), "Not implemented other convergence criteria");

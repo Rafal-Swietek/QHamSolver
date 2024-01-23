@@ -116,12 +116,11 @@ void user_interface_dis<Hamiltonian>::spectral_form_factor(){
 					r2_tmp += min / max;
 				count++;
 			}
-			wH_mean_r /= double(count);
-			wH_typ_r = std::exp(wH_typ_r / double(count));
-			r1_tmp /= double(count);
-			r2_tmp /= double(num2);
 			if(this->fun == 1) std::cout << "\t\t	--> finished unfolding for " << prefix + info << " - in time : " << tim_s(start) << "s" << std::endl;
 		
+			wH_mean_r /= double(count);
+			r1_tmp /= double(count);
+			r2_tmp /= double(num2);
 		// ------------------------------------- calculate sff
 			auto [sff_r_folded, Z_r_folded] = statistics::spectral_form_factor(eigenvalues, times_fold, this->beta, 0.5);
 			eigenvalues = statistics::unfolding(eigenvalues);
@@ -138,8 +137,9 @@ void user_interface_dis<Hamiltonian>::spectral_form_factor(){
 				Z_fold += Z_r_folded;
 				
 				wH_mean += wH_mean_r;
-				wH_typ  += wH_typ_r;
+				wH_typ  += wH_typ_r / double(count);
 			}
+			wH_typ_r = std::exp(wH_typ_r / double(count));
 		if(this->fun == 1) std::cout << "\t\t	--> finished realisation for " << prefix + info << " - in time : " << tim_s(start) << "s" << std::endl;
 		
 		//--------- SAVE REALISATION TO FILE
@@ -175,34 +175,35 @@ void user_interface_dis<Hamiltonian>::spectral_form_factor(){
 	wH_mean /= norm;
 	wH_typ /= norm;
 
-	// ---------- find Thouless time
-	double eps = 8e-2;
-	auto K_GOE = [](double t){
-		return t < 1? 2 * t - t * log(1+2*t) : 2 - t * log( (2*t+1) / (2*t-1) );
-	};
-	double thouless_time = 0;
-	double t_max = 2.5;
-	double delta_min = 1e6;
-	for(int i = 0; i < sff.size(); i++){
-		double t = times(i);
-		double delta = abs(log10( sff(i) / K_GOE(t) )) - eps;
-		delta *= delta;
-		if(delta < delta_min){
-			delta_min = delta;
-			thouless_time = times(i); 
-		}
-		if(times(i) >= t_max) break;
-	}
-	#ifdef MY_MAC
-		times.save(arma::hdf5_name(dir + info + ".hdf5", "times"));
-		sff.save(arma::hdf5_name(dir + info + ".hdf5", "sff", arma::hdf5_opts::append));
-		times_fold.save(arma::hdf5_name(dir + info + ".hdf5", "times_fold", arma::hdf5_opts::append));
-		sff_fold.save(arma::hdf5_name(dir + info + ".hdf5", "sff_fold", arma::hdf5_opts::append));
-		arma::vec({r2}).save(arma::hdf5_name(dir + info + ".hdf5", "r_500", arma::hdf5_opts::append));
-		arma::vec({r1}).save(arma::hdf5_name(dir + info + ".hdf5", "r_D_2", arma::hdf5_opts::append));
-		arma::uvec({dim}).save(arma::hdf5_name(dir + info + ".hdf5", "D", arma::hdf5_opts::append));
-		arma::vec({1./wH_typ}).save(arma::hdf5_name(dir + info + ".hdf5", "tH_typ", arma::hdf5_opts::append));
-	#endif
+	// // ---------- find Thouless time
+	// double eps = 8e-2;
+	// auto K_GOE = [](double t){
+	// 	return t < 1? 2 * t - t * log(1+2*t) : 2 - t * log( (2*t+1) / (2*t-1) );
+	// };
+	// double thouless_time = 0;
+	// double t_max = 2.5;
+	// double delta_min = 1e6;
+	// for(int i = 0; i < sff.size(); i++){
+	// 	double t = times(i);
+	// 	double delta = abs(log10( sff(i) / K_GOE(t) )) - eps;
+	// 	delta *= delta;
+	// 	if(delta < delta_min){
+	// 		delta_min = delta;
+	// 		thouless_time = times(i); 
+	// 	}
+	// 	if(times(i) >= t_max) break;
+	// }
+	// #ifdef MY_MAC
+	times.save(arma::hdf5_name(dir + info + ".hdf5", "times"));
+	sff.save(arma::hdf5_name(dir + info + ".hdf5", "sff", arma::hdf5_opts::append));
+	times_fold.save(arma::hdf5_name(dir + info + ".hdf5", "times_fold", arma::hdf5_opts::append));
+	sff_fold.save(arma::hdf5_name(dir + info + ".hdf5", "sff_fold", arma::hdf5_opts::append));
+	arma::vec({r2}).save(arma::hdf5_name(dir + info + ".hdf5", "r_500", arma::hdf5_opts::append));
+	arma::vec({r1}).save(arma::hdf5_name(dir + info + ".hdf5", "r_D_2", arma::hdf5_opts::append));
+	arma::uvec({dim}).save(arma::hdf5_name(dir + info + ".hdf5", "D", arma::hdf5_opts::append));
+	arma::vec({1./(wH)}).save(arma::hdf5_name(dir + info + ".hdf5", "tH", arma::hdf5_opts::append));
+	arma::vec({1./std::exp(wH_typ)}).save(arma::hdf5_name(dir + info + ".hdf5", "tH_typ", arma::hdf5_opts::append));
+	// #endif
 	// save_to_file(dir + info + ".dat", 			 times, 	 sff, 	   1.0 / wH_mean, thouless_time, 		   r1, r2, dim, 1.0 / wH_typ);
 	// save_to_file(dir + "folded" + info + ".dat", times_fold, sff_fold, 1.0 / wH_mean, thouless_time / wH_mean, r1, r2, dim, 1.0 / wH_typ);
 }
@@ -232,6 +233,7 @@ void user_interface_dis<Hamiltonian>::average_sff(){
 #pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
 	for(int realis = 0; realis < this->realisations; realis++)
 	{
+		// arma::sff_re, times_re, Z_re, r1_re, r2_re, wH_re, wH_typ
 		std::string dir_re  = this->saving_dir + "SpectralFormFactor" + kPSep + "realisation=" + std::to_string(this->jobid + realis) + kPSep;
 		std::ifstream file;
 		
@@ -683,12 +685,176 @@ void user_interface_dis<Hamiltonian>::eigenstate_entanglement_degenerate()
 	entropies /= double(counter);
 	single_site_entropy /= double(counter);
 
+	#ifdef MY_MAC
+		filename += "_jobid=" + std::to_string(this->jobid);
+		energies.save(arma::hdf5_name(dir + filename + ".hdf5", "energies"));
+		entropies.save(arma::hdf5_name(dir + filename + ".hdf5", "entropy", arma::hdf5_opts::append));
+		single_site_entropy.save(arma::hdf5_name(dir + filename + ".hdf5", "single_site_entropy", arma::hdf5_opts::append));
+	#endif
+    std::cout << " - - - - - - FINISHED ENTROPY CALCULATION IN : " << tim_s(start) << " seconds - - - - - - " << std::endl; // simulation end
+}
+
+
+
+/// @brief Calculate entanglement evolution for random initial state and all subsystem sizes using schmidt decomposition
+/// @tparam Hamiltonian template parameter for current used model
+template <class Hamiltonian>
+void user_interface_dis<Hamiltonian>::entanglement_evolution()
+{
+    clk::time_point start = std::chrono::system_clock::now();
+	
+	std::string dir = this->saving_dir + "Entropy" + kPSep + "Evolution" + kPSep;
+	createDirs(dir);
+	
+	size_t dim = this->ptr_to_model->get_hilbert_size();
+	#ifdef ARMA_USE_SUPERLU
+        const int size = this->ch? 500 : dim;
+    #else
+        const int size = dim;
+    #endif
+	std::string info = this->set_info();
+	std::string filename = info;// + "_subsize=" + std::to_string(LA);
+
+	int counter = 0;
+
+	auto subsystem_sizes = arma::conv_to<arma::Col<int>>::from(arma::linspace(0, this->L, this->L + 1));
+	std::cout << subsystem_sizes.t() << std::endl;
+
+	const double tH = (0.341345 * dim) / std::sqrt(this->L);
+	int time_end = (int)std::ceil(std::log10(5 * tH));
+    arma::vec times = dim > 8e4? arma::regspace(this->dt, this->dt, this->tend)
+									: arma::linspace(0.1, 10 * tH, int(20 * tH / 0.1) + 1);
+								//  : arma::logspace(-2, time_end, this->num_of_points);
+
+	arma::mat entropies(times.size(), this->L + 1, arma::fill::zeros);
+	arma::mat entropies_squared(times.size(), this->L + 1, arma::fill::zeros);
+	
+	arma::mat single_site_entropy = entropies;
+	arma::mat single_site_entropy_squared = entropies;
+
+	std::vector<arma::sp_mat> permutation_matrices;
+	for(int LA_idx = 0; LA_idx < subsystem_sizes.size() - 1; LA_idx++)
+	{	
+		int LA = subsystem_sizes[LA_idx];
+		auto start_LA = std::chrono::system_clock::now();
+		std::vector<int> p(this->L);
+		p[LA % this->L] = 0;
+		for(int l = 0; l < this->L; l++)
+			if(l != LA % this->L)
+				p[l] = (l < (LA % this->L) )? l + 1 : l;
+		auto permutation = QOps::_permutation_generator(this->L, p);
+		arma::sp_mat P = arma::real(permutation.to_matrix( ULLPOW(this->L) ));
+		permutation_matrices.push_back(P);
+		std::cout << " - - - - - - set permutation matrix for LA = " << LA << " in : " << tim_s(start_LA) << " s - - - - - - " << std::endl;
+	}
+// #pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
+	for(int realis = 0; realis < this->realisations; realis++)
+	{
+		if(realis > 0)
+			this->ptr_to_model->generate_hamiltonian();
+		
+		auto start_re = std::chrono::system_clock::now();
+		start = std::chrono::system_clock::now();
+		
+		arma::cx_vec initial_state = this->random_product_state();
+		_assert_(this->ptr_to_model->get_hilbert_size() == initial_state.size(), 
+					"Hamiltonian is in reduced basis, random state is in full. Not implemented otherwise"
+					);
+		std::cout << " - - - - - - finished generating state in : " << tim_s(start) << " s for realis = " << realis << " - - - - - - " << std::endl; // simulation end
+		start = std::chrono::system_clock::now();
+
+		arma::mat S(times.size(), this->L + 1, arma::fill::zeros);
+		arma::mat S_site = S;
+
+        if(dim < 8e4)
+		{
+			this->ptr_to_model->diagonalization();
+			std::cout << " - - - - - - finished diagonalization in : " << tim_s(start) << " s for realis = " << realis << " - - - - - - " << std::endl; // simulation end
+			
+			const arma::vec E = this->ptr_to_model->get_eigenvalues();
+
+			outer_threads = this->thread_number;
+			omp_set_num_threads(1);
+			std::cout << outer_threads << "\t\t" << omp_get_num_threads() << std::endl;
+
+			start = std::chrono::system_clock::now();
+		#pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
+			for(int n = 0; n < times.size(); n++)
+			{
+				double time = times(n);
+				arma::cx_vec state = arma::cx_vec(initial_state.size(), arma::fill::zeros);
+				for(int k = 0; k < dim; k++){
+					arma::cx_vec psi_k(dim, arma::fill::zeros);
+					psi_k.set_real(this->ptr_to_model->get_eigenState(k));
+					auto overlap = arma::cdot(psi_k, initial_state);
+					state += std::exp(-1i * E(k) * time) * overlap * this->ptr_to_model->get_eigenState(k);
+				}
+				for(int LA_idx = 0; LA_idx < subsystem_sizes.size(); LA_idx++)
+				{	
+					int LA = subsystem_sizes[LA_idx];
+					// somehow needs L-LA (computer sees bit representation the opposite way, i.e. take B subsystem)
+					S(n, LA_idx) = entropy::schmidt_decomposition(state, this->L - LA, this->L);	// bipartite entanglement at subsystem size LA
+					if(LA < this->L){
+						arma::cx_vec permuted_state = permutation_matrices[LA_idx] * state;
+						S_site(n, LA_idx) 	= entropy::schmidt_decomposition(permuted_state, this->L - 1, this->L);	// single site entanglement at site LA
+					}
+				}
+			}
+			std::cout << " - - - - - - finished entropy for all times in : " << tim_s(start) << " s for realis = " << realis << " - - - - - - " << std::endl; // simulation end
+			omp_set_num_threads(this->thread_number);
+		} 
+		else 
+		{
+			arma::sp_cx_mat H(dim, dim);
+			H.set_real(this->ptr_to_model->get_hamiltonian());
+			
+			arma::cx_vec _state_ = initial_state;
+			for(int n = 0; n < times.size(); n++)
+			{
+				lanczos::Lanczos<cpx> lancz(H, this->l_steps, -1, 0, this->seed, true, false, _state_);
+				lancz.time_evolution_step(_state_, this->dt);
+
+				for(int LA_idx = 0; LA_idx < subsystem_sizes.size(); LA_idx++)
+				{
+					int LA = subsystem_sizes[LA_idx];
+					// somehow needs L-LA (computer sees bit representation the opposite way, i.e. take B subsystem)
+					S(n, LA_idx) = entropy::schmidt_decomposition(_state_, this->L - LA, this->L);	// bipartite entanglement at subsystem size LA
+					if(LA < this->L){
+						arma::cx_vec permuted_state = permutation_matrices[LA_idx] * _state_;
+						S_site(n, LA_idx) = entropy::schmidt_decomposition(permuted_state, this->L - 1, this->L);	// single site entanglement at site LA
+					}
+				}
+			}
+		}
+		// if(this->realisations > 1)
+		{
+			std::string dir_realis = dir + "realisation=" + std::to_string(this->jobid + realis) + kPSep;
+			createDirs(dir_realis);
+    		times.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "times"));
+			S.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "entropy", arma::hdf5_opts::append));
+			S_site.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "single_site_entropy", arma::hdf5_opts::append));
+		}
+		entropies += S;
+		entropies_squared += arma::square(S);
+		single_site_entropy += S_site;
+		single_site_entropy_squared += arma::square(S_site);
+		
+		counter++;
+		std::cout << " - - - - - - finished realisation realis = " << realis << " in : " << tim_s(start_re) << " s - - - - - - " << std::endl; // simulation end
+	}
+    
+	entropies /= double(counter);
+	single_site_entropy /= double(counter);
+	entropies_squared /= double(counter);
+	// single_site_entropy_squared = single_site_entropy_squared / double(counter) - 
+
 	filename += "_jobid=" + std::to_string(this->jobid);
-    energies.save(arma::hdf5_name(dir + filename + ".hdf5", "energies"));
+    times.save(arma::hdf5_name(dir + filename + ".hdf5", "times"));
 	entropies.save(arma::hdf5_name(dir + filename + ".hdf5", "entropy", arma::hdf5_opts::append));
 	single_site_entropy.save(arma::hdf5_name(dir + filename + ".hdf5", "single_site_entropy", arma::hdf5_opts::append));
     std::cout << " - - - - - - FINISHED ENTROPY CALCULATION IN : " << tim_s(start) << " seconds - - - - - - " << std::endl; // simulation end
 }
+
 
 /// @brief Calculate diagonal matrix elements of local operators
 /// @tparam Hamiltonian template parameter for current used model 
@@ -895,6 +1061,65 @@ void user_interface_dis<Hamiltonian>::multifractality(){
 	
     std::cout << " - - - - - - FINISHED ENTROPY CALCULATION IN : " << tim_s(start) << " seconds - - - - - - " << std::endl; // simulation end
 }
+
+
+/// @brief Checkl accuracy of krylov expansion fir different dt and lanczos steps
+/// @tparam Hamiltonian template parameter for current used model 
+template <class Hamiltonian>
+void user_interface_dis<Hamiltonian>::check_krylov_evolution()
+{
+	clk::time_point start = std::chrono::system_clock::now();
+
+	size_t dim = this->ptr_to_model->get_hilbert_size();
+	arma::sp_cx_mat H(dim, dim);
+	H.set_real(this->ptr_to_model->get_hamiltonian());
+	this->ptr_to_model->diagonalization();
+	std::cout << " - - - - - - finished diagonalization in : " << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
+	
+	const arma::vec E = this->ptr_to_model->get_eigenvalues();
+	
+	int LA = this->L / 2;
+	arma::cx_vec initial_state = this->random_product_state();
+
+	printSeparated(std::cout, "\t", 16, true, "M", "dt", "time [s]", "errors (1e-14) [%]", "errors (1e-12) [%]", "errors (1e-10) [%]");
+	for(double _dt : {0.05, 0.1, 0.2, 0.5})
+	{
+		this->dt = _dt;
+		auto times = arma::regspace(this->dt, this->dt, this->tend);
+		for(int M : {5, 10, 12, 15, 20, 25})
+		{
+			this->l_steps = M;
+			clk::time_point starter = std::chrono::system_clock::now();
+
+			arma::cx_vec lancz0s_state = initial_state;
+			int counter1 = 0, counter2 = 0, counter3 = 0;
+			for(int n = 0; n < times.size(); n++)
+			{
+				double time = times(n);
+				arma::cx_vec state = arma::cx_vec(initial_state.size(), arma::fill::zeros);
+				for(int k = 0; k < dim; k++){
+					auto overlap = dot_prod(this->ptr_to_model->get_eigenState(k), initial_state);
+					state += std::exp(-1i * E(k) * time) * overlap * this->ptr_to_model->get_eigenState(k);
+				}
+				
+				// somehow needs L-LA (computer sees bit representation the opposite way, i.e. take B subsystem)
+				double S_ED = entropy::schmidt_decomposition(state, this->L - LA, this->L);	// bipartite entanglement at subsystem size LA
+				
+				lanczos::Lanczos<cpx> lancz(H, this->l_steps, -1, 0, this->seed, true, false, lancz0s_state);
+				lancz.time_evolution_step(lancz0s_state, this->dt);
+				double Ss = entropy::schmidt_decomposition(lancz0s_state, this->L - LA, this->L);
+				
+				if(std::abs(S_ED - Ss) > 1e-13) counter1++;
+				if(std::abs(S_ED - Ss) > 1e-12) counter2++;
+				if(std::abs(S_ED - Ss) > 1e-10) counter3++;
+			}
+
+			printSeparated(std::cout, "\t", 16, true, this->l_steps, this->dt, tim_s(starter),
+								double(counter1) / times.size() * 100.0, double(counter2) / times.size() * 100.0, double(counter3) / times.size() * 100.0);
+		}
+	}
+}
+
 
 // -------------------------------------------------------------------------------------------------------------------------------------
 // ---------------------------------------------------------------------------------------------------------------- IMPLEMENTATION OF UI

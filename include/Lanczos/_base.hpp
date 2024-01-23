@@ -102,16 +102,16 @@ namespace lanczos {
 		void convergence(std::string dir, std::string name);
 		
 		//------------------------------------------------------------------------------------------------ DYNAMICS
-		// auto time_evolution_stationary(
-		// 	const arma::Col<_ty>& input_state,
-		// 	double time
-		// ) -> arma::Col<_ty>;
+		void time_evolution_step(
+			arma::Col<_ty>& _state,
+			double dt
+		);
 
-		// auto time_evolution_non_stationary(
-		// 	arma::Col<_ty>& prev_state,
-		// 	double dt,
-		// 	int lanczos_steps = 10
-		// );
+		void time_evolution(
+			arma::Col<_ty>& init_state,
+			double time,
+			double dt
+		);
 	};
 };
 

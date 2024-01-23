@@ -77,6 +77,8 @@ protected:
     int op;												// choose operator
     int fun;											// choose function to start calculations
 
+	std::string dir_prefix;								// prefix to output directory
+	
 	model_pointer ptr_to_model;
 
 	//<! Lanczos (and related methods) parameters
@@ -86,6 +88,10 @@ protected:
 	int l_bundle;										// number of initial states in bundle for Block-Lanczos
 	bool mem_ver_perf = false;							// optimize memory for performance (do not create Hamiltonian matrix and use on-the-fly methods)
 	bool reorthogonalize = true;						// use full reorthogonalization in Lanczos methods
+
+	//<! approximate - dynamics
+	double dt;											// time-step for lanczos evolution (or other approx)
+	double tend;										// final time for lanczos evolution (or other approx)
 	
 public:
 	virtual ~user_interface() = default;
@@ -126,6 +132,9 @@ public:
 	
 	virtual void multifractality() = 0;
 
+	virtual void check_krylov_evolution() = 0;
+	
+	virtual void entanglement_evolution() = 0;
 	virtual void eigenstate_entanglement() = 0;
 	virtual void eigenstate_entanglement_degenerate() = 0;
 	
@@ -142,6 +151,23 @@ public:
 		const arma::Col<element_type>& state2,
 		int i, u64 k, const QOps::_ifun& check_spin
 		) = 0;
+
+
+	arma::cx_vec random_product_state()
+	{
+		disorder<double> gen(this->seed);
+		auto the = gen.uniform_dist<double>(0.0, pi);
+		arma::cx_vec init_state = std::cos(the / 2.) * up
+									+ std::exp(1i * gen.uniform_dist<double>(0.0, two_pi)) * std::sin(the / 2.) * down;
+		
+		for (int j = 1; j < this->L; j++)
+		{
+			the = gen.uniform_dist<double>(0.0, pi);
+			init_state = arma::kron(init_state, std::cos(the / 2.) * up
+							+ std::exp(1i * gen.uniform_dist<double>(0.0, two_pi)) * std::sin(the / 2.) * down);
+		}
+		return arma::normalise(init_state);
+	}
 };
 
 

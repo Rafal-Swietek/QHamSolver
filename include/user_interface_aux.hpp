@@ -32,7 +32,7 @@ void user_interface<Hamiltonian>::set_option(_ty &value, const v_1d<string> &arg
 	if (std::string option = this->getCmdOption(argv, choosen_option); option != "")
 		value = static_cast<_ty>(std::stod(option)); // set value to an option
 
-	if (geq_0 && value < 0){					  // if the variable shall be bigger equal 0
+	if (geq_0 && value < _ty(0)){					  // if the variable shall be bigger equal 0
 		//this->set_default_msg(value, choosen_option.substr(1),
 		//					  choosen_option + " cannot be negative\n", isingUI::table);
 		std::cout << "\t--->" + choosen_option + " cannot be negative:\t Taking absolute value!" << std::endl;
@@ -123,6 +123,8 @@ void user_interface<Hamiltonian>::print_help() const {
 template <class Hamiltonian>
 void user_interface<Hamiltonian>::set_default(){
 	this->saving_dir = "." + std::string(kPathSeparator) + "results" + std::string(kPathSeparator); // directory for the result files to be saved into
+	this->dir_prefix = "";
+	
 	this->L = 4;
 	this->Ls = 1;
 	this->Ln = 1;
@@ -150,6 +152,9 @@ void user_interface<Hamiltonian>::set_default(){
 	this->l_bundle = 5;
 	this->mem_ver_perf = false;
 	this->reorthogonalize = true;
+
+	this->dt = 0.01;
+	this->tend = 1000;
 }
 
 /// @brief Prints all general UI option values
@@ -178,7 +183,9 @@ void user_interface<Hamiltonian>::printAllOptions() const {
 		  << "l_realis = " << this->l_realis << std::endl
 		  << "l_bundle = " << this->l_bundle << std::endl
 		  << "mem_over_perf = " << this->mem_ver_perf << std::endl
-		  << "reortho = " << this->reorthogonalize << std::endl;
+		  << "reortho = " << this->reorthogonalize << std::endl
+		  << "dt = " << this->dt << std::endl
+		  << "tend = " << this->tend << std::endl;
 
 	#ifdef PRINT_HELP
 		std::cout << "---------------------------------------------------------------------------------\n\n";
@@ -256,6 +263,11 @@ void user_interface<Hamiltonian>::parse_cmd_options(int argc, std::vector<std::s
 	choosen_option = "-reortho";
 	this->set_option(this->reorthogonalize, argv, choosen_option, true);
 
+	// dynamics
+	choosen_option = "-dt";
+	this->set_option(this->dt, argv, choosen_option, false);
+	choosen_option = "-tend";
+	this->set_option(this->tend, argv, choosen_option, false);
 
 	// buckets
 	choosen_option = "-mu";
@@ -282,6 +294,11 @@ void user_interface<Hamiltonian>::parse_cmd_options(int argc, std::vector<std::s
 	choosen_option = "-help";
 	if (std::string option = this->getCmdOption(argv, choosen_option); option != "")
 		exit_with_help();
+
+	// random seed
+	choosen_option = "-dir";
+	if (std::string option = this->getCmdOption(argv, choosen_option); option != "")
+		this->dir_prefix = option;
 
 	std::cout << " - - - - - - MAKING ISING INTERFACE AND USING OUTER THREADS : "
 			  << outer_threads << " - - - - - - " << endl; // setting the number of threads to be used with omp

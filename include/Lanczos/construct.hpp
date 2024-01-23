@@ -36,7 +36,10 @@ namespace lanczos {
 				<< "Model transfered to Lanczos wrapper with:\n"
 				<< this->lanczos_steps << " lanczos steps\n"
 				<< this->maxiter << " maximal iterations\n"
-				<< this->tolerance << " tolerance" << std::endl;
+				<< this->tolerance << " tolerance\n"
+				<< this->use_full_convergence << " - convergece\n"
+				<< this->memory_over_performance << " - on-the-fly\n"
+				<< this->use_reorthogonalization << " - reorthogonalization" << std::endl;
 		#endif
 	}
 };

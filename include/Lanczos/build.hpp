@@ -12,6 +12,7 @@ namespace lanczos
 	inline
 	void Lanczos<_ty, converge_type>::_build_lanczos()
 	{
+		// std::cout << "Use lanczos non-converged" << std::endl;
 		this->randVec_inKrylovSpace = arma::Col<_ty>(
 			this->lanczos_steps,
 			arma::fill::zeros
@@ -53,7 +54,7 @@ namespace lanczos
 
 			H_lanczos(j, j) = alfa;
 			H_lanczos(j, j - 1) = beta;
-			H_lanczos(j - 1, j) = my_conjungate(beta);
+			H_lanczos(j - 1, j) = std::conj(beta);
 
 			fi_prev = fi;
 		}
@@ -66,6 +67,7 @@ namespace lanczos
 	inline 
 	void Lanczos<_ty, converge_type>::_build_krylov()
 	{
+		// std::cout << "Use krylov non-converged" << std::endl;
 		this->krylov_space = arma::Mat<_ty>(
 			this->N,
 			this->lanczos_steps,
@@ -85,9 +87,9 @@ namespace lanczos
 		H_lanczos(0, 0) = alfa;
 
 		double E0 = 0.0;
-		_ty beta = arma::norm(fi_next);
 		// this->krylov_space.col(1) = fi_next / beta;
 		for (int j = 1; j < this->lanczos_steps; j++) {
+			_ty beta = arma::norm(fi_next);
 			// printSeparated(std::cout, "\t", 20, true, j, beta);
 			this->krylov_space.col(j) = fi_next / beta;
 			fi_next = this->H * this->krylov_space.col(j);
@@ -97,9 +99,8 @@ namespace lanczos
 
 			this->H_lanczos(j, j) = alfa;
 			this->H_lanczos(j, j - 1) = beta;
-			this->H_lanczos(j - 1, j) = my_conjungate(beta);
+			this->H_lanczos(j - 1, j) = std::conj(beta);
 
-			beta = arma::norm(fi_next);
 		}
 		this->randVec_inKrylovSpace = this->krylov_space.t() * this->initial_random_vec;
 	}
