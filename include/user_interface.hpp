@@ -123,7 +123,7 @@ public:
 
 	// ------------------------------------------------- MAIN ROUTINES
 
-	arma::vec get_eigenvalues(std::string prefix = "", bool diag_if_empty = true);
+	arma::vec get_eigenvalues(std::string prefix = "", bool diag_if_empty = false);
 	virtual void diagonalize() = 0;
 	virtual void analyze_spectra() = 0;
 
