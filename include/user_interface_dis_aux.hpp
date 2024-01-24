@@ -694,8 +694,6 @@ void user_interface_dis<Hamiltonian>::eigenstate_entanglement_degenerate()
     std::cout << " - - - - - - FINISHED ENTROPY CALCULATION IN : " << tim_s(start) << " seconds - - - - - - " << std::endl; // simulation end
 }
 
-
-
 /// @brief Calculate entanglement evolution for random initial state and all subsystem sizes using schmidt decomposition
 /// @tparam Hamiltonian template parameter for current used model
 template <class Hamiltonian>
@@ -855,6 +853,150 @@ void user_interface_dis<Hamiltonian>::entanglement_evolution()
     std::cout << " - - - - - - FINISHED ENTROPY CALCULATION IN : " << tim_s(start) << " seconds - - - - - - " << std::endl; // simulation end
 }
 
+
+/// @brief Calculate survival probability
+/// @tparam Hamiltonian template parameter for current used model
+template <class Hamiltonian>
+void user_interface_dis<Hamiltonian>::survival_probability()
+{
+	clk::time_point start_tot = std::chrono::system_clock::now();
+	
+	std::string dir = this->saving_dir + "SurvivalProbability" + kPSep;
+	createDirs(dir);
+	
+	size_t dim = this->ptr_to_model->get_hilbert_size();
+	std::string info = this->set_info();
+	std::string filename = info;// + "_subsize=" + std::to_string(LA);
+
+	const double tH = (0.341345 * dim) / std::sqrt(this->L);
+	int time_end = (int)std::ceil(std::log10(5 * tH));
+    arma::vec times = arma::logspace(-2, time_end, this->num_of_points);
+
+	arma::vec survival(times.size(), arma::fill::zeros);
+	arma::vec participation(dim, arma::fill::zeros);
+	arma::vec energies(dim, arma::fill::zeros);
+	
+	double wH_mean = 0, wH_typ = 0;
+	int counter = 0;
+// #pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
+	for(int realis = 0; realis < this->realisations; realis++)
+	{
+		if(realis > 0)
+			this->ptr_to_model->generate_hamiltonian();
+		clk::time_point start_re = std::chrono::system_clock::now();
+		clk::time_point start = std::chrono::system_clock::now();
+    
+        this->ptr_to_model->diagonalization();
+
+		std::cout << " - - - - - - finished diagonalization in : " << tim_s(start) << " s for realis = " << realis << " - - - - - - " << std::endl; // simulation end
+		start = std::chrono::system_clock::now();
+
+		const arma::vec E = this->ptr_to_model->get_eigenvalues();
+		
+		u64 E_av_idx = spectrals::get_mean_energy_index(E);
+		const u64 num = dim < 1000? 0.25 * dim : 0.5 * dim;
+
+		// ------------------------------------- calculate level spacing (average and typical)
+		double wH_mean_r = 0, wH_typ_r = 0;
+		int count = 0;
+		for(int i = (E_av_idx - num / 2); i < (E_av_idx + num / 2); i++){
+			const double gap = E(i + 1) - E(i);
+			wH_mean_r += gap;
+			wH_typ_r += std::log(gap);
+			count++;
+		}
+		wH_mean_r /= double(count);
+		wH_typ_r /= double(count);
+		
+		arma::mat elements(dim, dim);
+		arma::vec pr(dim);
+		
+		//<! Calculate intermediate elements
+	#pragma omp parallel for
+		for(long alfa = 0; alfa < dim; alfa++)
+		{
+			for(long k = 0; k < dim; k++){
+				element_type coeff_a = std::abs(this->ptr_to_model->get_eigenStateCoeff(alfa, k));
+				coeff_a *= coeff_a;
+				
+				// participation ratio
+				pr(alfa) += coeff_a * coeff_a;
+				
+				//diagonal
+				elements(alfa, alfa) += coeff_a * coeff_a;
+				
+				// off-diagonal
+				for(long beta = alfa + 1; beta < dim; beta++)
+				{
+					element_type coeff_b = std::abs(this->ptr_to_model->get_eigenStateCoeff(beta, k));
+					coeff_b *= coeff_b;
+					elements(alfa, beta) += coeff_a * coeff_b;
+					elements(beta, alfa) += coeff_a * coeff_b;
+				}	
+			}
+		}
+		std::cout << " - - - - - - finished calculating elements in : " << tim_s(start) << " s for realis = " << realis << " - - - - - - " << std::endl; // simulation end
+		start = std::chrono::system_clock::now();
+		
+		//<! Calculate survival probability
+		arma::vec _surv_prob(times.size(), arma::fill::zeros);
+	#pragma omp parallel for
+		for(long t_idx = 0; t_idx < times.size(); t_idx++)
+		{
+			double time = times(t_idx);
+			for(long alfa = 0; alfa < dim; alfa++)
+			{
+				_surv_prob(t_idx) += elements(alfa, alfa);
+				// off-diagonal
+				for(long beta = alfa + 1; beta < dim; beta++)
+				{
+					double w_ab = this->ptr_to_model->get_eigenValue(beta) - this->ptr_to_model->get_eigenValue(alfa);
+					_surv_prob(t_idx) += 2.0 * std::cos(w_ab * time) * elements(alfa, beta);
+				}	
+			}
+		}
+		_surv_prob /= double(dim);
+		std::cout << " - - - - - - finished survival probability in : " << tim_s(start) << " s for realis = " << realis << " - - - - - - " << std::endl; // simulation end
+		start = std::chrono::system_clock::now();
+		
+		{
+			std::string dir_realis = dir + "realisation=" + std::to_string(this->jobid + realis) + kPSep;
+			createDirs(dir_realis);
+			times.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "times"));
+			_surv_prob.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "survival", arma::hdf5_opts::append));
+			E.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "energies", arma::hdf5_opts::append));
+			pr.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "pr", arma::hdf5_opts::append));
+			arma::vec({ two_pi / wH_mean_r }).save(arma::hdf5_name(dir_realis + filename + ".hdf5", "tH", arma::hdf5_opts::append));
+			arma::vec({ two_pi / std::exp(wH_typ_r) }).save(arma::hdf5_name(dir_realis + filename + ".hdf5", "tH_typ", arma::hdf5_opts::append));
+		}
+		survival += _surv_prob;
+		participation += pr;
+		energies += E;
+		wH_mean += wH_mean_r;
+		wH_typ += wH_typ_r;
+
+		counter++;
+
+		std::cout << " - - - - - - finished realisation realis = " << realis << " in : " << tim_s(start_re) << " s - - - - - - \n\n" << std::endl; // simulation end
+	}
+    
+	survival /= double(counter);
+	participation /= double(counter);
+	energies /= double(counter);
+	wH_mean /= double(counter);
+	wH_typ /= double(counter);
+
+	#ifdef MY_MAC
+		filename += "_jobid=" + std::to_string(this->jobid);
+		times.save(arma::hdf5_name(dir + filename + ".hdf5", "times"));
+		survival.save(arma::hdf5_name(dir + filename + ".hdf5", "survival", arma::hdf5_opts::append));
+		energies.save(arma::hdf5_name(dir + filename + ".hdf5", "energies", arma::hdf5_opts::append));
+		participation.save(arma::hdf5_name(dir + filename + ".hdf5", "pr", arma::hdf5_opts::append));
+		arma::vec({ two_pi / wH_mean }).save(arma::hdf5_name(dir + filename + ".hdf5", "tH", arma::hdf5_opts::append));
+		arma::vec({ two_pi / std::exp(wH_typ) }).save(arma::hdf5_name(dir + filename + ".hdf5", "tH_typ", arma::hdf5_opts::append));
+	#endif
+    std::cout << " - - - - - - FINISHED SURVIVAL CALCULATION IN : " << tim_s(start_tot) << " seconds - - - - - - " << std::endl; // simulation end
+}
 
 /// @brief Calculate diagonal matrix elements of local operators
 /// @tparam Hamiltonian template parameter for current used model 

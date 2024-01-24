@@ -30,6 +30,9 @@ void ui::make_sim(){
 	case 4:
 		entanglement_evolution();
 		break;
+	case 5:
+		survival_probability();
+		break;
 	default:
 		#define generate_scaling_array(name) arma::linspace(this->name, this->name + this->name##s * (this->name##n - 1), this->name##n);
 		
@@ -64,7 +67,8 @@ void ui::make_sim(){
 								std::cout << " - - START NEW ITERATION:\t\t par = "; // simulation end
 								printSeparated(std::cout, "\t", 16, true, this->L_loc, this->J, this->alfa, this->h, this->w, this->gamma);
 								
-								entanglement_evolution();
+								survival_probability();
+								//entanglement_evolution();
 								//average_sff();
 								std::cout << "\t\t - - - - - - FINISHED ITERATION IN : " << tim_s(start_loop) << " seconds\n\t\t\t Total time : " << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
 						}}}}}}

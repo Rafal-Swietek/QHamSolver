@@ -28,6 +28,8 @@ public:
 	virtual void analyze_spectra() 						override;
 
 	virtual void multifractality()						override {};
+
+	virtual void survival_probability() override {};
 	
 	virtual void check_krylov_evolution() override {};
 	virtual void entanglement_evolution() 				override {};

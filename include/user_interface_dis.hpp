@@ -46,6 +46,8 @@ public:
 	virtual void spectral_form_factor() 				override;
 	virtual void average_sff() 							override;
 
+	virtual void survival_probability() override;
+	
 	virtual void check_krylov_evolution() override;
 
 	virtual void entanglement_evolution() 				override;

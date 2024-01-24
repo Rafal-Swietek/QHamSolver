@@ -132,6 +132,8 @@ public:
 	
 	virtual void multifractality() = 0;
 
+	virtual void survival_probability() = 0;
+
 	virtual void check_krylov_evolution() = 0;
 	
 	virtual void entanglement_evolution() = 0;
