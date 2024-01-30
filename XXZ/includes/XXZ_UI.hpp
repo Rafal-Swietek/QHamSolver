@@ -126,7 +126,7 @@ namespace XXZ_UI{
         jE_mat_elem_kernel(
             const arma::Col<element_type>& state1, 
             const arma::Col<element_type>& state2,
-            int i, u64 k, const op::_ifun& check_spin
+            int i, u64 k, const QOps::_ifun& check_spin
             ) override;
     };
 }

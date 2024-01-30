@@ -95,10 +95,10 @@ XXZsym::XXZsym(std::istream& os)
 void XXZsym::set_symmetry_generators()
 {   
     // parity symmetry
-    this->symmetry_generators.emplace_back(op::_parity_symmetry(this->system_size, this->syms.p_sym));
+    this->symmetry_generators.emplace_back(QOps::_parity_symmetry(this->system_size, this->syms.p_sym));
     
     if(this->_hz == 0 && this->syms.Sz == 0.0)
-        this->symmetry_generators.emplace_back(op::_spin_flip_x_symmetry(this->system_size, this->syms.zx_sym));
+        this->symmetry_generators.emplace_back(QOps::_spin_flip_x_symmetry(this->system_size, this->syms.zx_sym));
 }
 
 //<! ------------------------------------------------------------------------------ HAMILTONIAN BUILDERS
@@ -137,7 +137,7 @@ void XXZsym::create_hamiltonian()
     std::vector<double> interaction = {this->_delta1, this->_delta2};
     
     std::vector<int> neighbor_distance = {1, 2};
-    auto check_spin = op::__builtins::get_digit(this->system_size);
+    auto check_spin = QOps::__builtins::get_digit(this->system_size);
 
     for (u64 k = 0; k < this->dim; k++) {
 		double s_i, s_j;

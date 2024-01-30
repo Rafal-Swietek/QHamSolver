@@ -19,107 +19,54 @@ namespace XXZ_UI{
 void ui::make_sim(){
     printAllOptions();
 
-    // this->ptr_to_model = create_new_model_pointer();
+    this->ptr_to_model = create_new_model_pointer();
+    this->ptr_to_model->diagonalization(false);
+    arma::vec E_ED = this->ptr_to_model->get_eigenvalues();
 
+    auto H = this->ptr_to_model->get_hamiltonian();
+    u64 dim = this->ptr_to_model->get_hilbert_size();
+    // this->l_steps = int(dim / 20.0);
 
-    arma::eigs_opts opts;
-    opts.tol = this->tol;
-    opts.maxiter = this->l_maxiter;
+    auto tol_arr = arma::logspace(-15, -2, 50);
+    // std::cout << tol_arr.t() << std::endl;
+    arma::vec steps(tol_arr.size(), arma::fill::zeros);
+    arma::vec E_err(tol_arr.size(), arma::fill::zeros);
+    arma::vec V_err(tol_arr.size(), arma::fill::zeros);
+// #pragma omp parallel
+    for(int ii = 0; ii < tol_arr.size(); ii++)
+    {
+        this->tol = tol_arr(ii);
+        auto polfed = polfed::POLFED<ui::element_type>(H, this->l_steps, this->l_bundle, -1, tol_arr(ii), 0.2, this->seed, this->reorthogonalize);
+        arma::vec E; arma::mat V;
+        std::tie(E, V) = polfed.eig();
+        steps(ii) = polfed.get_convergence_steps();
 
-    // printSeparated(std::cout, "\t", 20, true, "L", "dim", "Hamiltonian", "diag (only E)", "Lanczos", "arma::lanczos", "Block s=5", "Block s=10", "Block s=20");
-    printSeparated(std::cout, "\t", 20, true, "L", "dim", "Hamiltonian", "polfed s=10", "polfed s=20", "polfed s=50");
-    // printSeparated(std::cout, "\t", 20, true, "dim", 16, 32, 64, 128, 256, 512, 1024);
-    for(int Ll = this->L; Ll < this->L + this->Ln * this->Ls; Ll += this->Ls){
-        this->L = Ll;
-        // std::cout << " -------------------------------------------------------------------------------------------------------------------------------------------------- L=" << this->L << std::endl;
-        clk::time_point start = std::chrono::system_clock::now();
-        this->ptr_to_model = create_new_model_pointer();
-        // this->ptr_to_model->diagonalization(false);
-        // arma::vec E2 = this->ptr_to_model->get_eigenvalues();
-        printSeparated(std::cout, "\t", 20, false, L, this->ptr_to_model->get_hilbert_size(), tim_s(start));
-        auto H = this->ptr_to_model->get_hamiltonian();
-        u64 dim = this->ptr_to_model->get_hilbert_size();
-        // this->l_steps = dim / 100;
+        double Emin = arma::min(E);
+        auto i = std::min_element(std::begin(E_ED), std::end(E_ED), [=](double x, double y) {
+            return std::abs(x - Emin) < std::abs(y - Emin);
+            });
+        u64 idx = i - std::begin(E_ED);
 
-        for(int s : {this->l_bundle}){
-            std::cout.flush();
-            start = std::chrono::system_clock::now();
-            auto polfed = polfed::POLFED<ui::element_type>(H, this->l_steps, s, 10, this->tol, 0.25, this->seed, this->reorthogonalize);
-            auto [E, V] = polfed.eig();
-            printSeparated(std::cout, "\t", 20, false, tim_s(start));
+        arma::vec error(E.size(), arma::fill::zeros);
+        for(int k = 0; k < E.size(); k++){
+            error(k) = arma::norm(H * V.col(k) - E(k) * V.col(k));
         }
-        std::cout << std::endl;
-        // std::cout << E - E2.rows(idx, idx + E.size()-1);
-        // std::cout << this->ptr_to_model->get_eigenvalues().t()
-        // auto lancz_block = lanczos::BlockLanczos<ui::element_type>(H, this->l_steps, this->l_bundle, this->l_maxiter, this->tol, this->seed, this->reorthogonalize);
-        // lancz_block.diagonalization();
-
-        // auto kernel = [&H](const arma::Mat<ui::element_type>& bundle) -> arma::Mat<ui::element_type>
-        //     { return H * bundle; };
-        // auto lancz_block2 = lanczos::BlockLanczos<ui::element_type>(hamiltonian_func_ptr<arma::Mat<ui::element_type>>(kernel), dim, this->l_steps, this->l_bundle, this->l_maxiter, this->tol, this->seed, this->reorthogonalize);
-        // lancz_block2.diagonalization();
-
-        // std::cout << lancz_block.get_eigenvalues() - lancz_block2.get_eigenvalues();
-
-        continue;
-        
-        // start = std::chrono::system_clock::now();
-        // // this->ptr_to_model->diagonalization(false);
-        // printSeparated(std::cout, "\t", 20, false, tim_s(start));
-        // // auto E = this->ptr_to_model->get_eigenvalues();
-
-        // auto lancz = lanczos::Lanczos<ui::element_type>(H, this->l_steps, this->l_maxiter, this->tol, this->seed, this->reorthogonalize);
-        // start = std::chrono::system_clock::now();
-        // lancz.diagonalization();
-        // // printSeparated(std::cout, "\t", 20, true, this->ptr_to_model->get_hilbert_size());
-        // // for(int lsteps : {16, 32, 64, 128, 256, 512, 1024}){
-        // //     std::cout << "\t\t";
-        // //     arma::vec Esp; arma::Mat<ui::element_type> V;
-        // //     arma::eigs_sym(Esp, V, H, std::min((u64)lsteps, this->ptr_to_model->get_hilbert_size()), "sa", opts);
-        // //     // auto lancz = lanczos::Lanczos<ui::element_type>(H, lsteps, this->l_maxiter, this->seed, this->reorthogonalize);
-        // //     auto lancz = lanczos::BlockLanczos<ui::element_type>(H, lsteps, this->l_bundle, this->l_maxiter, this->tol, this->seed, this->reorthogonalize);
-        // //     lancz.diagonalization();
-        // //     auto E = lancz.get_eigenvalues();
-        // //     // printSeparated(std::cout, "\t", 20, true, "\t", lsteps, lancz.get_lanczossteps());
-        // //     printSeparated(std::cout, "\t", 20, true, "\t", lsteps, lancz.get_lanczossteps(), "\n");
-        // //     for(int k = 0; k < lsteps; k++){
-        // //         auto state = lancz.get_eigenstate(k);
-        // //         printSeparated(std::cout, "\t", 20, true, "\t", "\t", arma::norm(H * state - E(k) * state), arma::norm(H * V.col(k) - Esp(k) * V.col(k)), arma::norm(V.col(k) - state));
-        // //     }
-        // //     std::cout.flush();          
-        // // }
-        // // std::cout << std::endl;
-        // printSeparated(std::cout, "\t", 20, false, tim_s(start));
-        // auto Elancz = lancz.get_eigenvalues();
-        // std::cout.flush();
-
-        // start = std::chrono::system_clock::now();
-        // arma::vec Esp; arma::Mat<ui::element_type> V;
-        // arma::eigs_sym(Esp, V, H, std::min((u64)this->l_steps, this->ptr_to_model->get_hilbert_size()), "sa", opts);
-        // printSeparated(std::cout, "\t", 20, false, tim_s(start));
-        
-        // arma::vec Eblocklancz;
-        // for(int s : {this->l_bundle}){
-        //     std::cout.flush();
-
-        //     auto lancz_block = lanczos::BlockLanczos<ui::element_type>(H, this->l_steps, s, this->l_maxiter, this->tol, this->seed, this->reorthogonalize);
-            
-        //     start = std::chrono::system_clock::now();
-        //     lancz_block.diagonalization();
-        //     printSeparated(std::cout, "\t", 20, false, tim_s(start));
-
-        //     Eblocklancz = lancz_block.get_eigenvalues(); //.col(0, 50);
-        // }
-        // std::cout << std::endl;
-        
-        // // for(int k = 0; k < this->l_steps; k++)
-        // //     printSeparated(std::cout, "\t", 20, true, E(k), Elancz(k), Esp(k), Eblocklancz(k));
-        // // std::cout << E.t() << Elancz.t() << Esp.t() << Eblocklancz.t() << std::endl;
-        // double dE = arma::max(Esp - Eblocklancz.rows(0, this->l_steps-1));
-        // if(std::abs(dE) > 1e-13){
-        //     std::cout << "<dE> = " << dE << std::endl;
-        // }
+        V_err(ii) = arma::max(error);
+        auto permut = sort_permutation(E, [](const double a, const double b)
+								   { return a < b; });
+        apply_permutation(E, permut);
+        error  = arma::vec(E.size(), arma::fill::zeros);
+        for(int k = 0; k < E.size(); k++){
+            error(k) = std::abs(E_ED(idx + k) - E(k));
+        }
+        E_err(ii) = arma::max(error);
+        printSeparated(std::cout, "\t", 16, true, this->tol, E_err(ii), V_err(ii), steps(ii));
     }
+    std::string name = this->saving_dir + this->set_info() + "_jobid=" + std::to_string(this->jobid);
+    steps.save(arma::hdf5_name(name + ".hdf5", "steps"));
+    E_err.save(arma::hdf5_name(name + ".hdf5", "energy error", arma::hdf5_opts::append));
+    V_err.save(arma::hdf5_name(name + ".hdf5", "state error", arma::hdf5_opts::append));
+    tol_arr.save(arma::hdf5_name(name + ".hdf5", "tolerance", arma::hdf5_opts::append));
     // compare_energies();
     return;
 
@@ -312,13 +259,13 @@ void ui::compare_hamiltonian()
 /// @brief 
 void ui::check_symmetry_generators()
 {
-    v_1d<op::genOp> sym_group;
+    v_1d<QOps::genOp> sym_group;
     // parity symmetry
-    sym_group.emplace_back(op::_parity_symmetry(this->L, this->syms.p_sym));
+    sym_group.emplace_back(QOps::_parity_symmetry(this->L, this->syms.p_sym));
 
     // spin flips
     if(this->hz == 0 && this->syms.Sz == 0.0)
-        sym_group.emplace_back(op::_spin_flip_x_symmetry(this->L, this->syms.zx_sym));
+        sym_group.emplace_back(QOps::_spin_flip_x_symmetry(this->L, this->syms.zx_sym));
     
     QHS::point_symmetric hilbert( this->L, sym_group, this->boundary_conditions, this->syms.k_sym, 0);
     auto group = hilbert.get_symmetry_group();
@@ -336,7 +283,7 @@ void ui::check_symmetry_generators()
 arma::sp_mat ui::energy_current(){
 
     const size_t dim_max = ULLPOW(this->L);
-    auto check_spin = op::__builtins::get_digit(this->L);
+    auto check_spin = QOps::__builtins::get_digit(this->L);
     _assert_(this->J2 == 0.0 && this->delta2 == 0, "Energy current implemented only for integrable case, no nearest neighbour terms yet!");
     double Jx = this->J1;
     double Jy = this->J1;
@@ -396,7 +343,7 @@ ui::element_type
 ui::jE_mat_elem_kernel(
             const arma::Col<element_type>& state1, 
             const arma::Col<element_type>& state2,
-            int i, u64 k, const op::_ifun& check_spin
+            int i, u64 k, const QOps::_ifun& check_spin
             )
 {
     ui::element_type result = ui::element_type(0);

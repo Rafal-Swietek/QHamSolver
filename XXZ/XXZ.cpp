@@ -94,7 +94,7 @@ void XXZ::create_hamiltonian()
     std::vector<double> interaction = {this->_delta1, this->_delta2};
     
     std::vector<int> neighbor_distance = {1, 2};
-    auto check_spin = op::__builtins::get_digit(this->system_size);
+    auto check_spin = QOps::__builtins::get_digit(this->system_size);
 
     for (u64 k = 0; k < this->dim; k++) 
     {

@@ -1,7 +1,7 @@
 #pragma once 
 
 // #define EXTRA_DEBUG
-// #define NODEBUG
+#define NODEBUG
 
 #define SPIN 0.5    //<! value of spin (1/2 -> spin operators, 1 -> pauli matrices)
 #define CONFIG 2    //<! on-site configuration (local hilbert space dimension)

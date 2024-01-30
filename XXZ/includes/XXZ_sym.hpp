@@ -26,7 +26,7 @@ class XXZsym :
 
     //<! ----------------------------------------------------- MODEL PARAMETERS
 private:
-    v_1d<op::genOp> symmetry_generators;    // list of symmetry generators
+    v_1d<QOps::genOp> symmetry_generators;    // list of symmetry generators
 
     double _hz = 0.5;                       // uniform longitudinal field
     double _J1 = 1.0;                       // nearest neighbour coupling amplitude
