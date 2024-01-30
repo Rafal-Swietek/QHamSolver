@@ -46,8 +46,9 @@ namespace polfed{
     {
         //<! set first and second moment
         // change to trace(H) not sigma if made general
-        _ty var     = arma::trace(this->H * this->H) / double(this->N) - this->sigma * this->sigma;
-        _ty DOS     = this->N * (Emax - Emin) / 2.0 / ( std::sqrt(2.0 * two_pi * var) );
+        _ty var     = arma::trace(this->P_H * this->P_H) / double(this->N) - this->sigma * this->sigma;
+        // _ty DOS     = this->N * (Emax - Emin) / 2.0 / ( std::sqrt(2.0 * two_pi * var) );
+        _ty DOS     = this->N / ( std::sqrt(2.0 * two_pi * var) );
         _ty delta   = this->num_of_eigval / (2.0 * DOS);
         
         this->K = 15;

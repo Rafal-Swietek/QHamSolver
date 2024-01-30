@@ -54,7 +54,7 @@ namespace lanczos
 
 			H_lanczos(j, j) = alfa;
 			H_lanczos(j, j - 1) = beta;
-			H_lanczos(j - 1, j) = std::conj(beta);
+			H_lanczos(j - 1, j) = my_conjungate(beta);
 
 			fi_prev = fi;
 		}
@@ -99,7 +99,7 @@ namespace lanczos
 
 			this->H_lanczos(j, j) = alfa;
 			this->H_lanczos(j, j - 1) = beta;
-			this->H_lanczos(j - 1, j) = std::conj(beta);
+			this->H_lanczos(j - 1, j) = my_conjungate(beta);
 
 		}
 		this->randVec_inKrylovSpace = this->krylov_space.t() * this->initial_random_vec;

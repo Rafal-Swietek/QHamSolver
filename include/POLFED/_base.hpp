@@ -41,6 +41,7 @@ namespace polfed {
 		int num_of_eigval 	= 200;						//<! number of lanczos iterations
 		int bundle_size  	= 5;						//<! number of initial random vectors (number of columns in initial_bundle matrix)
 		int K 				= -1;						//<! order of polynomial
+		int conv_steps 		= 0;						//<! number of steps until converged results
 
 		bool use_on_the_fly	= false;					//<! diagonalizing on-the-fly (not Hamiltonian as matrix is known)
 		bool use_krylov 	= false;					//<! boolean value whether useing krylov matrix or not
@@ -111,6 +112,10 @@ namespace polfed {
 		// POLFED(POLFED&& input_model) noexcept = default;
 		// auto operator=(const POLFED& input_model){ return POLFED(input_model); };
 		//auto operator=(BlockLanczos&& input_model) noexcept { return BlockLanczos(std::move(input_model)); };
+
+		//------------------------------------------------------------------------------------------------ GET / SET
+
+		auto get_convergence_steps() const { return this->conv_steps; }
 
 		//------------------------------------------------------------------------------------------------ DIAGONALIZING MATRIX
 		auto eig() -> std::pair<arma::vec, arma::Mat<_ty>>;

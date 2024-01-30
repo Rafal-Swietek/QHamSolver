@@ -67,7 +67,7 @@ namespace lanczos
 			this->H_lanczos.submat(j * this->bundle_size, j * this->bundle_size, (j+1) * this->bundle_size - 1, (j+1) * this->bundle_size - 1) = alfa;
 
 			//<! convergence
-			if(j > this->lanczos_steps / this->bundle_size && (j - this->lanczos_steps / this->bundle_size) % 10 == 0)
+			if(j > this->lanczos_steps / this->bundle_size && (j - this->lanczos_steps / this->bundle_size) % 1 == 0)
 			{	
 				double conv = this->_calculate_convergence(E0, beta);
 				_extra_debug( printSeparated(std::cout, "\t", 15, false, this->N, j, conv); )
@@ -121,7 +121,7 @@ namespace lanczos
 			this->H_lanczos.submat(j * this->bundle_size, j * this->bundle_size, (j + 1) * this->bundle_size - 1, (j + 1) * this->bundle_size - 1) = alfa;
 
 			//<! convergence
-			if(j > this->lanczos_steps / this->bundle_size && (j - this->lanczos_steps / this->bundle_size) % 10 == 0)
+			if(j > this->lanczos_steps / this->bundle_size && (j - this->lanczos_steps / this->bundle_size) % 1 == 0)
 			{
 				double conv = this->_calculate_convergence(E0, beta);
 				_extra_debug( printSeparated(std::cout, "\t", 15, false, this->N, j, conv); )

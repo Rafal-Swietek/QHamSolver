@@ -176,7 +176,8 @@ void user_interface<Hamiltonian>::printAllOptions() const {
 		  << "boolean value = " << this->ch << std::endl
 		  << "q_ipr = " << this->q_ipr << std::endl
 		  << "\u03B2 = " << this->beta << std::endl
-		  << "seed = " << this->seed << std::endl
+		  << "seed = " << this->seed << std::endl;
+	std::cout << "\n--------------------LANCZOS/POLFED:\n"
 		  << "tol = " << this->tol << std::endl
 		  << "l_maxiter = " << this->l_maxiter << std::endl
 		  << "l_steps = " << this->l_steps << std::endl

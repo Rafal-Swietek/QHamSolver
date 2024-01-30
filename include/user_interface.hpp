@@ -2,8 +2,10 @@
 
 #include "QHamSolver.h"
 
-#include "statistics.hpp"
-#include "statistics_dist.hpp"
+#include "statistics/eigenlevel.hpp"
+#include "statistics/eigenstate.hpp"
+#include "statistics/distrubutions.hpp"
+#include "statistics/spectral_form_factor.hpp"
 #include "spectrals.hpp"
 #include "thermodynamics.hpp"
 #include "entanglement.hpp"

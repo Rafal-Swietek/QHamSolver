@@ -67,7 +67,8 @@ namespace lanczos {
 				<< this->lanczos_steps << " lanczos steps\n"
 				<< this->bundle_size << " initial random vectors\n"
 				<< this->maxiter << " maximal iterations\n" 
-				<< this->matrix_size << " matrix size" << std::endl;
+				<< this->matrix_size << " matrix size\n"
+				<< this->tolerance << " tolerance" << std::endl;
 		#endif
 	}
 

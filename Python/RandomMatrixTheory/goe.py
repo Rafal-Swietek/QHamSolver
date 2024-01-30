@@ -50,7 +50,8 @@ def partition_function(beta, N):
         
     N (int):        artificial system size, sets matrix siz to 2^N
     """
-    return (2**N - 1/2.) * BesselI(1, 2 * beta) / beta - 1/2. * BesselI(2, 2 * beta) + 1/2. * np.cosh(2 * beta)
+    if N > 100:     return BesselI(1, 2 * beta) / beta
+    else:           return (2**N - 1/2.) * BesselI(1, 2 * beta) / beta - 1/2. * BesselI(2, 2 * beta) + 1/2. * np.cosh(2 * beta)
 
 
 def energy_mean(beta, N):
