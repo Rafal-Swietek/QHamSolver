@@ -156,7 +156,7 @@ void ui::parse_cmd_options(int argc, std::vector<std::string> argv)
     // this->set_option(this->add_edge_fields, argv, choosen_option);
 
     //<! FOLDER
-    std::string folder = "." + kPSep + "results" + kPSep;
+    std::string folder = this->dir_prefix + "results" + kPSep;
     switch(this->boundary_conditions){
         case 0: folder += "PBC" + kPSep; break;
         case 1: folder += "OBC" + kPSep; break;
