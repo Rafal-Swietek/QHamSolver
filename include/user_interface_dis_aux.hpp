@@ -477,13 +477,15 @@ void user_interface_dis<Hamiltonian>::eigenstate_entanglement()
 
 		arma::mat S(size, this->L + 1, arma::fill::zeros);
 		arma::mat S_site = S;
+		arma::vec participation_entropy(size, arma::fill::zeros);
 
 		outer_threads = this->thread_number;
 		omp_set_num_threads(1);
 		std::cout << outer_threads << "\t\t" << omp_get_num_threads() << std::endl;
 		
-		for(auto& LA : subsystem_sizes)
-		{
+		for(int LA_idx = 0; LA_idx < subsystem_sizes.size() - 1; LA_idx++)
+		{	
+			int LA = subsystem_sizes[LA_idx];
 			auto start_LA = std::chrono::system_clock::now();
 			std::vector<int> p(this->L);
 			p[LA % this->L] = 0;
@@ -502,18 +504,19 @@ void user_interface_dis<Hamiltonian>::eigenstate_entanglement()
 				arma::Col<element_type> state = this->ptr_to_model->get_eigenState(n);
 				
 				// somehow needs L-LA (computer sees bit representation the opposite way, i.e. take B subsystem)
-				S(n, LA) = entropy::schmidt_decomposition(this->cast_state(state), this->L - LA, this->L);	// bipartite entanglement at subsystem size LA
+				S(n, LA_idx) = entropy::schmidt_decomposition(this->cast_state(state), this->L - LA, this->L);	// bipartite entanglement at subsystem size LA
 				state = P * this->cast_state(state);
 				if(LA < this->L)
-					S_site(n, LA) 	= entropy::schmidt_decomposition(state, this->L - 1, this->L);	// single site entanglement at site LA
+					S_site(n, LA_idx) 	= entropy::schmidt_decomposition(state, this->L - 1, this->L);	// single site entanglement at site LA
 
-				//double S2 = entropy::vonNeumann(state, LA, this->L);
-				// #pragma omp critical
-				// {
-				// 	double x = S_site(n, LA) - (double)S(n, LA);
-				// 	if(std::abs(x) > 1e-14)
-				// 		printSeparated(std::cout, "\t", 16, true, LA, E(n), S_site(n, LA), S(n, LA), x);
-				// }
+				if(LA_idx == 0)
+				{
+				#pragma omp parallel for
+					for(int k = 0; k < dim; k++){
+						auto value = std::abs(state(k)) * std::abs(state(k));
+    					participation_entropy(n) += (std::abs(value) > 0) ? -value * std::log(value) : 0;
+					}
+				}
 			}
     		std::cout << " - - - - - - finished entropy size LA: " << LA << " in time:" << tim_s(start_LA) << " s - - - - - - " << std::endl; // simulation end
 		}
@@ -524,6 +527,8 @@ void user_interface_dis<Hamiltonian>::eigenstate_entanglement()
 			E.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "energies"));
 			S.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "entropy", arma::hdf5_opts::append));
 			S_site.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "single_site_entropy", arma::hdf5_opts::append));
+			subsystem_sizes.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "subsystem sizes", arma::hdf5_opts::append));
+			participation_entropy.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "von Neumann participation entropy", arma::hdf5_opts::append));
 		}
 		entropies += S;
 		single_site_entropy += S_site;
@@ -538,11 +543,12 @@ void user_interface_dis<Hamiltonian>::eigenstate_entanglement()
 	energies /= double(counter);
 	entropies /= double(counter);
 	single_site_entropy /= double(counter);
-
-	filename += "_jobid=" + std::to_string(this->jobid);
-    energies.save(arma::hdf5_name(dir + filename + ".hdf5", "energies"));
-	entropies.save(arma::hdf5_name(dir + filename + ".hdf5", "entropy", arma::hdf5_opts::append));
-	single_site_entropy.save(arma::hdf5_name(dir + filename + ".hdf5", "single_site_entropy", arma::hdf5_opts::append));
+	#ifdef MY_MAC
+		filename += "_jobid=" + std::to_string(this->jobid);
+		energies.save(arma::hdf5_name(dir + filename + ".hdf5", "energies"));
+		entropies.save(arma::hdf5_name(dir + filename + ".hdf5", "entropy", arma::hdf5_opts::append));
+		single_site_entropy.save(arma::hdf5_name(dir + filename + ".hdf5", "single_site_entropy", arma::hdf5_opts::append));
+	#endif
     std::cout << " - - - - - - FINISHED ENTROPY CALCULATION IN : " << tim_s(start) << " seconds - - - - - - " << std::endl; // simulation end
 }
 
