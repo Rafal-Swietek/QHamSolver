@@ -3,12 +3,14 @@
 // #define EXTRA_DEBUG
 #define SPIN 0.5
 
-#ifndef CONF_DISORDER
-    // #define CONF_DISORDER
-#endif
+#ifdef MY_MAC
+    #ifndef CONF_DISORDER
+        // #define CONF_DISORDER
+    #endif
 
-#ifndef SCALED_DISORDER
-    #define SCALED_DISORDER
+    #ifndef SCALED_DISORDER
+        #define SCALED_DISORDER
+    #endif
 #endif
 
 
