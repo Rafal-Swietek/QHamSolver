@@ -876,6 +876,7 @@ void user_interface_dis<Hamiltonian>::survival_probability()
 
 	const double tH = (0.341345 * dim) / std::sqrt(this->L);
 	int time_end = (int)std::ceil(std::log10(5 * tH));
+	time_end = (time_end / std::log10(tH) < 1.5) ? time_end + 1 : time_end;
     arma::vec times = arma::logspace(-2, time_end, this->num_of_points);
 
 	arma::vec survival(times.size(), arma::fill::zeros);
@@ -914,57 +915,39 @@ void user_interface_dis<Hamiltonian>::survival_probability()
 		wH_mean_r /= double(count);
 		wH_typ_r /= double(count);
 		
-		arma::mat elements(dim, dim);
-		arma::vec pr(dim);
-		
+		start = std::chrono::system_clock::now();
+
+		arma::vec _surv_prob(times.size(), arma::fill::zeros);
+		arma::mat A(dim, dim, arma::fill::zeros);
+		arma::cx_mat B(times.size(), dim, arma::fill::zeros);
+		arma::vec pr(dim, arma::fill::zeros);
+
 		//<! Calculate intermediate elements
 	#pragma omp parallel for
 		for(long alfa = 0; alfa < dim; alfa++)
 		{
 			for(long k = 0; k < dim; k++){
-				element_type coeff_a = std::abs(this->ptr_to_model->get_eigenStateCoeff(alfa, k));
-				coeff_a *= coeff_a;
+				double coeff = std::abs(this->ptr_to_model->get_eigenStateCoeff(alfa, k));
+				coeff *= coeff;
 				
 				// participation ratio
-				pr(alfa) += coeff_a * coeff_a;
+				pr(alfa) += coeff * coeff;
 				
 				//diagonal
-				elements(alfa, alfa) += coeff_a * coeff_a;
-				
-				// off-diagonal
-				for(long beta = alfa + 1; beta < dim; beta++)
-				{
-					element_type coeff_b = std::abs(this->ptr_to_model->get_eigenStateCoeff(beta, k));
-					coeff_b *= coeff_b;
-					elements(alfa, beta) += coeff_a * coeff_b;
-					elements(beta, alfa) += coeff_a * coeff_b;
-				}	
+				A(alfa, k) = coeff;
+			}
+			for(long t_idx = 0; t_idx < times.size(); t_idx++)
+			{
+				double time = times(t_idx);
+				B(t_idx, alfa) = std::exp(-1i * time * E(alfa));
 			}
 		}
-		std::cout << " - - - - - - finished calculating elements in : " << tim_s(start) << " s for realis = " << realis << " - - - - - - " << std::endl; // simulation end
+		std::cout << " - - - - - - finished calculating matrices in : " << tim_s(start) << " s for realis = " << realis << " - - - - - - " << std::endl; // simulation end
 		start = std::chrono::system_clock::now();
 		
 		//<! Calculate survival probability
-		arma::vec _surv_prob(times.size(), arma::fill::zeros);
-	#pragma omp parallel for
-		for(long t_idx = 0; t_idx < times.size(); t_idx++)
-		{
-			double time = times(t_idx);
-			for(long alfa = 0; alfa < dim; alfa++)
-			{
-				_surv_prob(t_idx) += elements(alfa, alfa);
-				// off-diagonal
-				for(long beta = alfa + 1; beta < dim; beta++)
-				{
-					double w_ab = this->ptr_to_model->get_eigenValue(beta) - this->ptr_to_model->get_eigenValue(alfa);
-					_surv_prob(t_idx) += 2.0 * std::cos(w_ab * time) * elements(alfa, beta);
-				}	
-			}
-		}
-		_surv_prob /= double(dim);
+		_surv_prob = arma::sum( arma::square(arma::abs( B * A )) , 1) / double(dim);
 		std::cout << " - - - - - - finished survival probability in : " << tim_s(start) << " s for realis = " << realis << " - - - - - - " << std::endl; // simulation end
-		start = std::chrono::system_clock::now();
-		
 		{
 			std::string dir_realis = dir + "realisation=" + std::to_string(this->jobid + realis) + kPSep;
 			createDirs(dir_realis);
