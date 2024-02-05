@@ -875,14 +875,18 @@ void user_interface_dis<Hamiltonian>::survival_probability()
 	std::string filename = info;// + "_subsize=" + std::to_string(LA);
 
 	const double tH = (0.341345 * dim) / std::sqrt(this->L);
-	int time_end = (int)std::ceil(std::log10(5 * tH));
-	time_end = (time_end / std::log10(tH) < 1.5) ? time_end + 1 : time_end;
-    arma::vec times = arma::logspace(-2, time_end, this->num_of_points);
+	int time_end = (int)std::ceil(std::log10(7.5 * tH));
+	time_end = (time_end / std::log10(tH) < 3) ? time_end + 1 : time_end;
+    arma::vec times = arma::join_cols(arma::vec({0}), arma::logspace(-2, time_end, this->num_of_points - 1));
 
-	arma::vec survival(times.size(), arma::fill::zeros);
-	arma::vec participation(dim, arma::fill::zeros);
-	arma::vec energies(dim, arma::fill::zeros);
-	
+	#ifdef MY_MAC
+		arma::vec survival(times.size(), arma::fill::zeros);
+		arma::vec survival_gauss(times.size(), arma::fill::zeros);
+		arma::vec survival_projected(times.size(), arma::fill::zeros);
+
+		arma::vec participation(dim, arma::fill::zeros);
+		arma::vec energies(dim, arma::fill::zeros);
+	#endif
 	double wH_mean = 0, wH_typ = 0;
 	int counter = 0;
 // #pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
@@ -906,7 +910,7 @@ void user_interface_dis<Hamiltonian>::survival_probability()
 		// ------------------------------------- calculate level spacing (average and typical)
 		double wH_mean_r = 0, wH_typ_r = 0;
 		int count = 0;
-		for(int i = (E_av_idx - num / 2); i < (E_av_idx + num / 2); i++){
+		for(int i = 0; i < dim; i++){
 			const double gap = E(i + 1) - E(i);
 			wH_mean_r += gap;
 			wH_typ_r += std::log(gap);
@@ -916,16 +920,23 @@ void user_interface_dis<Hamiltonian>::survival_probability()
 		wH_typ_r /= double(count);
 		
 		start = std::chrono::system_clock::now();
+		
+        const double mean = arma::mean(E);
+        const double stddev = arma::stddev(E);
+        const double denom = 2.0 * 0.3 * 0.3 * stddev * stddev;
 
-		arma::vec _surv_prob(times.size(), arma::fill::zeros);
 		arma::mat A(dim, dim, arma::fill::zeros);
+		arma::mat A_gauss(dim, dim, arma::fill::zeros);
+		arma::mat A_projected(dim, dim, arma::fill::zeros);
+
 		arma::cx_mat B(times.size(), dim, arma::fill::zeros);
 		arma::vec pr(dim, arma::fill::zeros);
-
+		
 		//<! Calculate intermediate elements
 	#pragma omp parallel for
 		for(long alfa = 0; alfa < dim; alfa++)
 		{
+			const double filter = std::exp( -(E(alfa) - mean) * (E(alfa) - mean) / denom );
 			for(long k = 0; k < dim; k++){
 				double coeff = std::abs(this->ptr_to_model->get_eigenStateCoeff(alfa, k));
 				coeff *= coeff;
@@ -935,6 +946,9 @@ void user_interface_dis<Hamiltonian>::survival_probability()
 				
 				//diagonal
 				A(alfa, k) = coeff;
+				A_gauss(alfa, k) = coeff * filter * filter;
+				if( (alfa >= this->ptr_to_model->E_av_idx - 0.1 * dim) && (alfa < this->ptr_to_model->E_av_idx + 0.1 * dim) )
+					A_projected(alfa, k) = coeff;
 			}
 			for(long t_idx = 0; t_idx < times.size(); t_idx++)
 			{
@@ -942,43 +956,68 @@ void user_interface_dis<Hamiltonian>::survival_probability()
 				B(t_idx, alfa) = std::exp(-1i * time * E(alfa));
 			}
 		}
+		arma::rowvec _norm_gauss 	 = arma::sum(A_gauss, 0);
+		arma::rowvec _norm_projected = arma::sum(A_projected, 0);
+	#pragma omp parallel for
+		for(long k = 0; k < dim; k++)
+		{
+			A_gauss.col(k) = A_gauss.col(k) / _norm_gauss(k);
+			A_projected.col(k) = A_projected.col(k) / _norm_projected(k);
+		}
 		std::cout << " - - - - - - finished calculating matrices in : " << tim_s(start) << " s for realis = " << realis << " - - - - - - " << std::endl; // simulation end
 		start = std::chrono::system_clock::now();
 		
 		//<! Calculate survival probability
-		_surv_prob = arma::sum( arma::square(arma::abs( B * A )) , 1) / double(dim);
+		arma::vec _surv_prob = arma::sum( arma::square(arma::abs( B * A )) , 1) / double(dim);
+		arma::vec _surv_prob_gauss = arma::sum( arma::square(arma::abs( B * A_gauss )) , 1) / double(dim);
+		arma::vec _surv_prob_projected = arma::sum( arma::square(arma::abs( B * A_projected )) , 1) / double(dim);
+		
+		// _surv_prob_gauss /= _surv_prob_gauss(0);
+		// _surv_prob_projected /= _surv_prob_projected(0);
+
 		std::cout << " - - - - - - finished survival probability in : " << tim_s(start) << " s for realis = " << realis << " - - - - - - " << std::endl; // simulation end
 		{
 			std::string dir_realis = dir + "realisation=" + std::to_string(this->jobid + realis) + kPSep;
 			createDirs(dir_realis);
 			times.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "times"));
 			_surv_prob.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "survival", arma::hdf5_opts::append));
+			_surv_prob_gauss.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "survival gaussian", arma::hdf5_opts::append));
+			_surv_prob_projected.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "survival projected", arma::hdf5_opts::append));
 			E.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "energies", arma::hdf5_opts::append));
 			pr.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "pr", arma::hdf5_opts::append));
 			arma::vec({ two_pi / wH_mean_r }).save(arma::hdf5_name(dir_realis + filename + ".hdf5", "tH", arma::hdf5_opts::append));
 			arma::vec({ two_pi / std::exp(wH_typ_r) }).save(arma::hdf5_name(dir_realis + filename + ".hdf5", "tH_typ", arma::hdf5_opts::append));
 		}
-		survival += _surv_prob;
-		participation += pr;
-		energies += E;
-		wH_mean += wH_mean_r;
-		wH_typ += wH_typ_r;
 
-		counter++;
+		#ifdef MY_MAC
+			survival += _surv_prob;
+			survival_gauss += _surv_prob_gauss;
+			survival_projected += _surv_prob_projected;
+			participation += pr;
+			energies += E;
+			wH_mean += wH_mean_r;
+			wH_typ += wH_typ_r;
+
+			counter++;
+		#endif
 
 		std::cout << " - - - - - - finished realisation realis = " << realis << " in : " << tim_s(start_re) << " s - - - - - - \n\n" << std::endl; // simulation end
 	}
     
-	survival /= double(counter);
-	participation /= double(counter);
-	energies /= double(counter);
-	wH_mean /= double(counter);
-	wH_typ /= double(counter);
-
 	#ifdef MY_MAC
+		survival /= double(counter);
+		survival_gauss /= double(counter);
+		survival_projected /= double(counter);
+		participation /= double(counter);
+		energies /= double(counter);
+		wH_mean /= double(counter);
+		wH_typ /= double(counter);
+
 		filename += "_jobid=" + std::to_string(this->jobid);
 		times.save(arma::hdf5_name(dir + filename + ".hdf5", "times"));
 		survival.save(arma::hdf5_name(dir + filename + ".hdf5", "survival", arma::hdf5_opts::append));
+		survival_gauss.save(arma::hdf5_name(dir + filename + ".hdf5", "survival gaussian", arma::hdf5_opts::append));
+		survival_projected.save(arma::hdf5_name(dir + filename + ".hdf5", "survival projected", arma::hdf5_opts::append));
 		energies.save(arma::hdf5_name(dir + filename + ".hdf5", "energies", arma::hdf5_opts::append));
 		participation.save(arma::hdf5_name(dir + filename + ".hdf5", "pr", arma::hdf5_opts::append));
 		arma::vec({ two_pi / wH_mean }).save(arma::hdf5_name(dir + filename + ".hdf5", "tH", arma::hdf5_opts::append));

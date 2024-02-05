@@ -153,9 +153,9 @@ void ui::parse_cmd_options(int argc, std::vector<std::string> argv)
 
 	this->L = this->L_loc + this->grain_size;
 	if constexpr (conf_disorder == 1)
-    	this->saving_dir = this->dir_prefix + "." + kPSep + "results_conf_dis" + kPSep;
+    	this->saving_dir = this->dir_prefix + "results_conf_dis" + kPSep;
 	else
-    	this->saving_dir = this->dir_prefix + "." + kPSep + "results" + kPSep;
+    	this->saving_dir = this->dir_prefix + "results" + kPSep;
 }
 
 

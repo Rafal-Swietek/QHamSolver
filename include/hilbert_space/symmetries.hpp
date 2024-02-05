@@ -337,9 +337,9 @@ namespace QHS{
 
 		}
 		this->dim = this->mapping.size();
-		for(u64 idx : this->mapping)
-			std::cout << idx << " ";
-		std::cout << std::endl;
+		// for(u64 idx : this->mapping)
+		// 	std::cout << idx << " ";
+		// std::cout << std::endl;
 	}
 
 
