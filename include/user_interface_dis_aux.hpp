@@ -910,7 +910,7 @@ void user_interface_dis<Hamiltonian>::survival_probability()
 		// ------------------------------------- calculate level spacing (average and typical)
 		double wH_mean_r = 0, wH_typ_r = 0;
 		int count = 0;
-		for(int i = 0; i < dim; i++){
+		for(int i = 0; i < dim - 1; i++){
 			const double gap = E(i + 1) - E(i);
 			wH_mean_r += gap;
 			wH_typ_r += std::log(gap);
