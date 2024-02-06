@@ -33,6 +33,9 @@ void ui::make_sim(){
 	case 5:
 		survival_probability();
 		break;
+	case 6:
+		matrix_elements();
+		break;
 	default:
 		#define generate_scaling_array(name) arma::linspace(this->name, this->name + this->name##s * (this->name##n - 1), this->name##n);
 		
@@ -67,7 +70,9 @@ void ui::make_sim(){
 								std::cout << " - - START NEW ITERATION:\t\t par = "; // simulation end
 								printSeparated(std::cout, "\t", 16, true, this->L_loc, this->J, this->alfa, this->h, this->w, this->gamma);
 								
-								survival_probability();
+								spectral_form_factor();
+								// diagonalize();
+								// survival_probability();
 								//entanglement_evolution();
 								//average_sff();
 								std::cout << "\t\t - - - - - - FINISHED ITERATION IN : " << tim_s(start_loop) << " seconds\n\t\t\t Total time : " << tim_s(start) << " s - - - - - - " << std::endl; // simulation end

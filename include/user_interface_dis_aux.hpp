@@ -1205,15 +1205,16 @@ void user_interface_dis<Hamiltonian>::matrix_elements()
 		std::cout << " - - - - - - finished realisation realis = " << realis << " in : " << tim_s(start_re) << " s - - - - - - " << std::endl; // simulation end
 	}
 	if(counter == 0) return;
-
-	agp_norm /= double(counter);
-	typ_susc /= double(counter);
-	susc /= double(counter);
-	sites.save(arma::hdf5_name(dir + info + ".hdf5", "sites"));
-	agp_norm.save(arma::hdf5_name(dir + info + ".hdf5", "agp norm", arma::hdf5_opts::append));
-	typ_susc.save(arma::hdf5_name(dir + info + ".hdf5", "typical susceptibility", arma::hdf5_opts::append));
-	susc.save(arma::hdf5_name(dir + info + ".hdf5", "susceptibility", arma::hdf5_opts::append));
-
+	
+	#ifdef MY_MAC
+		agp_norm /= double(counter);
+		typ_susc /= double(counter);
+		susc /= double(counter);
+		sites.save(arma::hdf5_name(dir + info + ".hdf5", "sites"));
+		agp_norm.save(arma::hdf5_name(dir + info + ".hdf5", "agp norm", arma::hdf5_opts::append));
+		typ_susc.save(arma::hdf5_name(dir + info + ".hdf5", "typical susceptibility", arma::hdf5_opts::append));
+		susc.save(arma::hdf5_name(dir + info + ".hdf5", "susceptibility", arma::hdf5_opts::append));
+	#endif
 }
 
 template <class Hamiltonian>
