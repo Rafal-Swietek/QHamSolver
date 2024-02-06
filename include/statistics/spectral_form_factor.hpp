@@ -62,7 +62,7 @@ namespace statistics{
         /// @param _eta filter wifth
         /// @param _beta inverse temperature
         /// @param _cut_edges cut spectral edges (5-10 points) due to unfolding?
-        explicit SFF(double _eta, double _beta = 0, bool _cut_edges = false)
+        explicit SFF(double _eta, double _beta = 0.0, bool _cut_edges = false)
             : eta(_eta), beta(_beta), cut_edges(_cut_edges)
             {};
 

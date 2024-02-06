@@ -10,14 +10,14 @@ namespace statistics{
     void SFF<filter_func>::get_mean(const arma::vec& E)
     {
         this->mean = 0.0;
-        double Z = 0;
+        double partition_fun = 0;
     #pragma omp parallel
         for(long n; n < E.size(); n++){
             double Z_E = std::exp(-this->beta * E(n));
             this->mean += E(n) * Z_E;
-            Z += Z_E;
+            partition_fun += Z_E;
         }
-        this->mean /= Z;
+        this->mean /= partition_fun;
     }
 
     /// @brief Find mean energy for given temperature (target energy)
@@ -31,7 +31,7 @@ namespace statistics{
             return std::exp( -(E - this->mean) * (E - this->mean) 
                             / (2.0 * this->eta * this->eta * this->stddev * this->stddev ) );
         else
-            return std::exp(- this->beta * E);
+            return std::exp(-this->beta * E);
     }
     /// @brief Calculate raw (unfiltered) spectral form factor at time step t
     /// @tparam filter_func template bool -> use filtering?
@@ -62,7 +62,7 @@ namespace statistics{
     inline
     cpx SFF<filter_func>::filtered(const arma::vec& energies, double t)
     {
-        this->get_mean();
+        this->get_mean(energies);
         this->stddev = arma::stddev(energies);
         const double denom = 2.0 * this->eta * this->eta * this->stddev * this->stddev;
         cpx sff = 0.0;
@@ -71,9 +71,9 @@ namespace statistics{
             const double filter = this->_filter_(energies(n));
             this->Z += std::abs(filter * filter);
             this->B += filter;
-            sff += filter * std::exp(-1.0i * double(two_pi) * energies(n) * t);
+            sff += filter * std::exp(-1.0i * two_pi * energies(n) * t);
         }
-        this->A = this->B * this->B;
+        this->A = std::abs(this->B * this->B);
         return sff;
     }
 

@@ -331,7 +331,7 @@ arma::vec user_interface<Hamiltonian>::get_eigenvalues(std::string prefix, bool 
 	{
 		loaded = eigenvalues.load(arma::hdf5_name(name + ".hdf5", "eigenvalues/dataset"));
 		if(!loaded)
-			loaded = eigenvalues.load(arma::hdf5_name(name + ".hdf5", "eigenvalues/"));
+			loaded = eigenvalues.load(arma::hdf5_name(name + ".hdf5", "eigenvalues"));
 		name = this->saving_dir + "Entropy/Eigenstate" + kPSep + prefix + this->set_info({});
 		if(!loaded)
 			loaded = eigenvalues.load(arma::hdf5_name(name + ".hdf5", "energies"));

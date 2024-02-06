@@ -151,3 +151,9 @@ namespace operators{
 	// };
 
 }
+
+
+constexpr auto I = operators::sigma_0;
+constexpr auto X = operators::sigma_x;
+constexpr auto Y = operators::sigma_y;
+constexpr auto Z = operators::sigma_z;

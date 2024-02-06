@@ -9,15 +9,14 @@ void user_interface_dis<Hamiltonian>::diagonalize(){
 	std::string dir = this->saving_dir + "DIAGONALIZATION" + kPSep;
 	createDirs(dir);
 
-#pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
+// #pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
 	for(int realis = 0; realis < this->realisations; realis++)	
 	{
 		int real = realis + this->jobid;
+		std::string dir_re  = dir + "realisation=" + std::to_string(this->jobid + realis) + kPSep;
+		createDirs(dir_re);
 		std::string _suffix = "_real=" + std::to_string(real);
-		#ifdef USE_SYMMETRIES
-			//<! no suffix for symmetric model
-			_suffix = "";
-		#endif
+
 		std::string info = this->set_info({});
 		std::cout << "\n\t\t--> finished creating model for " << info + _suffix << " - in time : " << tim_s(start) << "s" << std::endl;
 		
@@ -31,7 +30,7 @@ void user_interface_dis<Hamiltonian>::diagonalize(){
 		// std::cout << "Energies:\n";
 		// std::cout << eigenvalues << std::endl;
 
-		std::string name = dir + info + _suffix + ".hdf5";
+		std::string name = dir_re + info + ".hdf5";
 		eigenvalues.save(arma::hdf5_name(name, "eigenvalues", arma::hdf5_opts::append));
 		std::cout << "\t\t	--> finished saving eigenvalues for " << info + _suffix << " - in time : " << tim_s(start) << "s" << std::endl;
 		if(this->ch){
@@ -76,16 +75,17 @@ void user_interface_dis<Hamiltonian>::spectral_form_factor(){
 
 	arma::vec sff(this->num_of_points, arma::fill::zeros);
 	arma::vec sff_fold(this->num_of_points, arma::fill::zeros);
-	double Z = 0.0, Z_fold = 0.0;
+	arma::vec sff_raw(this->num_of_points, arma::fill::zeros);
+	double Z = 0.0, Z_fold = 0.0, Z_raw = 0.0;
 	double wH_mean = 0.0;
 	double wH_typ  = 0.0;
-	
+	int counter = 0;
 //#pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
 	for(int realis = 0; realis < this->realisations; realis++)
 	{
 		std::string prefix = "realisation=" + std::to_string(realis + this->jobid) + kPSep;
-		if(realis > 0)
-			this->ptr_to_model->generate_hamiltonian();
+		// if(realis > 0)
+		// 	this->ptr_to_model->generate_hamiltonian();
 		arma::vec eigenvalues = this->get_eigenvalues(prefix);
 		
 		
@@ -100,7 +100,7 @@ void user_interface_dis<Hamiltonian>::spectral_form_factor(){
 		// ------------------------------------- calculate level statistics
 			double r1_tmp = 0, r2_tmp = 0, wH_mean_r = 0, wH_typ_r = 0;
 			int count = 0;
-			for(int i = (E_av_idx - num / 2); i < (E_av_idx + num / 2); i++){
+			for(int i = 1; i < dim - 1; i++){
 				const double gap1 = eigenvalues(i) - eigenvalues(i - 1);
 				const double gap2 = eigenvalues(i + 1) - eigenvalues(i);
 				const double min = std::min(gap1, gap2);
@@ -111,7 +111,8 @@ void user_interface_dis<Hamiltonian>::spectral_form_factor(){
         		    std::cout << "Index: " << i << std::endl;
         		    _assert_(false, "Found degeneracy, while doing r-statistics!\n");
         		}
-				r1_tmp += min / max;
+				if(i >= (E_av_idx - num / 2) && i < (E_av_idx + num / 2))
+					r1_tmp += min / max;
 				if(i >= (E_av_idx - num2 / 2) && i < (E_av_idx + num2 / 2))
 					r2_tmp += min / max;
 				count++;
@@ -122,6 +123,20 @@ void user_interface_dis<Hamiltonian>::spectral_form_factor(){
 			r1_tmp /= double(count);
 			r2_tmp /= double(num2);
 		// ------------------------------------- calculate sff
+			// statistics::SFF<statistics::filters::raw> _sff_raw(1.0);
+			// auto sff_r_raw = _sff_raw.calculate(eigenvalues, times_fold);
+			// auto [Z_r_raw, _tmp1, _tmp2] = _sff_raw.get_norms();
+
+			// statistics::SFF<statistics::filters::gauss> _sff_filter(0.3);
+			// auto sff_r_folded = _sff_filter.calculate(eigenvalues, times_fold);
+			// auto [Z_r_folded, _tmp3, _tmp4] = _sff_filter.get_norms();
+			
+			// eigenvalues = statistics::unfolding(eigenvalues);
+			// auto sff_r = _sff_filter.calculate(eigenvalues, times);
+			// auto [Z_r, _tmp5, _tmp6]= _sff_filter.get_norms();
+
+			auto [sff_r_raw, Z_r_raw] = statistics::spectral_form_factor(eigenvalues, times_fold, this->beta, 1.5);
+
 			auto [sff_r_folded, Z_r_folded] = statistics::spectral_form_factor(eigenvalues, times_fold, this->beta, 0.5);
 			eigenvalues = statistics::unfolding(eigenvalues);
 
@@ -131,6 +146,8 @@ void user_interface_dis<Hamiltonian>::spectral_form_factor(){
 				r1 += r1_tmp;
 				r2 += r2_tmp;
 
+				sff_raw += sff_r_raw;
+				Z_raw += Z_r_raw;
 				sff += sff_r;
 				Z += Z_r;
 				sff_fold += sff_r_folded;
@@ -138,6 +155,7 @@ void user_interface_dis<Hamiltonian>::spectral_form_factor(){
 				
 				wH_mean += wH_mean_r;
 				wH_typ  += wH_typ_r / double(count);
+				counter++;
 			}
 			wH_typ_r = std::exp(wH_typ_r / double(count));
 		if(this->fun == 1) std::cout << "\t\t	--> finished realisation for " << prefix + info << " - in time : " << tim_s(start) << "s" << std::endl;
@@ -166,43 +184,27 @@ void user_interface_dis<Hamiltonian>::spectral_form_factor(){
 	if(sff.is_empty()) return;
 	if(sff.is_zero()) return;
 	if(this->jobid > 0) return;
-
-	double norm = this->realisations;
+	if(counter == 0) return;
+	double norm = counter;
 	r1 /= norm;
 	r2 /= norm;
 	sff = sff / Z;
+	sff_raw = sff_raw / Z_raw;
 	sff_fold = sff_fold / Z_fold;
 	wH_mean /= norm;
 	wH_typ /= norm;
 
-	// // ---------- find Thouless time
-	// double eps = 8e-2;
-	// auto K_GOE = [](double t){
-	// 	return t < 1? 2 * t - t * log(1+2*t) : 2 - t * log( (2*t+1) / (2*t-1) );
-	// };
-	// double thouless_time = 0;
-	// double t_max = 2.5;
-	// double delta_min = 1e6;
-	// for(int i = 0; i < sff.size(); i++){
-	// 	double t = times(i);
-	// 	double delta = abs(log10( sff(i) / K_GOE(t) )) - eps;
-	// 	delta *= delta;
-	// 	if(delta < delta_min){
-	// 		delta_min = delta;
-	// 		thouless_time = times(i); 
-	// 	}
-	// 	if(times(i) >= t_max) break;
-	// }
 	// #ifdef MY_MAC
 	times.save(arma::hdf5_name(dir + info + ".hdf5", "times"));
 	sff.save(arma::hdf5_name(dir + info + ".hdf5", "sff", arma::hdf5_opts::append));
 	times_fold.save(arma::hdf5_name(dir + info + ".hdf5", "times_fold", arma::hdf5_opts::append));
 	sff_fold.save(arma::hdf5_name(dir + info + ".hdf5", "sff_fold", arma::hdf5_opts::append));
+	sff_raw.save(arma::hdf5_name(dir + info + ".hdf5", "sff_raw", arma::hdf5_opts::append));
 	arma::vec({r2}).save(arma::hdf5_name(dir + info + ".hdf5", "r_500", arma::hdf5_opts::append));
 	arma::vec({r1}).save(arma::hdf5_name(dir + info + ".hdf5", "r_D_2", arma::hdf5_opts::append));
 	arma::uvec({dim}).save(arma::hdf5_name(dir + info + ".hdf5", "D", arma::hdf5_opts::append));
-	arma::vec({1./(wH)}).save(arma::hdf5_name(dir + info + ".hdf5", "tH", arma::hdf5_opts::append));
-	arma::vec({1./std::exp(wH_typ)}).save(arma::hdf5_name(dir + info + ".hdf5", "tH_typ", arma::hdf5_opts::append));
+	arma::vec({two_pi / (wH)}).save(arma::hdf5_name(dir + info + ".hdf5", "tH", arma::hdf5_opts::append));
+	arma::vec({two_pi / std::exp(wH_typ)}).save(arma::hdf5_name(dir + info + ".hdf5", "tH_typ", arma::hdf5_opts::append));
 	// #endif
 	// save_to_file(dir + info + ".dat", 			 times, 	 sff, 	   1.0 / wH_mean, thouless_time, 		   r1, r2, dim, 1.0 / wH_typ);
 	// save_to_file(dir + "folded" + info + ".dat", times_fold, sff_fold, 1.0 / wH_mean, thouless_time / wH_mean, r1, r2, dim, 1.0 / wH_typ);
@@ -1122,6 +1124,97 @@ void user_interface_dis<Hamiltonian>::diagonal_matrix_elements()
     std::cout << " - - - - - - FINISHED CALCULATION IN : " << tim_s(start) << " seconds - - - - - - " << std::endl; // simulation end
 }
 
+/// @brief Calculate matrix elements of local operators
+/// @tparam Hamiltonian template parameter for current used model 
+template <class Hamiltonian>
+void user_interface_dis<Hamiltonian>::matrix_elements()
+{
+	std::string dir = this->saving_dir + "MatrixElements" + kPSep;
+	createDirs(dir);
+	
+	size_t dim = this->ptr_to_model->get_hilbert_size();
+	std::string info = this->set_info();
+
+	arma::vec sites = arma::linspace(0, this->L-1, this->L);
+	arma::vec agp_norm(sites.size(), arma::fill::zeros);
+	arma::vec typ_susc(sites.size(), arma::fill::zeros);
+	arma::vec susc(sites.size(), arma::fill::zeros);
+
+	std::vector<arma::sp_mat> Sz_ops;
+	int Ll = this->L;
+	for(int site : sites){
+		auto kernel = [Ll, site](u64 state){ 
+			auto [val, num] = operators::sigma_z(state, Ll, site ); 
+			return std::make_pair(num, val); 
+			};
+		auto _operator = QOps::generic_operator<>(this->L, std::move(kernel), 1.0);
+		Sz_ops.push_back(arma::real(_operator.to_matrix(dim)));
+	}
+
+	int counter = 0;
+// #pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
+	for(int realis = 0; realis < this->realisations; realis++)
+	{
+		clk::time_point start_re = std::chrono::system_clock::now();
+		if(realis > 0)
+			this->ptr_to_model->generate_hamiltonian();
+		
+		clk::time_point start = std::chrono::system_clock::now();
+    	this->ptr_to_model->diagonalization();
+
+		std::cout << " - - - - - - finished diagonalization in : " << tim_s(start) << " s for realis = " << realis << " - - - - - - " << std::endl; // simulation end
+		start = std::chrono::system_clock::now();
+		
+		const arma::vec E = this->ptr_to_model->get_eigenvalues();
+		const auto& V = this->ptr_to_model->get_eigenvectors();
+		outer_threads = this->thread_number;
+		omp_set_num_threads(1);
+		std::cout << outer_threads << "\t\t" << omp_get_num_threads() << std::endl;
+		
+		arma::vec agp_norm_r(sites.size(), arma::fill::zeros);
+		arma::vec susc_r(sites.size(), arma::fill::zeros);
+		arma::vec typ_susc_r(sites.size(), arma::fill::zeros);
+		for(int i = 0; i < sites.size(); i++)
+		{
+			start = std::chrono::system_clock::now();
+			arma::Mat<element_type> mat_elem = V * Sz_ops[i] * V.t();
+			auto [_agp, _typ_susc, _susc, tmp] = adiabatics::gauge_potential(mat_elem, E, this->L);
+			agp_norm_r(i) = _agp;
+			typ_susc_r(i) = _typ_susc;
+			susc_r(i) = _susc;
+    		std::cout << " - - - - - - finished matrix elements for site i = " << sites(i) << "in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
+		}
+		#ifndef MY_MAC
+		{
+			std::string dir_realis = dir + "realisation=" + std::to_string(this->jobid + realis) + kPSep;
+			createDirs(dir_realis);
+			sites.save(arma::hdf5_name(dir_realis + info + ".hdf5", "sites"));
+			agp_norm_r.save(arma::hdf5_name(dir_realis + info + ".hdf5", "agp norm", arma::hdf5_opts::append));
+			typ_susc_r.save(arma::hdf5_name(dir_realis + info + ".hdf5", "typical susceptibility", arma::hdf5_opts::append));
+			susc_r.save(arma::hdf5_name(dir_realis + info + ".hdf5", "susceptibility", arma::hdf5_opts::append));
+			// sigX.save(arma::hdf5_name(dir_realis + info + ".hdf5", "sigmaX_L_2", arma::hdf5_opts::append));
+			// sigZ.save(arma::hdf5_name(dir_realis + info + ".hdf5", "sigmaZ_L_2", arma::hdf5_opts::append));
+		}
+		#endif
+		
+		agp_norm += agp_norm_r;
+		typ_susc += typ_susc_r;
+		susc += susc_r;
+		counter++;
+    	omp_set_num_threads(this->thread_number);
+		std::cout << " - - - - - - finished realisation realis = " << realis << " in : " << tim_s(start_re) << " s - - - - - - " << std::endl; // simulation end
+	}
+	if(counter == 0) return;
+
+	agp_norm /= double(counter);
+	typ_susc /= double(counter);
+	susc /= double(counter);
+	sites.save(arma::hdf5_name(dir + info + ".hdf5", "sites"));
+	agp_norm.save(arma::hdf5_name(dir + info + ".hdf5", "agp norm", arma::hdf5_opts::append));
+	typ_susc.save(arma::hdf5_name(dir + info + ".hdf5", "typical susceptibility", arma::hdf5_opts::append));
+	susc.save(arma::hdf5_name(dir + info + ".hdf5", "susceptibility", arma::hdf5_opts::append));
+
+}
 
 template <class Hamiltonian>
 void user_interface_dis<Hamiltonian>::multifractality(){

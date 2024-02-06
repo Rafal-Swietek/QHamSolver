@@ -57,7 +57,7 @@ public:
 	virtual void analyze_spectra() 						override;
 	virtual void diagonal_matrix_elements() 			override;
 	virtual void multifractality()						override;
-	virtual void matrix_elements()						override {};
+	virtual void matrix_elements()						override;
 
 	virtual 
 	arma::Col<element_type> 

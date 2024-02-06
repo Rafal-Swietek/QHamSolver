@@ -32,7 +32,7 @@ namespace adiabatics{
 			double susc_tmp = 0;
 			for (long int j = 0; j < N && j != i; j++)
 			{
-				const double nominator = std::abs(mat_elem(i, j) * conj(mat_elem(i, j)));
+				const double nominator = std::abs(mat_elem(i, j) * std::conj(mat_elem(i, j)));
 				const double omega_ij = eigenvalues(j) - eigenvalues(i);
 				const double denominator = omega_ij * omega_ij + lambda * lambda;
 				
@@ -40,13 +40,13 @@ namespace adiabatics{
 				susc_tmp += nominator / (omega_ij * omega_ij);
 			}
 			susc_vec(i) = susc_tmp;
-			if (susc_tmp > 0 && (i > E_min && i < E_max))
+			if (susc_tmp > 0 && (i >= E_min && i < E_max))
 			{
 				typ_susc += std::log(susc_tmp);
 				susc += susc_tmp;
 			}
 		}
-        return std::make_tuple(AGP / double(N), exp(typ_susc / double(mu)), susc / double(mu), susc_vec);
+        return std::make_tuple(AGP / double(N), std::exp(typ_susc / double(mu)), susc / double(mu), susc_vec);
     }
 
 
