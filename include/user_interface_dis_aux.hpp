@@ -1136,6 +1136,7 @@ void user_interface_dis<Hamiltonian>::matrix_elements()
 	std::string info = this->set_info();
 
 	arma::vec sites = arma::linspace(0, this->L-1, this->L);
+	// arma::vec sites = arma::vec({3, this->L / 2, this->L - 1});
 	arma::vec agp_norm(sites.size(), arma::fill::zeros);
 	arma::vec typ_susc(sites.size(), arma::fill::zeros);
 	arma::vec susc(sites.size(), arma::fill::zeros);
@@ -1167,13 +1168,11 @@ void user_interface_dis<Hamiltonian>::matrix_elements()
 		
 		const arma::vec E = this->ptr_to_model->get_eigenvalues();
 		const auto& V = this->ptr_to_model->get_eigenvectors();
-		outer_threads = this->thread_number;
-		omp_set_num_threads(1);
-		std::cout << outer_threads << "\t\t" << omp_get_num_threads() << std::endl;
 		
 		arma::vec agp_norm_r(sites.size(), arma::fill::zeros);
 		arma::vec susc_r(sites.size(), arma::fill::zeros);
 		arma::vec typ_susc_r(sites.size(), arma::fill::zeros);
+		
 		for(int i = 0; i < sites.size(); i++)
 		{
 			start = std::chrono::system_clock::now();
@@ -1201,7 +1200,6 @@ void user_interface_dis<Hamiltonian>::matrix_elements()
 		typ_susc += typ_susc_r;
 		susc += susc_r;
 		counter++;
-    	omp_set_num_threads(this->thread_number);
 		std::cout << " - - - - - - finished realisation realis = " << realis << " in : " << tim_s(start_re) << " s - - - - - - " << std::endl; // simulation end
 	}
 	if(counter == 0) return;
