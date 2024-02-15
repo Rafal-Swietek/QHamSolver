@@ -1187,7 +1187,8 @@ void user_interface_dis<Hamiltonian>::matrix_elements()
 	arma::vec agp_norm_kin(sites.size() - 1, arma::fill::zeros);
 	arma::vec typ_susc_kin(sites.size() - 1, arma::fill::zeros);
 	arma::mat diag_mat_elem_kin(dim, sites.size(), arma::fill::zeros);
-	
+	arma::vec energies(dim, arma::fill::zeros);
+
 	int Ll = this->L;
 
 	// std::vector<arma::sp_mat> Sz_ops;
@@ -1250,7 +1251,7 @@ void user_interface_dis<Hamiltonian>::matrix_elements()
 				};
 			auto _operator = QOps::generic_operator<>(this->L, std::move(kernel_Sz), 1.0);
 			arma::sp_mat op = arma::real(_operator.to_matrix(dim));
-			arma::Mat<element_type> mat_elem = V * op * V.t();
+			arma::Mat<element_type> mat_elem = V.t() * op * V;
 
 			std::tie(_agp, _typ_susc, _susc, tmp) = adiabatics::gauge_potential(mat_elem, E, this->L);
 			agp_norm_Sz_r(i) = _agp;
@@ -1265,7 +1266,7 @@ void user_interface_dis<Hamiltonian>::matrix_elements()
 				};
 			_operator = QOps::generic_operator<>(this->L, std::move(kernel_Sx), 1.0);
 			op = arma::real(_operator.to_matrix(dim));
-			mat_elem = V * op * V.t();
+			mat_elem = V.t() * op * V;
 
 			std::tie(_agp, _typ_susc, _susc, tmp) = adiabatics::gauge_potential(mat_elem, E, this->L);
 			agp_norm_Sx_r(i) = _agp;
@@ -1282,7 +1283,7 @@ void user_interface_dis<Hamiltonian>::matrix_elements()
 					};
 				_operator = QOps::generic_operator<>(this->L, std::move(kernel_SzSz), 1.0);
 				op = arma::real(_operator.to_matrix(dim));
-				mat_elem = V * op * V.t();
+				mat_elem = V.t() * op * V;
 
 				std::tie(_agp, _typ_susc, _susc, tmp) = adiabatics::gauge_potential(mat_elem, E, this->L);
 				agp_norm_SzSz_r(i) = _agp;
@@ -1298,7 +1299,7 @@ void user_interface_dis<Hamiltonian>::matrix_elements()
 					};
 				_operator = QOps::generic_operator<>(this->L, std::move(kernel_SxSx), 1.0);
 				op = arma::real(_operator.to_matrix(dim));
-				mat_elem = V * op * V.t();
+				mat_elem = V.t() * op * V;
 
 				std::tie(_agp, _typ_susc, _susc, tmp) = adiabatics::gauge_potential(mat_elem, E, this->L);
 				agp_norm_SxSx_r(i) = _agp;
@@ -1319,7 +1320,7 @@ void user_interface_dis<Hamiltonian>::matrix_elements()
 					};
 				_operator = QOps::generic_operator<>(this->L, std::move(kernel_kin), 1.0);
 				op = arma::real(_operator.to_matrix(dim));
-				mat_elem = V * op * V.t();
+				mat_elem = V.t() * op * V;
 
 				std::tie(_agp, _typ_susc, _susc, tmp) = adiabatics::gauge_potential(mat_elem, E, this->L);
 				agp_norm_kin_r(i) = _agp;
@@ -1338,6 +1339,8 @@ void user_interface_dis<Hamiltonian>::matrix_elements()
 			// susc_r.save(arma::hdf5_name(dir_realis + info + ".hdf5", "susceptibility", arma::hdf5_opts::append));
 			// sigX.save(arma::hdf5_name(dir_realis + info + ".hdf5", "sigmaX_L_2", arma::hdf5_opts::append));
 			// sigZ.save(arma::hdf5_name(dir_realis + info + ".hdf5", "sigmaZ_L_2", arma::hdf5_opts::append));
+			E.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "energies",   arma::hdf5_opts::append));
+
 			agp_norm_Sz_r.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "AGP/Sz",   arma::hdf5_opts::append));
 			agp_norm_Sx_r.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "AGP/Sx",   arma::hdf5_opts::append));
 			agp_norm_SzSz_r.save( arma::hdf5_name(dir_realis + info + ".hdf5", "AGP/SzSz", arma::hdf5_opts::append));
@@ -1359,24 +1362,26 @@ void user_interface_dis<Hamiltonian>::matrix_elements()
 		// #endif
 		
 		agp_norm_Sz += agp_norm_Sz_r;
-		typ_susc_Sz += typ_susc_Sz_r;
+		typ_susc_Sz += arma::log(typ_susc_Sz_r);
 		diag_mat_elem_Sz += diag_mat_elem_Sz_r;
 
 		agp_norm_Sx += agp_norm_Sx_r;
-		typ_susc_Sx += typ_susc_Sx_r;
+		typ_susc_Sx += arma::log(typ_susc_Sx_r);
 		diag_mat_elem_Sx += diag_mat_elem_Sx_r;
 
 		agp_norm_SzSz += agp_norm_SzSz_r;
-		typ_susc_SzSz += typ_susc_SzSz_r;
+		typ_susc_SzSz += arma::log(typ_susc_SzSz_r);
 		diag_mat_elem_SzSz += diag_mat_elem_SzSz_r;
 
 		agp_norm_SxSx += agp_norm_SxSx_r;
-		typ_susc_SxSx += typ_susc_SxSx_r;
+		typ_susc_SxSx += arma::log(typ_susc_SxSx_r);
 		diag_mat_elem_SxSx += diag_mat_elem_SxSx_r;
 
 		agp_norm_kin += agp_norm_kin_r;
-		typ_susc_kin += typ_susc_kin_r;
+		typ_susc_kin += arma::log(typ_susc_kin_r);
 		diag_mat_elem_kin += diag_mat_elem_kin_r;
+
+		energies += E;
 		counter++;
 		std::cout << " - - - - - - finished realisation realis = " << realis << " in : " << tim_s(start_re) << " s - - - - - - " << std::endl; // simulation end
 	}
@@ -1384,24 +1389,31 @@ void user_interface_dis<Hamiltonian>::matrix_elements()
 	
 	#ifdef MY_MAC
 		agp_norm_Sz /= double(counter);
-		typ_susc_Sz /= double(counter);
+		typ_susc_Sz = arma::exp(typ_susc_Sz / double(counter));
 		diag_mat_elem_Sz /= double(counter);
+
 		agp_norm_Sx /= double(counter);
-		typ_susc_Sx /= double(counter);
+		typ_susc_Sx = arma::exp(typ_susc_Sx / double(counter));
 		diag_mat_elem_Sx /= double(counter);
+
 		agp_norm_SzSz /= double(counter);
-		typ_susc_SzSz /= double(counter);
+		typ_susc_SzSz = arma::exp(typ_susc_SzSz / double(counter));
 		diag_mat_elem_SzSz /= double(counter);
+
 		agp_norm_SxSx /= double(counter);
-		typ_susc_SxSx /= double(counter);
+		typ_susc_SxSx = arma::exp(typ_susc_SxSx / double(counter));
 		diag_mat_elem_SxSx /= double(counter);
+		
 		agp_norm_kin /= double(counter);
-		typ_susc_kin /= double(counter);
+		typ_susc_kin = arma::exp(typ_susc_kin / double(counter));
 		diag_mat_elem_kin /= double(counter);
+
+		energies /= double(counter);
 		sites.save(arma::hdf5_name(dir + info + ".hdf5", "sites"));
 		// agp_norm.save(arma::hdf5_name(dir + info + ".hdf5", "agp norm", arma::hdf5_opts::append));
 		// typ_susc.save(arma::hdf5_name(dir + info + ".hdf5", "typical susceptibility", arma::hdf5_opts::append));
 		// susc.save(arma::hdf5_name(dir + info + ".hdf5", "susceptibility", arma::hdf5_opts::append));
+		energies.save(		arma::hdf5_name(dir + info + ".hdf5", "energies",   arma::hdf5_opts::append));
 		agp_norm_Sz.save(	arma::hdf5_name(dir + info + ".hdf5", "AGP/Sz",   arma::hdf5_opts::append));
 		agp_norm_Sx.save(	arma::hdf5_name(dir + info + ".hdf5", "AGP/Sx",   arma::hdf5_opts::append));
 		agp_norm_SzSz.save( arma::hdf5_name(dir + info + ".hdf5", "AGP/SzSz", arma::hdf5_opts::append));
