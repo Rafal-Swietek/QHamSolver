@@ -63,7 +63,8 @@ void pertIsing::create_hamiltonian()
         std::cout << this->_couplings << std::endl;
     #endif
 
-    const double rescale = 1. / (this->system_size * std::log(this->system_size));
+    // const double rescale = 1. / (this->system_size * std::log(this->system_size));
+    const double rescale = 1. / std::sqrt(this->system_size);
     for (size_t k = 0; k < this->dim; k++) {
 		size_t base_state = this->_hilbert_space(k);
 	    for (int i = 0; i < this->system_size; i++) 
@@ -83,10 +84,6 @@ void pertIsing::create_hamiltonian()
 	        }
 	    }
 	}
-    // add SUSY ground state energy (const shift) and invert (minus sign in front of hamiltonian)
-    // this->H = -this->H + this->_J1 * (this->system_size - int(this->_boundary_condition)) * (2 + Jz) / 4. * arma::eye(this->dim, this->dim);
-    // if(this->_boundary_condition)
-    //     this->H = this->H + this->_J1 * (1 + 3 * this->_eta1 * this->_eta1) / 4.0 * arma::eye(this->dim, this->dim);
 }
 
 
