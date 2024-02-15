@@ -44,6 +44,9 @@ void ui::make_sim(){
 	case 5:
 		diagonal_matrix_elements();
 		break;
+	case 6:
+		matrix_elements();
+		break;
 	default:
 		auto L_list = arma::linspace(this->L, this->L + this->Ls * (this->Ln - 1), this->Ln);
         auto g_list = arma::linspace(this->g, this->g + this->gs * (this->gn - 1), this->gn);
