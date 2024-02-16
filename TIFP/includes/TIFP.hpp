@@ -6,12 +6,13 @@
 #define _TIFP
 
 #include "../../include/hilbert_space/symmetries.hpp"
-#ifdef USE_REAL_SECTORS
-    using elem_ty = double;
-#else
-    using elem_ty = cpx;
-#endif
+// #ifdef USE_REAL_SECTORS
+//     using elem_ty = double;
+// #else
+//     using elem_ty = cpx;
+// #endif
 
+using elem_ty = cpx;
 /// @brief Fully anisotropic spin chain (XYZ) with point symmetries
 class TIFP : 
     public QHS::hamiltonian_base<elem_ty, QHS::point_symmetric>
@@ -26,12 +27,13 @@ private:
 
     //<! Symmetry contained in struct
     struct {
-        int k_sym;                          // quasimomentum symmetry sector
-        int r_sym;                          // parity symmetry sector
-        int zz_sym;                         // spin flip in Z symmetry sector
+        int z2_sym;
+        int z1_sym;
+        int zz_sym;
     } syms;
 
     double _J = 0.5;                        // model parameter
+    double _c = 0.0;                        // coupling to Q5
     bool _use_symmetries = true;            // [temporary] boolean choose if use symmetries
     
 
@@ -43,7 +45,7 @@ public:
     //<! ----------------------------------------------------- CONSTRUCTORS
     TIFP() = default;
     TIFP(std::istream& os);
-    TIFP(int _BC, unsigned int L, double J, int ksym, int rsym, int zzsym, bool use_syms = true);
+    TIFP(int _BC, unsigned int L, double J, double c, int zzsym, int z1sym, int z2sym, bool use_syms = true);
 
     //<! ----------------------------------------------------- HAMILTONIAN BUILDERS
     virtual void create_hamiltonian() override;

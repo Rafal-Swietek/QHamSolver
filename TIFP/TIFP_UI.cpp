@@ -22,8 +22,102 @@ void ui::make_sim(){
 
     this->ptr_to_model = create_new_model_pointer();
 
-    compare_energies();
-    return;
+    // const int _L = this->L;
+    // auto make_Cl = [&](int ell) -> QOps::_global_fun
+    // {
+    //     const int _L = this->L;
+    //     return [_L, ell](u64 state)
+    //             {
+    //                 cpx val = 1.0;
+    //                 for(int i = ell; i < _L; i += 4){
+    //                     cpx res = 1.0;
+    //                     std::tie(res, state) = X(state, _L, i);
+    //                     val *= res;
+    //                     if(i + 1 < _L) 
+    //                         std::tie(res, state) = Y(state, _L, i + 1);
+    //                     val *= res;
+    //                 }
+    //                 return std::make_pair(state, val);
+    //             };
+    // };
+    // auto make_C3 = [&]() -> QOps::_global_fun
+    // {
+    //     const int _L = this->L;
+    //     return [_L](u64 state)
+    //             {
+    //                 cpx val = 1.0;
+    //                 for(int i = 0; i < _L; i += 4){
+    //                     cpx res = 1.0;
+    //                     std::tie(res, state) = Y(state, _L, i);
+    //                     val *= res;
+    //                     if(i + 3 < _L) 
+    //                         std::tie(res, state) = X(state, _L, i + 3);
+    //                     val *= res;
+    //                 }
+    //                 return std::make_pair(state, val);
+    //             };
+    // };
+    // auto C0C2 = [_L](u64 state)
+    //             {
+    //                 cpx val = 1.0;
+    //                 for(int i = 0; i < _L; i += 2){
+    //                     cpx res = 1.0;
+    //                     std::tie(res, state) = X(state, _L, i);
+    //                     val *= res;
+    //                     if(i + 1 < _L) 
+    //                         std::tie(res, state) = Y(state, _L, i + 1);
+    //                     val *= res;
+    //                 }
+    //                 return std::make_pair(state, val);
+    //             };
+    // auto C0C3 = [_L](u64 state)
+    //             {
+    //                 cpx val = 1.0;
+    //                 for(int i = 0; i < _L; i++){
+    //                     if( i%4 != 2 ){
+    //                         cpx res = 1.0;
+    //                         auto op = (i % 4 == 0)? Z : ( (i % 4 == 1)? Y : X);
+    //                         std::tie(res, state) = op(state, _L, i);
+    //                         val *= res;
+    //                     }
+    //                 }
+    //                 return std::make_pair(state, val);
+    //             };
+
+    // auto C0fun = make_Cl(0);
+    // auto C1fun = make_Cl(1);
+    // auto C2fun = make_Cl(2);
+    // auto C3fun = make_C3();
+    // std::vector<int> secs = (this->L % 2 == 0)? std::vector<int>({-1, 1}) : std::vector<int>({1});
+    // u64 dim = 0;
+    // for(int k = 0; k < 1; k++){
+    //     for(int z : {-1, 1}){
+    //         for(int z1 : secs){
+    //             for(int z2 : {-1, 1}){
+    //                 for(int z3 : {1}){
+    //                     v_1d<QOps::genOp> symmetry_generators;
+    //                     symmetry_generators.emplace_back(QOps::_spin_flip_z_symmetry(this->L, z));
+    //                     if(this->L % 2 == 0){
+    //                         symmetry_generators.emplace_back( QOps::generic_operator<>(L, C0C2, z2) );
+    //                         symmetry_generators.emplace_back( QOps::generic_operator<>(L, C0C3, z2) );
+    //                     }
+    //                     auto _hilbert_space = QHS::point_symmetric( this->L, 
+    //                                                             symmetry_generators, 
+    //                                                             1,
+    //                                                             k,
+    //                                                             -1
+    //                                                             );
+    //                     auto dim_tmp = _hilbert_space.get_hilbert_space_size();
+    //                     dim += dim_tmp;
+    //                     printSeparated(std::cout, "\t", 16, true, k, z, z1, z2, z3, dim_tmp);
+    //                 }
+    //             }
+    //         }
+    //     }
+    // }
+    // std::cout << dim << "\t\t" << ULLPOW(this->L) << std::endl;
+    
+    // compare_energies(); return;
     
 	clk::time_point start = std::chrono::system_clock::now();
     switch (this->fun)
@@ -57,16 +151,16 @@ void ui::make_sim(){
             std::cout << " - - START NEW ITERATION:\t\t par = "; // simulation end
             printSeparated(std::cout, "\t", 16, true, this->L, this->J);
             
-            auto kernel = [&](int k, int p, int zz)
+            auto kernel = [&](int zz, int z1, int z2)
                                     {
-                                        this->syms.k_sym = k;
-                                        this->syms.r_sym = p;
                                         this->syms.zz_sym = zz;
+                                        this->syms.z1_sym = z1;
+                                        this->syms.z2_sym = z2;
                                         
                                         this->reset_model_pointer();
                                         // this->diagonal_matrix_elements();
-                                        this->diagonalize();
-                                        // this->eigenstate_entanglement();
+                                        // this->diagonalize();
+                                        this->eigenstate_entanglement();
                                         // this->eigenstate_entanglement_degenerate();
 
                                     };
@@ -95,11 +189,12 @@ void ui::make_sim(){
 std::string ui::set_info(std::vector<std::string> skip, std::string sep) const
 {
         std::string name = "L=" + std::to_string(this->L) + \
-            ",J=" + to_string_prec(this->J);
+            ",J=" + to_string_prec(this->J) + \
+            ",c=" + to_string_prec(this->c);
         // #ifdef USE_SYMMETRIES
-            if(this->boundary_conditions == 0)  name += ",k=" + std::to_string(this->syms.k_sym);
-            if(this->L % 4 == 0)                name += ",r=" + std::to_string(this->syms.r_sym);
-                                                name += ",zz=" + std::to_string(this->syms.zz_sym);
+            name += ",zz=" + std::to_string(this->syms.zz_sym);
+            if(this->L % 2 == 0)  name += ",z1=" + std::to_string(this->syms.z1_sym);
+            if(this->L % 4 == 0)  name += ",z2=" + std::to_string(this->syms.z2_sym);
         // #else
         //     name += ",w=" + to_string_prec(this->w) + \
         //             ",edge=" + std::to_string((int)this->add_edge_fields) + \
@@ -127,31 +222,43 @@ void ui::compare_energies()
 {                
     v_1d<double> Esym;
 	v_1d<std::string> symms;
-    auto kernel = [&](int k, int r, int zz)
+    auto kernel = [&](int zz, int z1, int z2)
     {
-        auto symmetric_model = std::make_unique<QHS::QHamSolver<TIFP>>(this->boundary_conditions, this->L, this->J, k, r, zz, 1);
+        auto symmetric_model = std::make_unique<QHS::QHamSolver<TIFP>>(this->boundary_conditions, this->L, this->J, this->c, zz, z1, z2, 1);
         symmetric_model->diagonalization(false);
         arma::vec E = symmetric_model->get_eigenvalues();
         
         Esym.insert(Esym.end(), std::make_move_iterator(E.begin()), std::make_move_iterator(E.end()));
-        v_1d<std::string> temp_str = v_1d<std::string>(E.size(), "k=" + std::to_string(k) + ",r=" + to_string(r) + ",zz=" + to_string(zz));
+        v_1d<std::string> temp_str = v_1d<std::string>(E.size(), "zz=" + std::to_string(zz) + ",z1=" + to_string(z1) + ",z2=" + to_string(z2));
 		symms.insert(symms.end(), std::make_move_iterator(temp_str.begin()), std::make_move_iterator(temp_str.end()));
     };
     loopSymmetrySectors(kernel);
 
-    auto full_model = std::make_unique<QHS::QHamSolver<TIFP>>(this->boundary_conditions, this->L, this->J, 0, 0, 0, 0);
+    auto full_model = std::make_unique<QHS::QHamSolver<TIFP>>(this->boundary_conditions, this->L, this->J, this->c, 0, 0, 0, 0);
     full_model->diagonalization(false);
     arma::vec E_dis = full_model->get_eigenvalues();// + this->J1 * (this->L - int(this->boundary_conditions)) * (3 + this->eta1 * this->eta1) / 8.;
     
-    auto I = operators::sigma_0;
-    auto X = operators::sigma_x;
-    auto Y = operators::sigma_y;
-    auto Z = operators::sigma_z;
-
+    auto make_op = [&](int ell, decltype(X) op1, decltype(X) op2, int sep, int neigh) -> QOps::_global_fun
+    {
+        const int _L = this->L;
+        return [_L, ell, op1, op2, sep, neigh](u64 state)
+                {
+                    cpx val = 1.0;
+                    for(int i = ell; i < _L; i += sep){
+                        cpx res = 1.0;
+                        std::tie(res, state) = op1(state, _L, i);
+                        val *= res;
+                        if(i + neigh < _L) 
+                            std::tie(res, state) = op2(state, _L, i + neigh);
+                        val *= res;
+                    }
+                    return std::make_pair(state, val);
+                };
+    };
     auto make_Cl = [&](int ell) -> QOps::_global_fun
     {
         const int _L = this->L;
-        return [_L, ell, X, Y](u64 state)
+        return [_L, ell](u64 state)
                 {
                     cpx val = 1.0;
                     for(int i = ell; i < _L; i += 4){
@@ -168,7 +275,7 @@ void ui::compare_energies()
     auto make_C3 = [&]() -> QOps::_global_fun
     {
         const int _L = this->L;
-        return [_L, X, Y](u64 state)
+        return [_L](u64 state)
                 {
                     cpx val = 1.0;
                     for(int i = 0; i < _L; i += 4){
@@ -182,54 +289,82 @@ void ui::compare_energies()
                     return std::make_pair(state, val);
                 };
     };
-
+    auto make_C0C2 = [&]() -> QOps::_global_fun
+    {
+        const int _L = this->L;
+        return [_L](u64 state)
+                {
+                    cpx val = 1.0;
+                    for(int i = 0; i < _L; i += 2){
+                        cpx res = 1.0;
+                        std::tie(res, state) = X(state, _L, i);
+                        val *= res;
+                        if(i + 1 < _L) 
+                            std::tie(res, state) = Y(state, _L, i + 1);
+                        val *= res;
+                    }
+                    return std::make_pair(state, val);
+                };
+    };
+    auto make_C1C3 = [&]() -> QOps::_global_fun
+    {
+        const int _L = this->L;
+        return [_L](u64 state)
+                {
+                    cpx val = 1.0;
+                    for(int i = 0; i < _L; i += 2){
+                        cpx res = 1.0;
+                        std::tie(res, state) = Y(state, _L, i);
+                        val *= res;
+                        if(i + 1 < _L) 
+                            std::tie(res, state) = X(state, _L, i + 1);
+                        val *= res;
+                    }
+                    return std::make_pair(state, val);
+                };
+    };
+    
     auto C0fun = make_Cl(0);
     auto C1fun = make_Cl(1);
     auto C2fun = make_Cl(2);
     auto C3fun = make_C3();
-    auto tmp =  QOps::generic_operator<>(L, C0fun, 1.0); std::cout << "Made 0" << std::endl; auto C0 = tmp.to_matrix(E_dis.size()); std::cout << "Made 0" << std::endl;
-         tmp =  QOps::generic_operator<>(L, C1fun, 1.0); std::cout << "Made 1" << std::endl; auto C1 = tmp.to_matrix(E_dis.size()); std::cout << "Made 1" << std::endl;
-         tmp =  QOps::generic_operator<>(L, C2fun, 1.0); std::cout << "Made 2" << std::endl; auto C2 = tmp.to_matrix(E_dis.size()); std::cout << "Made 2" << std::endl;
-         tmp =  QOps::generic_operator<>(L, C3fun, 1.0); std::cout << "Made 3" << std::endl; auto C3 = tmp.to_matrix(E_dis.size()); std::cout << "Made 3" << std::endl;
+    auto C1C3fun = make_C1C3();
+    auto C0C2fun = make_C0C2();
+    auto tmp =  QOps::generic_operator<>(L, C0fun, 1.0); std::cout << "Made 0" << std::endl; arma::sp_cx_mat C0 = tmp.to_matrix(E_dis.size()); std::cout << "Made 0" << std::endl;
+         tmp =  QOps::generic_operator<>(L, C1fun, 1.0); std::cout << "Made 1" << std::endl; arma::sp_cx_mat C1 = tmp.to_matrix(E_dis.size()); std::cout << "Made 1" << std::endl;
+         tmp =  QOps::generic_operator<>(L, C2fun, 1.0); std::cout << "Made 2" << std::endl; arma::sp_cx_mat C2 = tmp.to_matrix(E_dis.size()); std::cout << "Made 2" << std::endl;
+         tmp =  QOps::generic_operator<>(L, C3fun, 1.0); std::cout << "Made 3" << std::endl; arma::sp_cx_mat C3 = tmp.to_matrix(E_dis.size()); std::cout << "Made 3" << std::endl;
+
+         tmp =  QOps::generic_operator<>(L, C1C3fun, 1.0); std::cout << "Made aah" << std::endl; arma::sp_cx_mat C1C3 = tmp.to_matrix(E_dis.size()); std::cout << "Made aah" << std::endl;
+    std::cout << "Check construction C1C3\t" << arma::cx_mat(C1C3 - C1 * C3).is_zero(1e-14) << "\t" << arma::cx_mat(C1C3 - C3 * C1).is_zero(1e-14) << std::endl;
+        tmp =  QOps::generic_operator<>(L, C0C2fun, 1.0); std::cout << "Made aah" << std::endl; arma::sp_cx_mat C0C2 = tmp.to_matrix(E_dis.size()); std::cout << "Made aah" << std::endl;
+    std::cout << "Check construction C0C2\t" << arma::cx_mat(C0C2 - C0 * C2).is_zero(1e-14) << "\t" << arma::cx_mat(C0C2 - C2 * C0).is_zero(1e-14) << std::endl;
+
     arma::sp_cx_mat R = C0 * C3;    std::cout << "Made R" << std::endl;
     
     tmp = QOps::_spin_flip_z_symmetry(this->L, this->syms.zz_sym);  
     arma::sp_cx_mat Zop = tmp.to_matrix(E_dis.size());
+    // tmp = QOps::_parity_symmetry(this->L, this->syms.r_sym);  
+    // R = tmp.to_matrix(E_dis.size());
+
     auto H = full_model->get_hamiltonian();
     int ell = 0;
-    std::vector<std::string> aaa = {"C0", "C1", "C2", "C3", "C0*C1", "C0*C2", "C0*C3", "C1*C2", "C1*C3", "C2*C3"};
-    for(auto& _op : {C0, C1, C2, C3} ){
+    std::vector<std::string> aaa = {"R", "C0*C1", "C0*C2", "C0*C3", "C1*C2", "C1*C3", "C2*C3", "C_13", "C_02"};
+    for(auto& _op : {R} ){
         int ii = ell++;
         printSeparated(std::cout, " ", 6, false, "\t[H," + aaa[ii] + "]=", commute(arma::sp_cx_mat(_op), H), "\t{H," + aaa[ii] + "}=", anticommute(arma::sp_cx_mat(_op), H) );
         printSeparated(std::cout, " ", 6, true, "\t[Z," + aaa[ii] + "]=", commute(arma::sp_cx_mat(_op), Zop), "\t{Z," + aaa[ii] + "}=", anticommute(arma::sp_cx_mat(_op), Zop) );
     }
     std::cout << std::endl;
-    for(auto& _op : {C0 * C1, C0 * C2, C0 * C3, C1 * C2, C1 * C3, C2 * C3} ){
+    for(auto& _op : { arma::sp_cx_mat(C0 * C1), arma::sp_cx_mat(C0 * C2), arma::sp_cx_mat(C0 * C3), arma::sp_cx_mat(C1 * C2),
+                        arma::sp_cx_mat(C1 * C3), arma::sp_cx_mat(C2 * C3), C1C3, C0C2} ){
         int ii = ell++;
         printSeparated(std::cout, " ", 6, false, "\t[H," + aaa[ii] + "]=", commute(arma::sp_cx_mat(_op), H), "\t{H," + aaa[ii] + "}=", anticommute(arma::sp_cx_mat(_op), H) );
         printSeparated(std::cout, " ", 6, true, "\t[Z," + aaa[ii] + "]=", commute(arma::sp_cx_mat(_op), Zop), "\t{Z," + aaa[ii] + "}=", anticommute(arma::sp_cx_mat(_op), Zop) );
     }
-    for(int k = 0; k < this->L; k++)
-    {
 
-        ell = 0;
-        QOps::genOp translation = QOps::_translation_symmetry(this->L, k);  auto T = translation.to_matrix(E_dis.size());
-        
-        for(auto& _op : {C0, C1, C2, C3} ){
-            int ii = ell++;
-            printSeparated(std::cout, " ", 6, true, k, "\t[T," + aaa[ii] + "]=", commute(arma::sp_cx_mat(_op), T), "\t{T," + aaa[ii] + "}=", anticommute(arma::sp_cx_mat(_op), T) );
-        }
-        std::cout << std::endl;
-        for(auto& _op : {C0 * C1, C0 * C2, C0 * C3, C1 * C2, C1 * C3, C2 * C3} ){
-            int ii = ell++;
-            printSeparated(std::cout, " ", 6, true, k, "\t[T," + aaa[ii] + "]=", commute(arma::sp_cx_mat(_op), T), "\t{T," + aaa[ii] + "}=", anticommute(arma::sp_cx_mat(_op), T) );
-        }
-        std::cout << std::endl;
-    }
-    std::cout << std::endl;
-
-    tmp = QOps::_parity_symmetry(this->L, this->syms.r_sym);  
-    R = Zop * tmp.to_matrix(E_dis.size());
+    // tmp = QOps::_parity_symmetry(this->L, this->syms.r_sym);  
+    // R = Zop * tmp.to_matrix(E_dis.size());
     printSeparated(std::cout, "\t", 20, true, "[R,H]=", commute(R, H) );
     printSeparated(std::cout, "\t", 20, true, "[Z,H]=", commute(H, Zop) );
     printSeparated(std::cout, "\t", 20, true, "[R,Z]=", commute(R, Zop) );
@@ -255,9 +390,10 @@ void ui::compare_energies()
 	apply_permutation(symms, permut);
 	std::cout << std::endl << Esym.size() << std::endl << E_dis.size() << std::endl;
 	printSeparated(std::cout, "\t", 20, true, "symmetry sector", "Energy sym", "Energy total", "difference");
-	for (int k = 0; k < min((int)E_dis.size(), (int)Esym.size()); k++)
-        if(std::abs(Esym[k] - E_dis(k)) > 1e-17)
+	for (int k = 0; k < min((int)E_dis.size(), (int)Esym.size()); k++){
+        // if(std::abs(Esym[k] - E_dis(k)) > 1e-17)
 		    printSeparated(std::cout, "\t", 20, true, symms[k], Esym[k], E_dis(k), Esym[k] - E_dis(k));
+    }
 }
 
 /// @brief Compaer full hamiltonian to the reconstructed one from symmetry sectors
@@ -267,9 +403,9 @@ void ui::compare_hamiltonian()
     arma::sp_cx_mat Hfull = full_model->get_hamiltonian();
     const u64 dim = full_model->get_hilbert_size();
     arma::sp_cx_mat H(dim, dim);
-    auto kernel = [&](int k, int p, int zz)
+    auto kernel = [&](int zz, int z1, int z2)
     {
-        auto symmetric_model = std::make_unique<QHS::QHamSolver<TIFP>>(this->boundary_conditions, this->L, this->J, k, p, zz, 1);
+        auto symmetric_model = std::make_unique<QHS::QHamSolver<TIFP>>(this->boundary_conditions, this->L, this->J, this->c, zz, z1, z2, 1);
         auto U = symmetric_model->get_model_ref().get_hilbert_space().symmetry_rotation();
         arma::sp_cx_mat Hsym = cast_cx_sparse(symmetric_model->get_hamiltonian());
         H += U * Hsym * U.t();
@@ -289,22 +425,22 @@ void ui::compare_hamiltonian()
 /// @brief 
 void ui::check_symmetry_generators()
 {
-    v_1d<QOps::genOp> sym_group;
-    // parity symmetry
-    sym_group.emplace_back(QOps::_parity_symmetry(this->L, this->syms.r_sym));
+    // v_1d<QOps::genOp> sym_group;
+    // // parity symmetry
+    // // sym_group.emplace_back(QOps::_parity_symmetry(this->L, this->syms.r_sym));
 
-    // spin flips
-    sym_group.emplace_back(QOps::_spin_flip_z_symmetry(this->L, this->syms.zz_sym));
+    // // spin flips
+    // sym_group.emplace_back(QOps::_spin_flip_z_symmetry(this->L, this->syms.zz_sym));
     
-    QHS::point_symmetric hilbert( this->L, sym_group, this->boundary_conditions, this->syms.k_sym, 0);
-    auto group = hilbert.get_symmetry_group();
-    for(auto& idx : {1, 130, 33, 71, 756}){
-        for(auto& G : group){
-            auto [state, val] = G(idx);
-            printSeparated(std::cout, "\t", 16, true, std::vector<bool>(this->L, idx), std::vector<bool>(this->L, state), val);
-        }
-        std::cout << std::endl;
-    }
+    // QHS::point_symmetric hilbert( this->L, sym_group, this->boundary_conditions, this->syms.k_sym, 0);
+    // auto group = hilbert.get_symmetry_group();
+    // for(auto& idx : {1, 130, 33, 71, 756}){
+    //     for(auto& G : group){
+    //         auto [state, val] = G(idx);
+    //         printSeparated(std::cout, "\t", 16, true, std::vector<bool>(this->L, idx), std::vector<bool>(this->L, state), val);
+    //     }
+    //     std::cout << std::endl;
+    // }
 }
 
 
@@ -339,7 +475,7 @@ ui::jE_mat_elem_kernel(
 
 /// @brief Create unique pointer to model with current parameters in class
 typename ui::model_pointer ui::create_new_model_pointer(){
-    return std::make_unique<QHS::QHamSolver<TIFP>>(this->boundary_conditions, this->L, this->J, this->syms.k_sym, this->syms.r_sym, this->syms.zz_sym);
+    return std::make_unique<QHS::QHamSolver<TIFP>>(this->boundary_conditions, this->L, this->J, this->c, this->syms.zz_sym, this->syms.z1_sym, this->syms.z2_sym);
     // #ifdef USE_SYMMETRIES
     //     return std::make_unique<QHamSolver<XYZsym>>(this->boundary_conditions, this->L, this->J1, this->J2, this->delta1, this->delta2, this->eta1, this->eta2,
     //                                                 this->hx, this->hz, this->syms.k_sym, this->syms.r_sym, this->syms.zx_sym, this->syms.zz_sym, this->add_edge_fields);
@@ -351,7 +487,7 @@ typename ui::model_pointer ui::create_new_model_pointer(){
 
 /// @brief Reset member unique pointer to model with current parameters in class
 void ui::reset_model_pointer(){
-    this->ptr_to_model.reset(new QHS::QHamSolver<TIFP>(this->boundary_conditions, this->L, this->J, this->syms.k_sym, this->syms.r_sym, this->syms.zz_sym) );
+    this->ptr_to_model.reset(new QHS::QHamSolver<TIFP>(this->boundary_conditions, this->L, this->J, this->c, this->syms.zz_sym, this->syms.z1_sym, this->syms.z2_sym) );
     // #ifdef USE_SYMMETRIES
     //     return this->ptr_to_model.reset(new QHamSolver<XYZsym>(this->boundary_conditions, this->L, this->J1, this->J2, this->delta1, this->delta2, this->eta1, this->eta2,
     //                                                 this->hx, this->hz, this->syms.k_sym, this->syms.r_sym, this->syms.zx_sym, this->syms.zz_sym, this->add_edge_fields)); 
@@ -397,13 +533,14 @@ void ui::parse_cmd_options(int argc, std::vector<std::string> argv)
 	                        choosen_option = "-" #name "n";                             \
 	                        this->set_option(this->name##n, argv, choosen_option, true);
     set_param(J);
+    set_param(c);
 
     //<! SYMMETRIES
-    choosen_option = "-k";
-    this->set_option(this->syms.k_sym, argv, choosen_option);
+    choosen_option = "-z1";
+    this->set_option(this->syms.z1_sym, argv, choosen_option);
 
-    choosen_option = "-p";
-    this->set_option(this->syms.r_sym, argv, choosen_option);
+    choosen_option = "-z2";
+    this->set_option(this->syms.z2_sym, argv, choosen_option);
     
     choosen_option = "-zz";
     this->set_option(this->syms.zz_sym, argv, choosen_option);
@@ -435,9 +572,13 @@ void ui::set_default(){
     this->J = 1.0;
 	this->Js = 0.0;
 	this->Jn = 1;
+    
+    this->c = 0.0;
+	this->cs = 0.0;
+	this->cn = 1;
 
-    this->syms.k_sym = 0;
-    this->syms.r_sym = 1;
+    this->syms.z1_sym = 1;
+    this->syms.z2_sym = 1;
     this->syms.zz_sym = 1;
 }
 
@@ -445,14 +586,17 @@ void ui::set_default(){
 void ui::print_help() const {
     user_interface_sym<TIFP>::print_help();
 
-    printf(" Flags for XYZ model:\n");
+    printf(" Flags for TIFP model:\n");
     printSeparated(std::cout, "\t", 20, true, "-J", "(double)", "some coupling strength");
     printSeparated(std::cout, "\t", 20, true, "-Js", "(double)", "step in coupling strength sweep");
     printSeparated(std::cout, "\t", 20, true, "-Jn", "(int)", "number of couplings in the sweep");
+    printSeparated(std::cout, "\t", 20, true, "-c", "(double)", "coupling to Q5 charge");
+    printSeparated(std::cout, "\t", 20, true, "-cs", "(double)", "step in coupling to Q5 charge sweep");
+    printSeparated(std::cout, "\t", 20, true, "-cn", "(int)", "number of couplings to Q5 in the sweep");
     // #ifdef USE_SYMMETRIES
-        printSeparated(std::cout, "\t", 20, true, "-k", "(int)", "quasimomentum symmetry sector");
-        printSeparated(std::cout, "\t", 20, true, "-r", "(int)", "Z_2 symmetry sector");
         printSeparated(std::cout, "\t", 20, true, "-zz", "(int)", "spin flip in Z direction symmetry sector");
+        printSeparated(std::cout, "\t", 20, true, "-z1", "(int)", "Z_2 symmetry sector of C0C2 operator");
+        printSeparated(std::cout, "\t", 20, true, "-z2", "(int)", "Z_2 symmetry sector of C0C3 operator");
 
     // #else
     //     printSeparated(std::cout, "\t", 20, true, "-w", "(double)", "disorder strength from uniform distribution");
@@ -469,19 +613,24 @@ void ui::print_help() const {
 /// @brief 
 void ui::printAllOptions() const{
     user_interface_sym<TIFP>::printAllOptions();
-    std::cout << "H = \u03A3_r J_r\u03A3_i [ (1-\u03B7_r) S^x_i S^x_i+1 + (1+\u03B7_r) S^y_i S^y_i+1 + \u0394_r S^z_iS^z_i+1] + \u03A3_i h^z_i S^z_i + h^x\u03A3_i S^x_i" << std::endl << std::endl;
-	std::cout << "h_i \u03B5 [hz - w, hz + w]" << std::endl;
+    std::cout << "H = \u03A3_i H_i + c*q5_i" << std::endl << std::endl;
+	std::cout << "H_i = X_i X_i+1 Z_i+2 + J^2 Z_i Y_i+1 Y_i+2 + J Z_i Z_i+2" << std::endl;
+	std::cout << "q5_i = [H_i, H_i+1 + H_i+2] + 2J[ (1+J^2) Y_i X_i+1 + J Y_i Z_i+1 X_i+2 ]" << std::endl;
 
-	std::cout << "------------------------------ CHOSEN XYZ OPTIONS:" << std::endl;
+	std::cout << "------------------------------ CHOSEN TIFP OPTIONS:" << std::endl;
     std::cout 
 		  << "J  = " << this->J << std::endl
 		  << "Jn = " << this->Jn << std::endl
-		  << "Js = " << this->Js << std::endl;
+		  << "Js = " << this->Js << std::endl
+		  << "c  = " << this->c << std::endl
+		  << "cn = " << this->cn << std::endl
+		  << "cs = " << this->cs << std::endl;
 
-		  if(this->boundary_conditions == 0)        std::cout << "k  = " << this->syms.k_sym << std::endl;
-		  if(this->k_real_sec(this->syms.k_sym))    std::cout << "r  = " << this->syms.r_sym << std::endl;
-		                                            std::cout << "zz  = " << this->syms.zz_sym << std::endl;
-          std::cout << std::endl;
+    std::cout << "zz  = " << this->syms.zz_sym << std::endl;
+    if(this->L % 2 == 0) std::cout << "z1  = " << this->syms.z1_sym << std::endl;
+    if(this->L % 4 == 0) std::cout << "z2  = " << this->syms.z2_sym << std::endl;
+		                                            
+        std::cout << std::endl;
     printSeparated(std::cout, "\t", 16, true, "----------------------------------------------------------------------------------------------------");
 }   
 

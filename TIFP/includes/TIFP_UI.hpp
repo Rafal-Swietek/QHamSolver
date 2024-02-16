@@ -6,6 +6,7 @@
 #include "config.hpp"
 
 #include "../../include/user_interface_sym.hpp"
+
 #include "TIFP.hpp"
 
 // ----------------------------------------------------------------------------- UI QUANTUM SUN -----------------------------------------------------------------------------
@@ -14,12 +15,12 @@ namespace TIFP_UI{
     class ui : public user_interface_sym<TIFP>{
         
     protected:
-        double J, Js;
-        int Jn;
+        double J, Js, c, cs;
+        int Jn, cn;
         
         struct {
-            int k_sym;
-            int r_sym;
+            int z2_sym;
+            int z1_sym;
             int zz_sym;
         } syms;
         
@@ -67,27 +68,22 @@ namespace TIFP_UI{
 			_types... args										   //!< arguments passed to callable interface lambda
 		) {
             
-			const int k_end = (this->boundary_conditions) ? 1 : this->L;
 			v_1d<int> zzsec = v_1d<int>({-1, 1});
-		// #pragma omp parallel for num_threads(outer_threads)// schedule(dynamic)
-        // #ifdef USE_REAL_SECTORS
-        //     for(int ks : (this->L%2 || this->boundary_conditions? v_1d<int>({0}) : v_1d<int>({0, (int)this->L/2})) ){
-        // #else
-		// 	for (int ks = 1; ks < k_end; ks++) {
-        // #endif
-			for (int ks = 0; ks < k_end; ks++) 
+			// for (int ks = 0; ks < k_end; ks++) 
             {
-                // int ks = 0;
-				v_1d<int> rsec = this->L % 4 == -1? v_1d<int>({-1, 1}) : v_1d<int>({1});
+				v_1d<int> z1sec = this->L % 2 == 0? v_1d<int>({-1, 1}) : v_1d<int>({1});
+                v_1d<int> z2sec = this->L % 4 == 0? v_1d<int>({-1, 1}) : v_1d<int>({1});
                 // std::cout << "ks = " << ks << "\t\tpsec=" << psec << std::endl;
-                for(auto& rs : rsec){
-                    for(auto& zzs : zzsec){
-                        //<! create local lambda for multithreading enivorontment
-                        auto dummy_lambda = [&lambda](int k, int r, int zz, auto... args){
-                            lambda(k, r, zz, args...);
-                        };
-                        printSeparated(std::cout, "\t", 16, true, "Sector:", ks, rs, zzs, args...);
-                        dummy_lambda(ks, rs, zzs, args...);
+                for(auto& z1s : z1sec){
+                    for(auto& z2s : z2sec){
+                        for(auto& zzs : zzsec){
+                            //<! create local lambda for multithreading enivorontment
+                            auto dummy_lambda = [&lambda](int zz, int z1, int z2, auto... args){
+                                lambda(zz, z1, z2, args...);
+                            };
+                            printSeparated(std::cout, "\t", 16, true, "Sector:", zzs, z1s, z2s, args...);
+                            dummy_lambda(zzs, z1s, z2s, args...);
+                        }
                     }
                 }
 			}
