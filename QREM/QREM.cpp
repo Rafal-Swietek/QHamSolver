@@ -56,7 +56,7 @@ void QREM::create_hamiltonian()
         std::cout << this->_disorder << std::endl;
     #endif
 
-    const double rescale = 1. / (this->system_size * std::log(this->system_size));
+    const double rescale = 1. / (std::sqrt(this->system_size) * std::log(this->system_size));
     // const double rescale = 1. / (this->system_size);
     for (size_t k = 0; k < this->dim; k++) 
     {
