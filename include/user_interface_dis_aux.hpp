@@ -485,6 +485,21 @@ void user_interface_dis<Hamiltonian>::eigenstate_entanglement()
 	auto subsystem_sizes = arma::conv_to<arma::Col<int>>::from(arma::linspace(0, this->L, this->L + 1));
 	std::cout << subsystem_sizes.t() << std::endl;
 
+	std::vector<arma::sp_mat> permutation_matrices;
+	for(int LA_idx = 0; LA_idx < subsystem_sizes.size() - 1; LA_idx++)
+	{	
+		int LA = subsystem_sizes[LA_idx];
+		auto start_LA = std::chrono::system_clock::now();
+		std::vector<int> p(this->L);
+		p[LA % this->L] = 0;
+		for(int l = 0; l < this->L; l++)
+			if(l != LA % this->L)
+				p[l] = (l < (LA % this->L) )? l + 1 : l;
+		auto permutation = QOps::_permutation_generator(this->L, p);
+		arma::sp_mat P = arma::real(permutation.to_matrix( ULLPOW(this->L) ));
+		permutation_matrices.push_back(P);
+		std::cout << " - - - - - - set permutation matrix for LA = " << LA << " in : " << tim_s(start_LA) << " s - - - - - - " << std::endl;
+	}
 // #pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
 	for(int realis = 0; realis < this->realisations; realis++)
 	{
@@ -514,44 +529,34 @@ void user_interface_dis<Hamiltonian>::eigenstate_entanglement()
 		omp_set_num_threads(1);
 		std::cout << outer_threads << "\t\t" << omp_get_num_threads() << std::endl;
 		
-		for(int LA_idx = 0; LA_idx < subsystem_sizes.size() - 1; LA_idx++)
-		{	
-			int LA = subsystem_sizes[LA_idx];
-			auto start_LA = std::chrono::system_clock::now();
-			std::vector<int> p(this->L);
-			p[LA % this->L] = 0;
-			for(int l = 0; l < this->L; l++)
-				if(l != LA % this->L)
-					p[l] = (l < (LA % this->L) )? l + 1 : l;
-			std::cout << p << std::endl;
-			auto permutation = QOps::_permutation_generator(this->L, p);
-			arma::sp_mat P = arma::real(permutation.to_matrix( ULLPOW(this->L) ));
-
-			std::cout << " - - - - - - set permutation matrix for LA = " << LA << " in : " << tim_s(start) << " s for realis = " << realis << " - - - - - - " << std::endl;
-			start_LA = std::chrono::system_clock::now();
-		#pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
-			for(int n = 0; n < size; n++){
+			// auto start_LA = std::chrono::system_clock::now();
+			// start_LA = std::chrono::system_clock::now();
+	#pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
+		for(int n = 0; n < size; n++){
 				
-				arma::Col<element_type> state = arma::normalise(this->ptr_to_model->get_eigenState(n));
-				
-				// somehow needs L-LA (computer sees bit representation the opposite way, i.e. take B subsystem)
-				S(n, LA_idx) = entropy::schmidt_decomposition(this->cast_state(state), this->L - LA, this->L);	// bipartite entanglement at subsystem size LA
-				
-				if(LA_idx == 0)
-				{
-				#pragma omp parallel for
-					for(int k = 0; k < dim; k++){
-						auto value = std::abs(state(k)) * std::abs(state(k));
-    					participation_entropy(n) += (std::abs(value) > 0) ? -value * std::log(value) : 0;
-					}
+			arma::Col<element_type> state = arma::normalise(this->ptr_to_model->get_eigenState(n));
+			
+			#pragma omp parallel for
+				for(int k = 0; k < dim; k++){
+					auto value = std::abs(state(k)) * std::abs(state(k));
+					participation_entropy(n) += (std::abs(value) > 0) ? -value * std::log(value) : 0;
 				}
+
+			state = this->cast_state(state);
+			// somehow needs L-LA (computer sees bit representation the opposite way, i.e. take B subsystem)
+
+			for(int LA_idx = 0; LA_idx < subsystem_sizes.size() - 1; LA_idx++)
+			{	
+				int LA = subsystem_sizes[LA_idx];
+				S(n, LA_idx) = entropy::schmidt_decomposition(state, this->L - LA, this->L);	// bipartite entanglement at subsystem size LA
 				
-				state = P * this->cast_state(state);
-				if(LA < this->L)
-					S_site(n, LA_idx) 	= entropy::schmidt_decomposition(state, this->L - 1, this->L);	// single site entanglement at site LA
+				if(LA < this->L){
+					state = permutation_matrices[LA_idx] * state;
+					S_site(n, LA_idx) = entropy::schmidt_decomposition(state, this->L - 1, this->L);	// single site entanglement at site LA
+				}
 
 			}
-    		std::cout << " - - - - - - finished entropy size LA: " << LA << " in time:" << tim_s(start_LA) << " s - - - - - - " << std::endl; // simulation end
+    		// std::cout << " - - - - - - finished entropy size LA: " << LA << " in time:" << tim_s(start_LA) << " s - - - - - - " << std::endl; // simulation end
 		}
 		// if(this->realisations > 1)
 		{
