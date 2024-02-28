@@ -232,7 +232,7 @@ void user_interface_dis<Hamiltonian>::spectral_form_factor(){
 	arma::vec({r2}).save(arma::hdf5_name(dir + info + ".hdf5", "r_500", arma::hdf5_opts::append));
 	arma::vec({r1}).save(arma::hdf5_name(dir + info + ".hdf5", "r_D_2", arma::hdf5_opts::append));
 	arma::uvec({dim}).save(arma::hdf5_name(dir + info + ".hdf5", "D", arma::hdf5_opts::append));
-	arma::vec({two_pi / (wH)}).save(arma::hdf5_name(dir + info + ".hdf5", "tH", arma::hdf5_opts::append));
+	arma::vec({two_pi / (wH_mean)}).save(arma::hdf5_name(dir + info + ".hdf5", "tH", arma::hdf5_opts::append));
 	arma::vec({two_pi / std::exp(wH_typ)}).save(arma::hdf5_name(dir + info + ".hdf5", "tH_typ", arma::hdf5_opts::append));
 	// #endif
 	// save_to_file(dir + info + ".dat", 			 times, 	 sff, 	   1.0 / wH_mean, thouless_time, 		   r1, r2, dim, 1.0 / wH_typ);

@@ -118,7 +118,10 @@ namespace QHS{
                 for (auto& t : map_threaded)
                     this->mapping.insert(this->mapping.end(), std::make_move_iterator(t.begin()), std::make_move_iterator(t.end()));
             }
-            // std::cout << mapping << std::endl;
+            
+            // for(auto& idx : mapping)
+            //     std::cout << idx << "";
+            // std::cout << std::endl;
             this->dim = this->mapping.size();
         }
 
