@@ -51,6 +51,8 @@ namespace QSunU1UI{
 										std::string sep = "_") const override;
 
         // ----------------------------------- OVERRIDEN METHODS
+        virtual void matrix_elements() override;
+
         virtual arma::Col<element_type> cast_state(const arma::Col<element_type>& state) override;
     };
 }

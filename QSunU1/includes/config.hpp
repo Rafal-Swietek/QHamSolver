@@ -1,6 +1,6 @@
 #pragma once 
 
-#define EXTRA_DEBUG
+// #define EXTRA_DEBUG
 #ifndef SPIN
     #define SPIN 0.5
 #endif

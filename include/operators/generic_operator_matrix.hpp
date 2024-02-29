@@ -35,7 +35,26 @@ namespace QOps{
 		to_reduced_matrix(const _hilbert& hilbert_space, _ty... args
 					)
 	{
-		
+		const u64 dim = hilbert_space.get_hilbert_space_size();
+		arma::sp_cx_mat matrix(dim, dim);
+		auto set_matrix_elements = [&matrix, &hilbert_space](u64 k, cpx value, u64 new_idx){
+			u64 idx = hilbert_space.find(new_idx);
+			try {
+				matrix(idx, k) += value;
+			} 
+			catch (const std::exception& err) {
+				std::cout << "Exception:\t" << err.what() << "\n";
+				std::cout << "SHit ehhh..." << std::endl;
+				printSeparated(std::cout, "\t", 14, true, new_idx, idx, hilbert_space(k), value);
+			}
+		};
+        for(u64 k = 0; k < dim; k++){            
+			auto [state, val] = this->operator()(hilbert_space(k), args...);
+			set_matrix_elements(k, val, state);
+            // matrix(state, k) += val;
+        }
+
+		return matrix;
 	}
 
 	// /// @brief 
