@@ -143,8 +143,8 @@ void QuantumSunU1::create_hamiltonian()
     u64 mask_spins = (ULLPOW(this->num_of_spins) - 1);
     _extra_debug(
         std::cout << "Check masks:" << std::endl;
-        std::cout << "Mask grain:\t"; for(int j = 0; j < this->system_size; j++) std::cout << int(0.5 + std::real(std::get<0>( Z(mask_grain, this->system_size, j) )) ); std::cout << std::endl;
-        std::cout << "Mask spins:\t"; for(int j = 0; j < this->system_size; j++) std::cout << int(0.5 + std::real(std::get<0>( Z(mask_spins, this->system_size, j) )) ); std::cout << std::endl;
+        std::cout << "Mask grain:\t" << mask_grain << "\t"; for(int j = 0; j < this->system_size; j++) std::cout << int(0.5 + std::real(std::get<0>( Z(mask_grain, this->system_size, j) )) ); std::cout << std::endl;
+        std::cout << "Mask spins:\t" << mask_spins << "\t"; for(int j = 0; j < this->system_size; j++) std::cout << int(0.5 + std::real(std::get<0>( Z(mask_spins, this->system_size, j) )) ); std::cout << std::endl;
     )
     // auto check_spin = QOps::__builtins::get_digit(this->system_size);
     for (u64 k = 0; k < this->dim; k++) 
@@ -180,7 +180,7 @@ void QuantumSunU1::create_hamiltonian()
             {
                 auto [val1, Sx_k] = X(base_state, this->system_size, j);
                 auto [val2, SxSx_k] = X(Sx_k, this->system_size, nei);
-                this->set_hamiltonian_elements(k, this->_J * this->_long_range_couplings(pos_in_array) * std::real(val1 * val2), SxSx_k);
+                this->set_hamiltonian_elements(k, this->_J * this->_long_range_couplings(pos_in_array) * std::real(0.5), SxSx_k); // you stupid bitch, not S^2 but 1/2
             }
 		}
 	}
