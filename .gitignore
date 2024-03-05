@@ -426,7 +426,7 @@ XYZ/Jupyter_Python/RESULTS_XXZ2/
 
 include/.DS_Store
 QuantumSun/.DS_Store
-'*/Jupyter_Python/collected data/'
+#'*/Jupyter_Python/collected data/'
 */Jupyter_Python/CriticalParameters/
 QuantumSun/Jupyter_Python/collected data/results/nu=500/_L=6,N=5,gamma=1.0,alfa=1.0.hdf5
 QuantumSun/Jupyter_Python/collected data/results/nu=500/_L=7,N=5,gamma=1.0,alfa=1.0.hdf5
