@@ -468,11 +468,10 @@ void user_interface_dis<Hamiltonian>::eigenstate_entanglement()
 	createDirs(dir);
 	
 	size_t dim = this->ptr_to_model->get_hilbert_size();
-	#ifdef ARMA_USE_SUPERLU
-        const int size = this->ch? 500 : dim;
-    #else
-        const int size = dim;
-    #endif
+	// size_t size = dim;
+	// if(dim > 1e5)
+	const size_t size = dim > 1e5? this->l_steps : dim;
+
 	std::string info = this->set_info();
 	std::string filename = info;// + "_subsize=" + std::to_string(LA);
 
@@ -506,21 +505,19 @@ void user_interface_dis<Hamiltonian>::eigenstate_entanglement()
 		if(realis > 0)
 			this->ptr_to_model->generate_hamiltonian();
 		start = std::chrono::system_clock::now();
-    #ifdef ARMA_USE_SUPERLU
-        if(this->ch){
-            this->ptr_to_model->hamiltonian();
-            this->ptr_to_model->diag_sparse(true);
-        } else
-            this->ptr_to_model->diagonalization();
-    
-    #else
-        this->ptr_to_model->diagonalization();
-    #endif
+		if(dim > 1e5){
+			this->ptr_to_model->diag_sparse(this->l_steps, this->l_bundle, this->tol, this->seed);
+		}
+		else{
+        	this->ptr_to_model->diagonalization();
+		}
+		// this->ptr_to_model->diag_sparse(this->l_steps, this->l_bundle, this->tol, this->seed);
+		auto H = this->ptr_to_model->get_hamiltonian();
 
 		std::cout << " - - - - - - finished diagonalization in : " << tim_s(start) << " s for realis = " << realis << " - - - - - - " << std::endl; // simulation end
 		
 		const arma::vec E = this->ptr_to_model->get_eigenvalues();
-
+		std::cout << "sdad\t" << size << "\t\t" << E.size() << "\t\t <E>=" << arma::trace(H) / double(dim) << std::endl;
 		arma::mat S(size, this->L + 1, arma::fill::zeros);
 		arma::mat S_site = S;
 		arma::vec participation_entropy(size, arma::fill::zeros);
@@ -533,7 +530,6 @@ void user_interface_dis<Hamiltonian>::eigenstate_entanglement()
 			// start_LA = std::chrono::system_clock::now();
 	#pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
 		for(int n = 0; n < size; n++){
-				
 			arma::Col<element_type> state = arma::normalise(this->ptr_to_model->get_eigenState(n));
 			
 			#pragma omp parallel for

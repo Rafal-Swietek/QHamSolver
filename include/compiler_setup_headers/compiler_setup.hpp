@@ -52,7 +52,8 @@ void _current_profiling_info();
 	#define _debug_end(expr)	_current_profiling_info(); std::cout << "--------------->"; expr;
 
 	//<! extra debug macro to hide if not code for runtime
-	#define _extra_debug(expr)	std::cout << "--------------->"; expr;
+	#define _extra_debug_(expr)	expr;
+	#define _extra_debug(expr)	std::cout << "--------------->"; _extra_debug_(expr)
 #else 
 	#define DESTRUCTOR_CALL 
 	#define CONSTRUCTOR_CALL
@@ -64,6 +65,7 @@ void _current_profiling_info();
 	#define _debug_start(expr) _debug_end(expr)
 
 	//<! extra debug macro to hide if not code for runtime
+	#define _extra_debug_(expr)
 	#define _extra_debug(expr)
 #endif
 

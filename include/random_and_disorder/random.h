@@ -35,10 +35,10 @@ public:
 		this->init_seed = seed;
 		this->engine = std::mt19937_64(seed);
         CONSTRUCTOR_CALL;
-        #if defined(EXTRA_DEBUG)
+        _extra_debug(
             std::cout << FUN_SIGNATURE << "::\n\t randomGen initialized with: "
                 << var_name_value(this->init_seed, 0) << std::endl;
-        #endif
+        )
 	}
 	void reset()
 		{this->engine = std::mt19937_64(this->init_seed);}

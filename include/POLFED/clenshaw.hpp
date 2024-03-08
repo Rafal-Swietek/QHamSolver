@@ -30,13 +30,13 @@ namespace polfed{
             arma::SpMat<_ty> bk(matrix.n_cols, matrix.n_cols), eye = arma::eye<arma::SpMat<_ty>>(matrix.n_cols, matrix.n_cols);
             // perform recurence relation in loop
             for(int n = K; n > 0; n--){
-                _extra_debug( auto start = std::chrono::system_clock::now(); )
+                // _extra_debug_( auto start = std::chrono::system_clock::now(); )
                 bk = bk_1 * matrix;
                 // matmul(bk, bk_1, matrix);
                 bk = coeff(n) * eye + 2.0 * bk - bk_2;
                 bk_2 = bk_1;
                 bk_1 = bk;
-                _extra_debug( printSeparated(std::cout, "\t", 20, true, double(bk.n_nonzero) / double(bk.n_rows * bk.n_cols), matrix_size(bk.n_nonzero * sizeof(bk(0, 0))), n, coeff(n), tim_s(start)); )
+                // _extra_debug( std::cout << "Clenchaw: "; printSeparated(std::cout, "\t", 20, true, double(bk.n_nonzero) / double(bk.n_rows * bk.n_cols), matrix_size(bk.n_nonzero * sizeof(bk(0, 0))), n, coeff(n), tim_s(start)); )
             }
             return coeff(0) * eye + bk_1 * matrix - bk_2;
         }
@@ -61,11 +61,11 @@ namespace polfed{
 
             // perform recurence relation in loop
             for(int n = K; n > 0; n--){
-                _extra_debug( auto start = std::chrono::system_clock::now(); )
+                // _extra_debug_( auto start = std::chrono::system_clock::now(); )
                 auto bk = coeff(n) + 2.0 * (bk_1 * values) - bk_2;
                 bk_2 = bk_1;
                 bk_1 = bk;
-                _extra_debug( printSeparated(std::cout, "\t", 20, true, n, coeff(n), tim_s(start)); )
+                // _extra_debug( std::cout << "Clenchaw: "; printSeparated(std::cout, "\t", 20, true, n, coeff(n), tim_s(start)); )
             }
             return coeff(0) + bk_1 * values - bk_2;
         }
@@ -119,11 +119,11 @@ namespace polfed{
             arma::Col<_ty> bk  (state.size(), arma::fill::zeros);
             // perform recurence relation in loop
             for(int n = K; n > 0; n--){
-                _extra_debug( auto start = std::chrono::system_clock::now(); )
+                // _extra_debug_( auto start = std::chrono::system_clock::now(); )
                 bk = coeff(n) * state + 2.0 * matrix * bk_1 - bk_2;
                 bk_2 = bk_1;
                 bk_1 = bk;
-                _extra_debug( printSeparated(std::cout, "\t", 20, true, n, coeff(n), tim_s(start)); )
+                // _extra_debug( std::cout << "Clenchaw: "; printSeparated(std::cout, "\t", 20, true, n, coeff(n), tim_s(start)); )
             }
             return coeff(0) * state + matrix * bk_1 - bk_2;
         }
@@ -151,11 +151,11 @@ namespace polfed{
             arma::Mat<_ty> bk  (states.n_rows, states.n_cols, arma::fill::zeros);
             // perform recurence relation in loop
             for(int n = K; n > 0; n--){
-                _extra_debug( auto start = std::chrono::system_clock::now(); )
+                // _extra_debug_( auto start = std::chrono::system_clock::now(); )
                 bk = coeff(n) * states + 2.0 * matrix * bk_1 - bk_2;
                 bk_2 = bk_1;
                 bk_1 = bk;
-                _extra_debug( printSeparated(std::cout, "\t", 20, true, n, coeff(n), tim_s(start)); )
+                // _extra_debug( std::cout << "Clenchaw: "; printSeparated(std::cout, "\t", 20, true, n, coeff(n), tim_s(start)); )
             }
             return coeff(0) * states + matrix * bk_1 - bk_2;
         }

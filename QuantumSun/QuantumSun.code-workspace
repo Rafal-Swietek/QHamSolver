@@ -100,12 +100,7 @@
 			"memory_resource": "cpp",
 			"utility": "cpp",
 			"format": "cpp",
-			"cinttypes": "cpp",
-			"typeindex": "cpp",
-			"armadillo": "cpp",
-			"queue": "cpp",
-			"set": "cpp",
-			"valarray": "cpp"
+			"cinttypes": "cpp"
 		}
 	}
 }

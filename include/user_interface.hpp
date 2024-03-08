@@ -1,5 +1,6 @@
 #pragma once
 
+extern int outer_threads;
 #include "QHamSolver.h"
 
 #include "statistics/eigenlevel.hpp"
@@ -12,11 +13,6 @@
 #include "adiabatic_gauges.hpp"
 
 
-extern int outer_threads;
-#include "Lanczos/params.hpp"
-#include "Lanczos/_base.hpp"
-#include "LanczosBlock/_base.hpp"
-#include "POLFED/_base.hpp"
 
 
 /// @brief Change string of input flags to vector of separated flags

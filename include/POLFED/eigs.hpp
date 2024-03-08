@@ -21,15 +21,16 @@ inline
         
         //<! GET EIGNESTATES
         _debug_start( start = std::chrono::system_clock::now(); )
-        auto V = lancz_block.get_eigenstates();
+        arma::Mat<_ty> V = lancz_block.get_eigenstates().cols(0, this->num_of_eigval-1);
         _debug_end( std::cout << "\t\tTranformed desired states to Hilbert basis in " << tim_s(start) << " seconds" << std::endl; )
         
         //<! GET EIGENVALUES
         _debug_start( start = std::chrono::system_clock::now(); )
-        arma::vec E(this->num_of_eigval);
-    #pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
-        for(long k = 0; k < this->num_of_eigval; k++)
-            E(k) = arma::cdot(V.col(k), this->H * V.col(k));
+        arma::vec E = arma::diagvec(V.t() * this->H * V);
+        // arma::vec E(this->num_of_eigval);
+    // #pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
+        // for(long k = 0; k < this->num_of_eigval; k++)
+        //     E(k) = arma::cdot(V.col(k), this->H * V.col(k));
         _debug_end( std::cout << "\t\tCalculated eigenenergies from original Hamiltonian with <k|H|k> in " << tim_s(start) << " seconds" << std::endl; )
         
     //     //<! SORT EIGENPAIRS
@@ -62,15 +63,16 @@ inline
 
         //<! GET EIGNESTATES
         _debug_start( start = std::chrono::system_clock::now(); )
-        V = lancz_block.get_eigenstates();
+        V = lancz_block.get_eigenstates().cols(0, this->num_of_eigval-1);
         _debug_end( std::cout << "\t\tTranformed desired states to Hilbert basis in " << tim_s(start) << " seconds" << std::endl; )
         
         //<! GET EIGENVALUES
         _debug_start( start = std::chrono::system_clock::now(); )
-        E.resize(this->N);
-    #pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
-        for(long k = 0; k < this->N; k++)
-            E(k) = arma::cdot(V.col(k), this->H * V.col(k));
+        E = arma::diagvec(V.t() * this->H * V);
+        // E.resize(this->num_of_eigval);
+    // #pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
+        // for(long k = 0; k < this->num_of_eigval; k++)
+        //     E(k) = arma::cdot(V.col(k), this->H * V.col(k));
         _debug_end( std::cout << "\t\tCalculated eigenenergies from original Hamiltonian with <k|H|k> in " << tim_s(start) << " seconds" << std::endl; )
     }
     
@@ -93,7 +95,7 @@ inline
 
         //<! GET EIGNESTATES
         _debug_start( start = std::chrono::system_clock::now(); )
-        V = lancz_block.get_eigenstates();
+        V = lancz_block.get_eigenstates().cols(0, this->num_of_eigval-1);
         _debug_end( std::cout << "\t\tTranformed desired states to Hilbert basis in " << tim_s(start) << " seconds" << std::endl; )
     }
 

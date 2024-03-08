@@ -47,6 +47,7 @@
 
 #include "gcem/include/gcem.hpp"        //<! constexpr library for math functinos
 
+#include "random_and_disorder/disorder.hpp"
 
 //<! PROFILING TOOLS
 #include "profiling/memory.hpp"
@@ -58,10 +59,15 @@
 #include "hilbert_space/_base.hpp"
 #include "operators/operator_base.h"
 
+//<! LANCZOS AND POLFED
+#include "Lanczos/params.hpp"
+#include "Lanczos/_base.hpp"
+#include "LanczosBlock/_base.hpp"
+#include "POLFED/_base.hpp"
+
 #include "Hamiltonian/_base.hpp"
 #include "QhamSolver_aux.hpp"
 
-#include "random_and_disorder/disorder.hpp"
 
 
 #endif

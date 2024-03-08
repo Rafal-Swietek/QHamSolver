@@ -96,9 +96,7 @@ namespace polfed{
             this->coeff(n) = 2.0 * std::cos(n * std::acos(this->sigma));
 
         _debug_end( std::cout << "\t\tSet coefficients for polynomial:\t" 
-                                #ifdef EXTRA_DEBUG
-                                    <<  this->coeff.t() 
-                                #endif
+                                <<  this->coeff.t() 
                                 << "\tin " << tim_s(start) << " seconds" << std::endl; )
 
 

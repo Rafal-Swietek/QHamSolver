@@ -116,12 +116,12 @@ void QuantumSun::create_hamiltonian()
             }
         }
     }
-    #ifdef EXTRA_DEBUG
+    _extra_debug(
 	    std::cout << "disorder: \t\t" << this->_disorder.t() << std::endl;   
 	    std::cout << "couplings: \t\t" << this->_long_range_couplings.t() << std::endl;
 	    std::cout << "random_neigh: \t\t" << random_neigh.t() << std::endl;
         std::cout << "Grain matrix: \t\t" << H_grain << std::endl;
-    #endif
+    )
 
     /* Generate coupling and spin hamiltonian */
     for (u64 k = 0; k < this->dim; k++) {

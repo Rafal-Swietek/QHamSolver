@@ -46,22 +46,22 @@ namespace lanczos {
 			this->tolerance = std::abs(tolerance);
 
 		//<! Orthogonalize input matrix
-		#ifdef EXTRA_DEBUG
+		_extra_debug(
 			std::cout << "V1 Before orthogonalization:\n" << this->initial_bundle.t() * this->initial_bundle << std::endl;
-		#endif
+		)
 		arma::Mat<_ty> dummy1, dummy2;
 		arma::qr_econ(dummy1, dummy2, this->initial_bundle);
 		this->initial_bundle = dummy1;
-		#ifdef EXTRA_DEBUG
+		_extra_debug(
 			std::cout << "V1 After orthogonalization:\n" << this->initial_bundle.t() * this->initial_bundle << std::endl;
-		#endif
+		)
 
 		// if(this->use_full_convergence)	this->matrix_size = this->bundle_size * this->maxiter;
 		// else							this->matrix_size = this->bundle_size * this->lanczos_steps;
 
 		this->matrix_size = this->bundle_size * this->lanczos_steps;
 		
-		#ifdef EXTRA_DEBUG
+		_extra_debug(
 			std::cout
 				<< "Model transfered to Lanczos wrapper with:\n"
 				<< this->lanczos_steps << " lanczos steps\n"
@@ -69,7 +69,7 @@ namespace lanczos {
 				<< this->maxiter << " maximal iterations\n" 
 				<< this->matrix_size << " matrix size\n"
 				<< this->tolerance << " tolerance" << std::endl;
-		#endif
+		)
 	}
 
 };

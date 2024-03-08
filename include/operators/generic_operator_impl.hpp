@@ -24,12 +24,12 @@ namespace QOps {
 		cpx opVal = 1.0;					// const return value of operator acting on given state
 		void init() {
 			CONSTRUCTOR_CALL;
-			#if defined(EXTRA_DEBUG)
+			_extra_debug(
 				std::cout << FUN_SIGNATURE << "::\n\toperator initialized with: "
 					<< var_name_value(this->L, 0) 				 << "\t" 
 					<< var_name_value(std::real(this->opVal), 0) << "\t" 
 					<< var_name_value(std::imag(this->opVal), 0) << std::endl;
-			#endif
+			)
 		}
 	public:
 		unsigned int L = 0;										// length of state in given basis (Kondo has octal basis)

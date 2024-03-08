@@ -1,6 +1,8 @@
 #pragma once 
 
+// #define NODEBUG
 // #define EXTRA_DEBUG
+
 #define SPIN 0.5
 
 #ifdef MY_MAC
@@ -9,7 +11,7 @@
     #endif
 
     #ifndef SCALED_DISORDER
-        #define SCALED_DISORDER
+        // #define SCALED_DISORDER
     #endif
 #endif
 

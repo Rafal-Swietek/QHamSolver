@@ -41,6 +41,7 @@ namespace QHS{
             //<! ----------------------------------------------- ROUTINES
             void generate_hamiltonian();
             void diagonalization(bool get_eigenvectors = true, const char* method = "dc");
+            void diag_sparse(int Nev, int s, double tol = 1e-14, int seed = std::random_device{}());
     };
 
 
@@ -64,10 +65,10 @@ namespace QHS{
         this->dim = H.get_hilbert_space_size();
 
         //<! what else?
-        #if defined(EXTRA_DEBUG)
+        _extra_debug(
             std::cout << FUN_SIGNATURE << "::\n\t QHamSolver initialized with: "
                 << var_name_value(this->dim, 0) << "\n MODEL:\n" << H << std::endl;
-        #endif
+        )
     }
 
 
@@ -79,10 +80,10 @@ namespace QHS{
     void QHamSolver<Hamiltonian>::generate_hamiltonian()
         { this->H.create_hamiltonian(); }
 
-    /// @brief 
-    /// @tparam Hamiltonian 
-    /// @param get_eigenvectors 
-    /// @param method 
+    /// @brief Method do diagonalize the Hamiltonian
+    /// @tparam Hamiltonian template typename for the Hamiltonian class
+    /// @param get_eigenvectors choose to get or not eigenstates
+    /// @param method choose methods ("dc" or "std") of diagonalization
     template <class Hamiltonian>
     void QHamSolver<Hamiltonian>::diagonalization(bool get_eigenvectors, const char* method) 
     {
@@ -115,13 +116,26 @@ namespace QHS{
             return abs(x - E_av) < abs(y - E_av);
             });
         this->E_av_idx = i - begin(this->eigenvalues);
-        #ifdef EXTRA_DEBUG
+        _extra_debug(
             printSeparated(std::cout, "\t", 16, true, "guessed index", "mean energy", "energies close to this value (-1,0,+1) around found index");
             printSeparated(std::cout, "\t", 16, true, this->E_av_idx, E_av, this->eigenvalues(this->E_av_idx - 1), this->eigenvalues(this->E_av_idx),  this->eigenvalues(this->E_av_idx + 1));
-        #endif
+        )
 
         //<! Force release of memory for dense matrix
         H_temp.reset();
     }
 
+    /// @brief Method to diagonalize large sparse matrices: get states in the centrum of the spectrum
+    /// @tparam Hamiltonian template typename for the Hamiltonian class
+    /// @param Nev number of requested eigenstates
+    /// @param s block size
+    /// @param tol tolerance for algorithm
+    /// @param seed input seed got random computation
+    template <class Hamiltonian>
+    void QHamSolver<Hamiltonian>::diag_sparse(int Nev, int s, double tol, int seed)
+    {
+        auto Hamil = this->H.get_hamiltonian();
+        auto polfed = polfed::POLFED<QHamSolver::_ty>(Hamil, Nev, s, -1, tol, 0.25, seed, true);
+        std::tie(this->eigenvalues, this->eigenvectors) = polfed.eig();
+    }
 }

@@ -191,6 +191,28 @@ void apply_permutation(
 
 //-------------------------------------------------------------------------------------------------------------- ADDITIONAL TOOLS
 
+
+template <typename _ty>
+inline
+_ty my_conjungate(_ty x) { return std::conj(x); }
+
+template <>
+inline
+int my_conjungate(int x) { return x; }
+
+template <>
+inline
+float my_conjungate(float x) { return x; }
+
+template <>
+inline
+double my_conjungate(double x) { return x; }
+
+template <typename _type>
+inline
+std::complex<_type> my_conjungate(std::complex<_type> x) { return std::conj(x); }
+
+
 /// @brief Translate input bytes to appropriate scale (kB, MB,..)
 /// @param bytes 
 /// @return 

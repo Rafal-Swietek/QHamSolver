@@ -8,7 +8,9 @@
 			"args": [
 				"-std=c++2b", "-stdlib=libc++",
 				"-Xpreprocessor", "-fopenmp",
-				"${workspaceFolder}/*.cpp",
+				"${workspaceFolder}/main.cpp",
+				"${workspaceFolder}/QSunUI.cpp",
+				"${workspaceFolder}/QuantumSun.cpp",
 				"-o",
 				"${workspaceFolder}/QSun.o",
 				"-larmadillo", "-lsuperlu",

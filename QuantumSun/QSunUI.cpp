@@ -70,7 +70,9 @@ void ui::make_sim(){
 								std::cout << " - - START NEW ITERATION:\t\t par = "; // simulation end
 								printSeparated(std::cout, "\t", 16, true, this->L_loc, this->J, this->alfa, this->h, this->w, this->gamma);
 								
-								spectral_form_factor();
+								eigenstate_entanglement();
+								// matrix_elements();
+								// spectral_form_factor();
 								// diagonalize();
 								// survival_probability();
 								//entanglement_evolution();

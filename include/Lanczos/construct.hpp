@@ -30,7 +30,7 @@ namespace lanczos {
 		if(this->tolerance < 0)
 			this->tolerance = std::abs(tolerance);
 
-		#ifdef EXTRA_DEBUG
+		_extra_debug(
 			// std::cout << this->initial_random_vec.t() << std::endl;
 			std::cout
 				<< "Model transfered to Lanczos wrapper with:\n"
@@ -39,7 +39,7 @@ namespace lanczos {
 				<< this->tolerance << " tolerance\n"
 				<< this->use_full_convergence << " - convergece\n"
 				<< this->memory_over_performance << " - on-the-fly\n"
-				<< this->use_reorthogonalization << " - reorthogonalization" << std::endl;
-		#endif
+				<< this->use_reorthogonalization << " - reorthogonalization\n" << std::endl;
+		)
 	}
 };

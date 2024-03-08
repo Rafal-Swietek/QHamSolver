@@ -21,10 +21,10 @@ protected:
         this->reset();
 
         CONSTRUCTOR_CALL;
-        #if defined(EXTRA_DEBUG)
+        _extra_debug(
             std::cout << FUN_SIGNATURE << "::\n\t disorder initialized with: "
                 << var_name_value(this->init_seed, 0) << std::endl;
-        #endif
+        )
     }
 public:
     virtual ~random_matrix_theory() = 0;

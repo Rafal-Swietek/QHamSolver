@@ -70,16 +70,16 @@ void try_allocation(arma::Mat<_ty>& matrix, const std::string& name, u64 n_rows,
 /// @param size number of elements to allocate
 template <typename _ty>
 inline
-void try_allocation(arma::Col<_ty>& vector, const std::string& name, u64 size)
+void try_allocation(arma::Col<_ty>& _vector, const std::string& name, u64 size)
 {
 	try{
-		vector = arma::Col<_ty>(size, arma::fill::zeros);
+		_vector = arma::Col<_ty>(size, arma::fill::zeros);
 		_extra_debug( std::cout << "\nobject = " << name 
-						<< std::endl << "memory size = " + matrix_size(size * sizeof(vector(0))); )
+						<< std::endl << "memory size = " + matrix_size(size * sizeof(_vector(0))); )
 	} catch (...) {
 		handle_exception(std::current_exception(),
 			"\nobject = " + name
-            + "\nmemory size = " + matrix_size(size * sizeof(vector(0)))
+            + "\nmemory size = " + matrix_size(size * sizeof(_vector(0)))
         );
 	}
 }
@@ -120,16 +120,16 @@ void try_reallocate(arma::Mat<_ty>& matrix, const std::string& name, u64 n_rows,
 /// @param size number of elements to allocate
 template <typename _ty>
 inline
-void try_reallocate(arma::Col<_ty>& vector, const std::string& name, u64 size)
+void try_reallocate(arma::Col<_ty>& _vector, const std::string& name, u64 size)
 {
 	try{
-		vector.resize(size);
+		_vector.resize(size);
 		_extra_debug( std::cout << "\nobject = " << name 
-						<< std::endl << "memory size = " + matrix_size(size * sizeof(vector(0))); )
+						<< std::endl << "memory size = " + matrix_size(size * sizeof(_vector(0))); )
 	} catch (...) {
 		handle_exception(std::current_exception(),
 			"\nobject = " + name
-            + "\nmemory size = " + matrix_size(size * sizeof(vector(0)))
+            + "\nmemory size = " + matrix_size(size * sizeof(_vector(0)))
         );
 	}
 }
