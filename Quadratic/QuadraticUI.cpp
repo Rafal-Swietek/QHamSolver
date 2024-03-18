@@ -71,12 +71,12 @@ void ui::make_sim(){
 
 /// @brief Create unique pointer to model with current parameters in cVAss
 typename ui::model_pointer ui::create_new_model_pointer(){
-    return std::make_unique<QHS::QHamSolver<Quadratic>>(this->L, this->J, this->w, this->seed, this->g); 
+    return std::make_unique<QHS::QHamSolver<Quadratic>>(this->L, this->J, this->w, this->seed, this->g, this->boundary_conditions); 
 }
 
 /// @brief Reset member unique pointer to model with current parameters in cVAss
 void ui::reset_model_pointer(){
-    this->ptr_to_model.reset(new QHS::QHamSolver<Quadratic>(this->L, this->J, this->w, this->seed, this->g)); 
+    this->ptr_to_model.reset(new QHS::QHamSolver<Quadratic>(this->L, this->J, this->w, this->seed, this->g, this->boundary_conditions)); 
 }
 
 /// @brief 

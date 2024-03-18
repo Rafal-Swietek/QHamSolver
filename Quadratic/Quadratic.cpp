@@ -13,12 +13,13 @@
 /// @param w stregth of potential: disorder (Anderson), periodic (Aubey-Andre), ...
 /// @param seed random seed
 /// @param g periodicity for Aubry-Andre model
-Quadratic::Quadratic(int L, double J, double w, const u64 seed, double g)
+Quadratic::Quadratic(int L, double J, double w, const u64 seed, double g, bool _bound_cond)
 { 
     CONSTRUCTOR_CALL;
 
     this->system_size = L;
-
+    this->_boundary_condition = _bound_cond;
+    
     this->_J = J;
 
     //<! disorder terms
@@ -109,6 +110,7 @@ std::ostream& Quadratic::write(std::ostream& os) const
     printSeparated(os, "\t", 16, true, "----------------------------------------------------------------------------------------------------");
     printSeparated(os, "\t", 16, true, "Parameters:");
     printSeparated(os, "\t", 16, true, "L", this->system_size);
+    printSeparated(os, "\t", 16, true, "BC", this->_boundary_condition);
 
     printSeparated(os, "\t", 16, true, "J", this->_J);
     printSeparated(os, "\t", 16, true, "w", this->_w);

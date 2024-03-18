@@ -38,7 +38,7 @@ private:
     virtual void init() override
     {   
         // initialize lattice
-        this->_lattice = lattice_type(this->system_size);
+        this->_lattice = lattice_type(this->system_size, this->_boundary_condition);
         this->dim = this->_lattice.volume;
 
         // initialize disorder
@@ -52,7 +52,7 @@ public:
     //<! ----------------------------------------------------- CONSTRUCTORS
     Quadratic() = default;
     // Quadratic(std::istream& os);
-    Quadratic(int L, double J, double w = 0, const u64 seed = std::random_device{}(), double g = 0.0);
+    Quadratic(int L, double J, double w = 0, const u64 seed = std::random_device{}(), double g = 0.0, bool _bound_cond = 0);
 
     //<! ----------------------------------------------------- HAMILTONIAN BUILDERS
     virtual void create_hamiltonian() override;
