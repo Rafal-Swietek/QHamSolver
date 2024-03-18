@@ -35,10 +35,20 @@ namespace statistics{
         ) {
         double pr = 0;
         const size_t N = _state.size();
-    #pragma omp parallel for reduction(+: pr)
-        for (int n = 0; n < N; n++) {
-            double value = abs(conj(_state(n)) * _state(n));
-            pr += std::pow(value, q);
+        // if(q == 1)
+        // {
+        // #pragma omp parallel for reduction(+: pr)
+        //     for (int n = 0; n < N; n++) {
+        //         double value = std::abs(std::conj(_state(n)) * _state(n));
+        //         pr += (std::abs(value) > 0) ? -value * std::log(value) : 0;
+        //     }
+        // } else 
+        {
+        #pragma omp parallel for reduction(+: pr)
+            for (int n = 0; n < N; n++) {
+                double value = std::abs(std::conj(_state(n)) * _state(n));
+                pr += std::pow(value, q);
+            }
         }
         return pr;
     }

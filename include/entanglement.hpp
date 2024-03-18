@@ -93,7 +93,7 @@ namespace entropy{
     	arma::vec probabilities;
     	arma::eig_sym(probabilities, rho); //diagonalize to find probabilities and calculate trace in rho's eigenbasis
     	double entropy = 0;
-    #pragma omp parallel for reduction(+: entropy)
+    // #pragma omp parallel for reduction(+: entropy)
     	for (int i = 0; i < probabilities.size(); i++) {
     		auto value = probabilities(i);
     		entropy += (abs(value) > 0) ? -value * log(abs(value)) : 0;
@@ -174,7 +174,7 @@ namespace entropy{
         arma::vec probabilities;
         arma::eig_sym(probabilities, rho); //diagonalize to find probabilities and calculate trace in rho's eigenbasis
         double _entropy = 0;
-    #pragma omp parallel for reduction(+: _entropy)
+    // #pragma omp parallel for reduction(+: _entropy)
         for (int i = 0; i < probabilities.size(); i++) {
         	auto value = abs(probabilities(i) * probabilities(i));
         	_entropy += ((value) < 1e-10) ? 0 : -value * log2(value);
@@ -207,7 +207,7 @@ namespace entropy{
 
         //calculate entropy
         double entropy = 0;
-    #pragma omp parallel for reduction(+: entropy)
+    // #pragma omp parallel for reduction(+: entropy)
     	for (int i = 0; i < schmidt_coeff.size(); i++) {
     		auto value = std::abs(schmidt_coeff(i)) * std::abs(schmidt_coeff(i));
     		entropy += (abs(value) > 0) ? -value * std::log(value) : 0;
