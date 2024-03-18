@@ -109,5 +109,5 @@ namespace QOps {
 	//! --	 X = fun<...> % operators<...> implementation
 	// in operator_class.h
 	
-
+	
 };

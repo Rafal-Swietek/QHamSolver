@@ -150,7 +150,7 @@ namespace QOps {
 
 		void operator*=(cpx arg)
 		{ this->opVal *= arg; }
-
+		
 		//! -------------------- with another class instance
 		template <typename..._ty2>
 		auto operator*(const generic_operator<_ty2...>& op)
@@ -227,6 +227,20 @@ namespace QOps {
 			return op.opVal * returnVal;
 		}
 
+		//! -------------------------------------------------------------------------- ACTING ON QUANTUM STATES
+		template <typename _ty_state>
+		auto multiply(const arma::Col<_ty_state>& state, _ty... args)
+			const -> arma::cx_vec
+			{
+				arma::cx_vec output_state(state.size(), arma::fill::zeros);
+				for(u64 k = 0; k < state.size(); k++){            
+					auto [idx, val] = this->operator()(k, args...);
+					output_state(idx) += val * state(k);
+				}
+
+				return output_state;
+			}
+			
 		//! -------------------------------------------------------------------------- GENERATE MATRIX ELEMENTS
 		
 		arma::sp_cx_mat to_matrix(u64 dim, _ty... args);
@@ -239,5 +253,7 @@ namespace QOps {
 	};
 }
 
+//TODO: add template for output argument (change algebra of functions etc.)
+//TODO: add template instantiation (or child) for generic_operators with no templates (other than output argument)
 #include "generic_operator_algebra.hpp"
 #include "generic_operator_matrix.hpp"
