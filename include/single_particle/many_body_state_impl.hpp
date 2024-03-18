@@ -13,7 +13,7 @@ namespace QHS{
             void ManyBodyState<_ty>::initialize() 
             {
                 CONSTRUCTOR_CALL;
-                this->check_spin = op::__builtins::get_digit(this->volume);
+                this->check_spin = QOps::__builtins::get_digit(this->volume);
             }
             
             /// @brief Initialize the ManyBodyState class to convert from gaussian to many-body states

@@ -12,7 +12,7 @@ namespace QHS{
             {
                 const arma::Mat<_ty>& _orbitals;
                 U1_hilbert_space<U1::charge, true> _hilbert_space;
-                op::_ifun check_spin;
+                QOps::_ifun check_spin;
 
                 int volume;
                 int num_particles;

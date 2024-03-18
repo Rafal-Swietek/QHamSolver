@@ -261,6 +261,7 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
 	size_t dim = _hilbert_space.get_hilbert_space_size();
 
 	disorder<double> random_generator(this->seed);
+	disorder<int> random_integers(this->seed);
 	CUE random_matrix(this->seed);
 	//GUE
 
@@ -358,8 +359,8 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
 					arma::cx_mat U = random_matrix.generate_matrix(gamma_a);
 					arma::cx_mat J_m(VA, VA, arma::fill::zeros);
 					
-					arma::Col<int> indices = random_generator.create_random_vec<int>(gamma_a, 0, num_states - 1);
-					int id = random_generator.random_uni<int>(0, gamma_a-1);
+					arma::Col<int> indices = random_integers.uniform(gamma_a, 0, num_states - 1);
+					int id = random_integers.uniform_dist<int>(0, gamma_a-1);
 					cpx lambda = 0.0;
 					
 					arma::cx_vec coeff = U.col(id);
@@ -420,11 +421,11 @@ void user_interface_quadratic<Hamiltonian>::diagonal_matrix_elements()
     clk::time_point start = std::chrono::system_clock::now();
 	
 	#if DIM == 1
-		auto lattice = lattice::lattice1D(this->L);
+		auto lattice = lattice::lattice1D(this->L, this->boundary_conditions);
 	#elif DIM == 2
-		auto lattice = lattice::lattice2D(this->L);
+		auto lattice = lattice::lattice2D(this->L, this->boundary_conditions);
 	#else
-		auto lattice = lattice::lattice3D(this->L);
+		auto lattice = lattice::lattice3D(this->L, this->boundary_conditions);
 	#endif
 	
 	start = std::chrono::system_clock::now();
@@ -492,12 +493,13 @@ void user_interface_quadratic<Hamiltonian>::diagonal_matrix_elements()
 			else if(this->op == 2) 	mb_states = QHS::single_particle::mb_config_all(this->V, N);
 			else					mb_states = QHS::single_particle::mb_config_free_fermion(this->V, N);
 
-			for(int k = 0; k < this->V; k++){
-				single_particle_energy(k) = 2.0 * std::cos(two_pi * double(k) / double(this->V));
-				for(int ell = 0; ell < this->V; ell++)
-					orbitals(ell, k) = std::cos(two_pi * double(k) / double(this->V) * double(ell)) / std::sqrt(this->V);
-					// orbitals(ell, k) = std::exp(-1.0i * two_pi * double(k) / double(this->V) * double(ell)) / std::sqrt(this->V);
-			}
+			orbitals = this->ptr_to_model->get_eigenvectors();
+			// for(int k = 0; k < this->V; k++){
+			// 	single_particle_energy(k) = 2.0 * std::cos(two_pi * double(k) / double(this->V));
+			// 	for(int ell = 0; ell < this->V; ell++)
+			// 		orbitals(ell, k) = std::cos(two_pi * double(k) / double(this->V) * double(ell)) / std::sqrt(this->V);
+			// 		// orbitals(ell, k) = std::exp(-1.0i * two_pi * double(k) / double(this->V) * double(ell)) / std::sqrt(this->V);
+			// }
 		#else
 			orbitals = this->ptr_to_model->get_eigenvectors();
 			if(this->op == 2) 	mb_states = QHS::single_particle::mb_config_all(this->V, N);
@@ -539,45 +541,47 @@ void user_interface_quadratic<Hamiltonian>::diagonal_matrix_elements()
 			//<! ----
 			for(u64 ell = 0; ell < this->V; ell++)
 			{
-				u64 nei 		= neighbours(ell);
-				u64 next_nei 	= next_neighbours(ell);
-				element_type Al = 0., Al_1 = 0., Al_2 = 0., 
-							 Bl_1 = 0., Bl_2 = 0.;
-							//  Cl_1 = 0., Cl_2 = 0.;
-				for(u64 q : set_q){
-					Al +=   my_conjungate( orbitals(ell,      q) ) * orbitals(ell, 		q);
-					Al_1 += my_conjungate( orbitals(nei,      q) ) * orbitals(nei, 		q);
-					Al_2 += my_conjungate( orbitals(next_nei, q) ) * orbitals(next_nei, q);
+				if(neighbours(ell) >= 0 && next_neighbours(ell) >= 0){
+					u64 nei 		= neighbours(ell);
+					u64 next_nei 	= next_neighbours(ell);
+					element_type Al = 0., Al_1 = 0., Al_2 = 0., 
+								Bl_1 = 0., Bl_2 = 0.;
+								//  Cl_1 = 0., Cl_2 = 0.;
+					for(u64 q : set_q){
+						Al +=   my_conjungate( orbitals(ell,      q) ) * orbitals(ell, 		q);
+						Al_1 += my_conjungate( orbitals(nei,      q) ) * orbitals(nei, 		q);
+						Al_2 += my_conjungate( orbitals(next_nei, q) ) * orbitals(next_nei, q);
 
-					Bl_1 += my_conjungate( orbitals(ell, q) ) * orbitals(nei, 	   q);
-					Bl_2 += my_conjungate( orbitals(ell, q) ) * orbitals(next_nei, q);
+						Bl_1 += my_conjungate( orbitals(ell, q) ) * orbitals(nei, 	   q);
+						Bl_2 += my_conjungate( orbitals(ell, q) ) * orbitals(next_nei, q);
 
-					// Cl_1 += my_conjungate( orbitals(ell, q) * orbitals(nei, 	 q) ) * orbitals(ell, q) * orbitals(nei, 	  q);
-					// Cl_2 += my_conjungate( orbitals(ell, q) * orbitals(next_nei, q) ) * orbitals(ell, q) * orbitals(next_nei, q);
-					
-					for(u64 ell2 = 0; ell2 < ell; ell2++)
-						m0(idx) += my_conjungate( orbitals(ell, q) ) * orbitals(ell2, q) + my_conjungate( orbitals(ell2, q) ) * orbitals(ell, q);
-				}
-				T_nn(idx)  += Bl_1 + my_conjungate(Bl_1);
-				T_nnn(idx) += Bl_2 + my_conjungate(Bl_2);
-				U_nn(idx)  += Al * Al_1 - Bl_1 * my_conjungate(Bl_1);// + Cl_1;
-				U_nnn(idx) += Al * Al_2 - Bl_2 * my_conjungate(Bl_2);// + Cl_2;
+						// Cl_1 += my_conjungate( orbitals(ell, q) * orbitals(nei, 	 q) ) * orbitals(ell, q) * orbitals(nei, 	  q);
+						// Cl_2 += my_conjungate( orbitals(ell, q) * orbitals(next_nei, q) ) * orbitals(ell, q) * orbitals(next_nei, q);
+						
+						for(u64 ell2 = 0; ell2 < ell; ell2++)
+							m0(idx) += my_conjungate( orbitals(ell, q) ) * orbitals(ell2, q) + my_conjungate( orbitals(ell2, q) ) * orbitals(ell, q);
+					}
+					T_nn(idx)  += Bl_1 + my_conjungate(Bl_1);
+					T_nnn(idx) += Bl_2 + my_conjungate(Bl_2);
+					U_nn(idx)  += Al * Al_1 - Bl_1 * my_conjungate(Bl_1);// + Cl_1;
+					U_nnn(idx) += Al * Al_2 - Bl_2 * my_conjungate(Bl_2);// + Cl_2;
 
-				if(ell == 0){
-					T_nn_loc(idx)  += Bl_1 + my_conjungate(Bl_1);
-					T_nnn_loc(idx) += Bl_2 + my_conjungate(Bl_2);
-					U_nn_loc(idx)  += Al * Al_1 - Bl_1 * my_conjungate(Bl_1);// + Cl_1;
-					U_nnn_loc(idx) += Al * Al_2 - Bl_2 * my_conjungate(Bl_2);// + Cl_2;
+					if(ell == this->V / 2 ){
+						T_nn_loc(idx)  += Bl_1 + my_conjungate(Bl_1);
+						T_nnn_loc(idx) += Bl_2 + my_conjungate(Bl_2);
+						U_nn_loc(idx)  += Al * Al_1 - Bl_1 * my_conjungate(Bl_1);// + Cl_1;
+						U_nnn_loc(idx) += Al * Al_2 - Bl_2 * my_conjungate(Bl_2);// + Cl_2;
+					}
 				}
 			}
 			//<! ----
 				
 		}
 		m0 /= double(this->V);
-		T_nn /= std::sqrt(this->V);
-		T_nnn /= std::sqrt(this->V);
-		U_nn /= std::sqrt(this->V);
-		U_nnn /= std::sqrt(this->V);
+		T_nn  /= std::sqrt(this->V - this->boundary_conditions);
+		T_nnn /= std::sqrt(this->V - this->boundary_conditions);
+		U_nn  /= std::sqrt(this->V - this->boundary_conditions);
+		U_nnn /= std::sqrt(this->V - this->boundary_conditions);
 
 
 		std::string dir_realis = dir + "realisation=" + std::to_string(this->jobid + realis) + kPSep;

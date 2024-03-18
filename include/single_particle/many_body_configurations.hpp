@@ -50,7 +50,7 @@ namespace QHS{
 
                 boost::dynamic_bitset<> state(volume);
                 for(long j = 0; j < volume; j++){
-                    float p = random_gen.random_uni<double>(0.0, 1.0);
+                    float p = random_gen.uniform_dist<double>(0.0, 1.0);
 
                     if(num_up == 0 && num_down == 0)    continue;
                     if(num_down == 0 || (p <= double(num_up) / double(num_up + num_down) && num_up > 0)){
