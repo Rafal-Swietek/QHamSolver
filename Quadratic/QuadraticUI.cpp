@@ -133,12 +133,16 @@ void ui::parse_cmd_options(int argc, std::vector<std::string> argv)
 		folder += "Anderson" + kPSep;
 	#elif defined(SYK)
 		folder += "SYK2" + kPSep;
+	#elif defined(PLRB)
+		folder += "PLRB" + kPSep;
 	#elif defined(AUBRY_ANDRE)
 		folder += "AubryAndre" + kPSep;
 	#else
 		folder += "FreeFermions" + kPSep;
 	#endif
-	folder += "dim=" + std::to_string(DIM) + kPSep;
+	#if !defined(SYK2) && !defined(PLRB)
+		folder += "dim=" + std::to_string(DIM) + kPSep;
+	#endif
     switch(this->boundary_conditions){
         case 0: folder += "PBC" + kPSep; break;
         case 1: folder += "OBC" + kPSep; break;
@@ -214,11 +218,11 @@ void ui::printAllOptions() const{
 		  << "ws = " << this->ws << std::endl
 		  << "wn = " << this->wn << std::endl;
 	#endif
-	#if defined(AUBRY_ANDRE)
+	#if defined(AUBRY_ANDRE) || defined(PLRB)
 		std::cout
-		  << "g  = " << this->w << std::endl
-		  << "gs = " << this->ws << std::endl
-		  << "gn = " << this->wn << std::endl;
+		  << "g  = " << this->g << std::endl
+		  << "gs = " << this->gs << std::endl
+		  << "gn = " << this->gn << std::endl;
 	#endif
 }   
 
@@ -232,7 +236,7 @@ std::string ui::set_info(std::vector<std::string> skip, std::string sep) const
 		#if defined(ANDERSON) || defined(AUBRY_ANDRE)
 			name += ",w=" + to_string_prec(this->w);
 		#endif
-		#if defined(AUBRY_ANDRE)
+		#if defined(AUBRY_ANDRE) || defined(PLRB)
         	name += ",g=" + to_string_prec(this->g);
 		#endif
 

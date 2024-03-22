@@ -12,7 +12,7 @@
 
 
 #ifndef MODEL
-    #define MODEL 3
+    #define MODEL 4
 #endif
 
 //------------------- Translate Macro
@@ -32,6 +32,10 @@
 #elif MODEL == 3
     #define FREE_FERMIONS
     #define print_model(x) "Chosen Free fermion model in " #x "-dimensions!"
+    #define pprint_model(x) print_model(x)
+#elif MODEL == 4
+    #define PLRB
+    #define print_model(x) "Chosen power-law random banded (PLRB) model with GOE matrix elements in " #x "-dimensions!"
     #define pprint_model(x) print_model(x)
 #else
     #define print_model(x) "DEFAULT: Chosen SYK2 model with GOE matrix elements in " #x "-dimensions!"

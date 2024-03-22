@@ -61,9 +61,15 @@ void Quadratic::create_hamiltonian()
         }
     #elif defined(SYK)
         this->H = this->random_matrix.generate_matrix(this->dim);
+    
+    #elif defined(PLRB)
+        this->H = this->random_matrix.generate_matrix(this->dim);
+        for(long int i = 0; i < this->dim; i++)
+            for(long int j = 0; j < this->dim; j++)
+                this->H(i, j) = this->H(i, j) / std::pow(1 + std::abs(i - j) / this->_J, this->_g / 2.);
 
     #elif defined(AUBRY_ANDRE)
-        double phase = 0;//this->disorder_generator.random_uni<double>(0, two_pi);
+        double phase = this->disorder_generator.uniform_dist<double>(0, two_pi);
         for(long int j = 0; j < this->dim; j++){
             this->H(j, j) = this->_w * std::cos(two_pi * j * this->_g + phase);
 
@@ -88,6 +94,8 @@ void Quadratic::create_hamiltonian()
     #else
         #pragma message("No model chosen!!! Leaving empty matrix")
     #endif
+
+    // std::cout << arma::mat(this->H) << std::endl;
 }
 
 
