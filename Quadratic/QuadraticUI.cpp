@@ -120,7 +120,7 @@ void ui::parse_cmd_options(int argc, std::vector<std::string> argv)
 	#if defined(ANDERSON) || defined(AUBRY_ANDRE)
 		set_param(w);
 	#endif
-	#if defined(AUBRY_ANDRE)
+	#if defined(AUBRY_ANDRE) || defined(PLRB)
 		set_param(g);
 	#endif
 
