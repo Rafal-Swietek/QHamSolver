@@ -19,6 +19,7 @@
 #include <unordered_map>
 #include <iterator>
 #include <numeric>
+
 #include <omp.h>
 
 #include <cassert> // assert terminates program

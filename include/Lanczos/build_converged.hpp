@@ -81,6 +81,7 @@ namespace lanczos
 					static_check((converge_type == converge::energies) || (converge_type == converge::states), "Not implemented other convergence criteria");
 				}
 				// printSeparated(std::cout, "\t", 15, false, this->N, j, conv, beta, conv2);
+				_extra_debug( std::cout << "Lanczos: "; printSeparated(std::cout, "\t", 15, true, this->N, j, conv); )
 				if(conv < this->tolerance){
 					// printSeparated(std::cout, "\t", 15, true, this->N, j, conv);
 					this->lanczos_steps = j;
@@ -149,6 +150,7 @@ namespace lanczos
 					static_check((converge_type == converge::energies) || (converge_type == converge::states), "Not implemented other convergence criteria");
 				}
 				// printSeparated(std::cout, "\t", 15, false, this->N, j, conv, beta, conv2);
+				_extra_debug( std::cout << "Lanczos: "; printSeparated(std::cout, "\t", 15, true, this->N, j, conv); )
 				if(conv < this->tolerance){
 					// printSeparated(std::cout, "\t", 15, true, this->N, j, conv);
 					this->lanczos_steps = j;

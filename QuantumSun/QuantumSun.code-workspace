@@ -100,7 +100,15 @@
 			"memory_resource": "cpp",
 			"utility": "cpp",
 			"format": "cpp",
-			"cinttypes": "cpp"
+			"cinttypes": "cpp",
+			"armadillo": "cpp",
+			"cfenv": "cpp",
+			"codecvt": "cpp",
+			"set": "cpp",
+			"semaphore": "cpp",
+			"shared_mutex": "cpp",
+			"stop_token": "cpp",
+			"typeindex": "cpp"
 		}
 	}
 }

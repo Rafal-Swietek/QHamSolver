@@ -468,10 +468,8 @@ void user_interface_dis<Hamiltonian>::eigenstate_entanglement()
 	createDirs(dir);
 	
 	size_t dim = this->ptr_to_model->get_hilbert_size();
-	// size_t size = dim;
-	// if(dim > 1e5)
-	// const size_t size = dim > 1e5? this->l_steps : dim;
-	const size_t size = this->l_steps;
+	const size_t size = dim > 1e5? this->l_steps : dim;
+	// const size_t size = this->l_steps;
 
 	std::string info = this->set_info();
 	std::string filename = info;// + "_subsize=" + std::to_string(LA);
@@ -513,13 +511,13 @@ void user_interface_dis<Hamiltonian>::eigenstate_entanglement()
 		if(realis > 0)
 			this->ptr_to_model->generate_hamiltonian();
 		start = std::chrono::system_clock::now();
-		// if(dim > 1e5){
-		// 	this->ptr_to_model->diag_sparse(this->l_steps, this->l_bundle, this->tol, this->seed);
-		// }
-		// else{
-        // 	this->ptr_to_model->diagonalization();
-		// }
-		this->ptr_to_model->diag_sparse(this->l_steps, this->l_bundle, this->tol, this->seed);
+		if(dim > 1e5){
+			this->ptr_to_model->diag_sparse(this->l_steps, this->l_bundle, this->tol, this->seed);
+		}
+		else{
+        	this->ptr_to_model->diagonalization();
+		}
+		// this->ptr_to_model->diag_sparse(this->l_steps, this->l_bundle, this->tol, this->seed);
 		auto H = this->ptr_to_model->get_hamiltonian();
 
 		std::cout << " - - - - - - finished diagonalization in : " << tim_s(start) << " s for realis = " << realis << " - - - - - - " << std::endl; // simulation end

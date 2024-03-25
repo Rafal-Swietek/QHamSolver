@@ -47,6 +47,9 @@ namespace QSunUI{
         // ----------------------------------- MODEL DEPENDENT FUNCTIONS
         virtual std::string set_info(std::vector<std::string> skip = {}, 
 										std::string sep = "_") const override;
+
+        // ----------------------------------- OVERRIDEN METHODS
+        virtual void matrix_elements() override;
     };
 }
 
