@@ -432,13 +432,18 @@ void user_interface_quadratic<Hamiltonian>::diagonal_matrix_elements()
 
 	arma::ivec neighbours(this->V, arma::fill::value(-1));
 	arma::ivec next_neighbours(this->V, arma::fill::value(-1));
+	arma::ivec next_next_neighbours(this->V, arma::fill::value(-1));
 	for(int ell = 0; ell < this->V; ell++){
 		auto nei = lattice.get_nearest_neighbour(ell);
 		neighbours(ell) = nei;
 
 		nei = lattice.get_next_nearest_neighbour(ell);
 		next_neighbours(ell) = nei;
+
+		nei = ell + 3 >= this->V? -1 : ell + 3;
+		next_next_neighbours(ell) = nei;
 	}
+	// std::cout << neighbours << std::endl;
 	std::cout << " - - - - - - set lattice and neighbours in : " << tim_s(start) << " s - - - - - - " << std::endl;
 
 	std::string dir = this->saving_dir + "DiagonalMatrixElements" + kPSep + "ManyBody" + kPSep;
@@ -521,8 +526,10 @@ void user_interface_quadratic<Hamiltonian>::diagonal_matrix_elements()
 		//<! 2-BODY OBSERVABLES
 		arma::Col<element_type> U_nn(mb_states.size(), arma::fill::zeros);
 		arma::Col<element_type> U_nnn(mb_states.size(), arma::fill::zeros);
+		arma::Col<element_type> pair_hop(mb_states.size(), arma::fill::zeros);
 		arma::Col<element_type> U_nn_loc(mb_states.size(), arma::fill::zeros);
 		arma::Col<element_type> U_nnn_loc(mb_states.size(), arma::fill::zeros);
+		arma::Col<element_type> pair_hop_loc(mb_states.size(), arma::fill::zeros);
 
 		arma::Mat<unsigned int> states(mb_states.size(), this->V, arma::fill::zeros);
 	#pragma omp parallel for
@@ -542,10 +549,12 @@ void user_interface_quadratic<Hamiltonian>::diagonal_matrix_elements()
 			for(u64 ell = 0; ell < this->V; ell++)
 			{
 				if(neighbours(ell) >= 0 && next_neighbours(ell) >= 0){
-					u64 nei 		= neighbours(ell);
-					u64 next_nei 	= next_neighbours(ell);
+					long long nei 			= neighbours(ell);
+					long long next_nei 		= next_neighbours(ell);
+					long long next_next_nei = next_next_neighbours(ell);
 					element_type Al = 0., Al_1 = 0., Al_2 = 0., 
-								Bl_1 = 0., Bl_2 = 0.;
+								Bl_1 = 0., Bl_2 = 0., Bl_3 = 0.,
+								Bl_21 = 0., Bl_23 = 0.;
 								//  Cl_1 = 0., Cl_2 = 0.;
 					for(u64 q : set_q){
 						Al +=   my_conjungate( orbitals(ell,      q) ) * orbitals(ell, 		q);
@@ -557,7 +566,11 @@ void user_interface_quadratic<Hamiltonian>::diagonal_matrix_elements()
 
 						// Cl_1 += my_conjungate( orbitals(ell, q) * orbitals(nei, 	 q) ) * orbitals(ell, q) * orbitals(nei, 	  q);
 						// Cl_2 += my_conjungate( orbitals(ell, q) * orbitals(next_nei, q) ) * orbitals(ell, q) * orbitals(next_nei, q);
-						
+						Bl_21 += my_conjungate( orbitals(next_nei, q) ) * orbitals(ell, q);
+						if( next_next_nei > 0){
+							Bl_3 += my_conjungate( orbitals(ell, q) ) * orbitals(next_next_nei, q);
+							Bl_23 += my_conjungate( orbitals(next_nei, q) ) * orbitals(next_next_nei, q);
+						}
 						for(u64 ell2 = 0; ell2 < ell; ell2++)
 							m0(idx) += my_conjungate( orbitals(ell, q) ) * orbitals(ell2, q) + my_conjungate( orbitals(ell2, q) ) * orbitals(ell, q);
 					}
@@ -565,8 +578,12 @@ void user_interface_quadratic<Hamiltonian>::diagonal_matrix_elements()
 					T_nnn(idx) += Bl_2 + my_conjungate(Bl_2);
 					U_nn(idx)  += Al * Al_1 - Bl_1 * my_conjungate(Bl_1);// + Cl_1;
 					U_nnn(idx) += Al * Al_2 - Bl_2 * my_conjungate(Bl_2);// + Cl_2;
-
+					
+					element_type _pair_hop_tmp = Bl_1 * Bl_23 - Bl_3 * Bl_21;
+					_pair_hop_tmp += my_conjungate(_pair_hop_tmp);
+					pair_hop(idx) += _pair_hop_tmp;
 					if(ell == this->V / 2 ){
+						pair_hop_loc(idx) += _pair_hop_tmp;
 						T_nn_loc(idx)  += Bl_1 + my_conjungate(Bl_1);
 						T_nnn_loc(idx) += Bl_2 + my_conjungate(Bl_2);
 						U_nn_loc(idx)  += Al * Al_1 - Bl_1 * my_conjungate(Bl_1);// + Cl_1;
@@ -579,9 +596,10 @@ void user_interface_quadratic<Hamiltonian>::diagonal_matrix_elements()
 		}
 		m0 /= double(this->V);
 		T_nn  /= std::sqrt(this->V - this->boundary_conditions);
-		T_nnn /= std::sqrt(this->V - this->boundary_conditions);
+		T_nnn /= std::sqrt(this->V - 2*this->boundary_conditions);
 		U_nn  /= std::sqrt(this->V - this->boundary_conditions);
-		U_nnn /= std::sqrt(this->V - this->boundary_conditions);
+		U_nnn /= std::sqrt(this->V - 2*this->boundary_conditions);
+		pair_hop /= std::sqrt(this->V - 3*this->boundary_conditions);
 
 
 		std::string dir_realis = dir + "realisation=" + std::to_string(this->jobid + realis) + kPSep;
@@ -600,6 +618,9 @@ void user_interface_quadratic<Hamiltonian>::diagonal_matrix_elements()
 		U_nnn.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "U_nnn", arma::hdf5_opts::append));
 		U_nn_loc.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "U_nn_loc", arma::hdf5_opts::append));
 		U_nnn_loc.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "U_nnn_loc", arma::hdf5_opts::append));
+
+		pair_hop.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "pair_hop", arma::hdf5_opts::append));
+		pair_hop_loc.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "pair_hop_loc", arma::hdf5_opts::append));
 
 		std::cout << " - - - - - - finished realisation realis = " << realis << " in : " << tim_s(start) << " s - - - - - - " << std::endl; // simuVAtion end
 	}
