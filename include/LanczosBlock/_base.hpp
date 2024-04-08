@@ -133,7 +133,7 @@ namespace lanczos {
 			bool use_reortho = false, 
 			const arma::Mat<_ty>& initial_states = arma::Mat<_ty>()
 		) 
-			: Hamiltonian(H_mult_state), N(dimension),
+			: Hamiltonian(std::move(H_mult_state)), N(dimension),
 			lanczos_steps(M), bundle_size(s), _seed(seed), maxiter(max_iter), tolerance(tol),
 			use_krylov(use_reortho),
 			initial_bundle(initial_states)

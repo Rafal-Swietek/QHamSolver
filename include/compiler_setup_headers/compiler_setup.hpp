@@ -46,10 +46,11 @@ void _current_profiling_info();
 #if defined(EXTRA_DEBUG)
 	#undef NODEBUG
 	
-	#define DESTRUCTOR_CALL std::cout << FUN_SIGNATURE << "->\tdestructor called" << std::endl << std::endl;
-	#define CONSTRUCTOR_CALL std::cout << FUN_SIGNATURE << "->\tconstructor called" << std::endl << std::endl;
-	#define _debug_start(expr)	expr; (void)_profile_memory_(); (void)_profile_cpu_();
-	#define _debug_end(expr)	_current_profiling_info(); std::cout << "--------------->"; expr;
+	#define DESTRUCTOR_CALL //std::cout << FUN_SIGNATURE << "->\tdestructor called" << std::endl << std::endl;
+	#define CONSTRUCTOR_CALL //std::cout << FUN_SIGNATURE << "->\tconstructor called" << std::endl << std::endl;
+	#define _debug_start(expr)	expr; //(void)_profile_memory_(); (void)_profile_cpu_();
+	// #define _debug_end(expr)	_current_profiling_info(); std::cout << "--------------->"; expr;
+	#define _debug_end(expr)	std::cout << "--------------->"; expr;
 
 	//<! extra debug macro to hide if not code for runtime
 	#define _extra_debug_(expr)	expr;

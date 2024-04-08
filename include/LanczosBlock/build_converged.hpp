@@ -5,7 +5,6 @@
  
 namespace lanczos 
 {
-
 	/// @brief Calculate convergence of algorithm
 	/// @tparam _ty type of input Hamiltonian (enforces type on Krylov basis) 
 	/// @tparam converge_type enum type for convergence criterion (energies or states)
@@ -101,11 +100,11 @@ namespace lanczos
 	inline 
 	void BlockLanczos<_ty, converge_type>::_build_krylov_converged()
 	{
-		// try_alloc_matrix(this->krylov_space, this->N, this->bundle_size);
-		// try_alloc_matrix(this->H_lanczos, this->bundle_size, this->bundle_size);
+		try_alloc_matrix(this->krylov_space, this->N, this->bundle_size);
+		try_alloc_matrix(this->H_lanczos, this->bundle_size, this->bundle_size);
 
-		try_alloc_matrix(this->krylov_space, this->N, this->maxiter);
-		try_alloc_matrix(this->H_lanczos, this->maxiter, this->maxiter);
+		// try_alloc_matrix(this->krylov_space, this->N, this->maxiter);
+		// try_alloc_matrix(this->H_lanczos, this->maxiter, this->maxiter);
 		
 		this->krylov_space.cols(0, this->bundle_size-1) = this->initial_bundle;
 		arma::vec E0(this->lanczos_steps, arma::fill::zeros);
@@ -128,7 +127,7 @@ namespace lanczos
 			if(j >= this->lanczos_steps / this->bundle_size && (j - this->lanczos_steps / this->bundle_size) % 1 == 0)
 			{
 				double conv = this->_calculate_convergence(E0, beta);
-				_extra_debug( std::cout << "BlockLanczos: "; printSeparated(std::cout, "\t", 15, true, this->N, j, conv, tim_s(start)); )
+				_extra_debug( std::cout << "BlockLanczos: "; printSeparated(std::cout, "\t", 15, true, this->N, j, conv, "time=", tim_s(start)); )
 				// printSeparated(std::cout, "\t", 15, true, this->N, j, conv, arma::norm(beta));
 				if(conv < this->tolerance){
 					// printSeparated(std::cout, "\t", 15, false, this->N, j, conv, conv2);
@@ -144,8 +143,8 @@ namespace lanczos
 				this->orthogonalize(W, j);
 
 				//<! Resize matrices
-				// try_realloc_matrix(this->H_lanczos,    (j+2) * this->bundle_size, (j+2) * this->bundle_size)
-				// try_realloc_matrix(this->krylov_space, this->N, 				  (j+2) * this->bundle_size)
+				try_realloc_matrix(this->H_lanczos,    (j+2) * this->bundle_size, (j+2) * this->bundle_size)
+				try_realloc_matrix(this->krylov_space, this->N, 				  (j+2) * this->bundle_size)
 				
 				arma::qr_econ(Vk, beta, W);
 				
@@ -154,11 +153,11 @@ namespace lanczos
 				this->H_lanczos.submat(j * this->bundle_size, (j+1) * this->bundle_size, (j+1) * this->bundle_size - 1, (j+2) * this->bundle_size - 1) = beta.t();
 				this->H_lanczos.submat((j+1) * this->bundle_size, j * this->bundle_size, (j+2) * this->bundle_size - 1, (j+1) * this->bundle_size - 1) = beta;
 			}
-			_extra_debug( std::cout << "BlockLanczos iteration: "; printSeparated(std::cout, "\t", 15, true, j, tim_s(start)); )
+			_extra_debug( std::cout << "BlockLanczos iteration: "; printSeparated(std::cout, "\t", 15, true, j, "time=", tim_s(start)); )
 
 		}
-		this->H_lanczos = this->H_lanczos.submat(0, 0, this->lanczos_steps * this->bundle_size - 1, this->lanczos_steps * this->bundle_size - 1);
-		this->krylov_space = this->krylov_space.submat(0, 0, this->N - 1, this->lanczos_steps * this->bundle_size - 1);
+		// this->H_lanczos = this->H_lanczos.submat(0, 0, this->lanczos_steps * this->bundle_size - 1, this->lanczos_steps * this->bundle_size - 1);
+		// this->krylov_space = this->krylov_space.submat(0, 0, this->N - 1, this->lanczos_steps * this->bundle_size - 1);
 	}
 }
 

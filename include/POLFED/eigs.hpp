@@ -12,9 +12,10 @@ inline
     POLFED<_ty, converge_type>::eig()
     {
         //<! START BLOCK-LANCZOS ITERATION
+        const int maxiter = this->num_of_eigval < 200? std::min(1000, (int)this->N) : 4 * this->num_of_eigval;
         _debug_start( clk::time_point start = std::chrono::system_clock::now(); )
         auto lancz_block = lanczos::BlockLanczos<_ty, converge::states>(this->PH_multiply, this->N, 
-                                this->num_of_eigval, this->bundle_size, 3 * this->num_of_eigval, this->tolerance, this->seed, this->use_krylov);
+                                this->num_of_eigval, this->bundle_size, maxiter, this->tolerance, this->seed, this->use_krylov);
         lancz_block.diagonalization();
         this->conv_steps = lancz_block.get_lanczossteps();
         _debug_end( std::cout << "\t\tFinished Block-Lanczos Iteration in \t" <<  lancz_block.get_lanczossteps() << "\tin " << tim_s(start) << " seconds" << std::endl; )
@@ -27,10 +28,10 @@ inline
         //<! GET EIGENVALUES
         _debug_start( start = std::chrono::system_clock::now(); )
         arma::vec E = arma::diagvec(V.t() * this->H * V);
-        // arma::vec E(this->num_of_eigval);
-    // #pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
-        // for(long k = 0; k < this->num_of_eigval; k++)
-        //     E(k) = arma::cdot(V.col(k), this->H * V.col(k));
+    //     arma::vec E(this->num_of_eigval);
+    // // #pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
+    //     for(long k = 0; k < this->num_of_eigval; k++)
+    //         E(k) = arma::cdot(V.col(k), this->H * V.col(k));
         _debug_end( std::cout << "\t\tCalculated eigenenergies from original Hamiltonian with <k|H|k> in " << tim_s(start) << " seconds" << std::endl; )
         
     //     //<! SORT EIGENPAIRS
@@ -54,9 +55,10 @@ inline
     POLFED<_ty, converge_type>::eig(arma::vec& E, arma::Mat<_ty>& V)
     {
         //<! START BLOCK-LANCZOS ITERATION
+        const int maxiter = this->num_of_eigval < 200? std::min(1000, (int)this->N) : 4 * this->num_of_eigval;
         _debug_start( clk::time_point start = std::chrono::system_clock::now(); )
         auto lancz_block = lanczos::BlockLanczos<_ty, converge::states>(this->PH_multiply, this->N, 
-                                this->num_of_eigval, this->bundle_size, 3 * this->num_of_eigval, this->tolerance, this->seed, this->use_krylov);
+                                this->num_of_eigval, this->bundle_size, maxiter, this->tolerance, this->seed, this->use_krylov);
         lancz_block.diagonalization();
         this->conv_steps = lancz_block.get_lanczossteps();
         _debug_end( std::cout << "\t\tFinished Block-Lanczos Iteration in \t" <<  lancz_block.get_lanczossteps() << "\tin " << tim_s(start) << " seconds" << std::endl; )
@@ -86,9 +88,10 @@ inline
     POLFED<_ty, converge_type>::eig(arma::Mat<_ty>& V)
     {
         //<! START BLOCK-LANCZOS ITERATION
+        const int maxiter = this->num_of_eigval < 200? std::min(1000, (int)this->N) : 4 * this->num_of_eigval;
         _debug_start( clk::time_point start = std::chrono::system_clock::now(); )
         auto lancz_block = lanczos::BlockLanczos<_ty, converge::states>(this->PH_multiply, this->N, 
-                                this->num_of_eigval, this->bundle_size, 3 * this->num_of_eigval, this->tolerance, this->seed, this->use_krylov);
+                                this->num_of_eigval, this->bundle_size, maxiter, this->tolerance, this->seed, this->use_krylov);
         lancz_block.diagonalization();
         this->conv_steps = lancz_block.get_lanczossteps();
         _debug_end( std::cout << "\t\tFinished Block-Lanczos Iteration in \t" <<  lancz_block.get_lanczossteps() << "\tin " << tim_s(start) << " seconds" << std::endl; )
@@ -109,9 +112,10 @@ inline
     POLFED<_ty, converge_type>::eig(arma::vec& E)
     {
         //<! START BLOCK-LANCZOS ITERATION
+        const int maxiter = this->num_of_eigval < 200? std::min(1000, (int)this->N) : 4 * this->num_of_eigval;
         _debug_start( clk::time_point start = std::chrono::system_clock::now(); )
         auto lancz_block = lanczos::BlockLanczos<_ty, converge::states>(this->PH_multiply, this->N, 
-                                this->num_of_eigval, this->bundle_size, 3 * this->num_of_eigval, this->tolerance, this->seed, this->use_krylov);
+                                this->num_of_eigval, this->bundle_size, maxiter, this->tolerance, this->seed, this->use_krylov);
         lancz_block.diagonalization();
         this->conv_steps = lancz_block.get_lanczossteps();
         _debug_end( std::cout << "\t\tFinished Block-Lanczos Iteration in \t" <<  lancz_block.get_lanczossteps() << "\tin " << tim_s(start) << " seconds" << std::endl; )
