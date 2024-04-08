@@ -10,13 +10,13 @@ namespace polfed{
     std::pair<double, double>
     POLFED<_ty, converge_type>::get_energy_bounds()
     {
-        auto lancz = lanczos::Lanczos<_ty, converge::energies>(this->H, 1, 1000, 1e-15, this->seed, this->use_krylov);        
+        auto lancz = lanczos::Lanczos<_ty, converge::energies>(this->H, 1, 1000, 1e-14, this->seed, this->use_krylov);        
         lancz.diagonalization();
         auto E = lancz.get_eigenvalues();
         double Emin = E(0);
         double Emax = E(E.size() - 1);
 
-        return std::make_pair(Emin, Emax);
+        return std::make_pair(Emin - 1e-14, Emax + 1e-14);
 	}
 
     /// @brief Find exterior eigenenergies for class Hamiltonina to rescale
@@ -28,13 +28,13 @@ namespace polfed{
     std::pair<double, double>
     POLFED<_ty, converge_type>::get_energy_bounds(int& steps)
     {
-        auto lancz = lanczos::Lanczos<_ty, converge::energies>(this->H, 1, 1000, 1e-15, this->seed, this->use_krylov);        
+        auto lancz = lanczos::Lanczos<_ty, converge::energies>(this->H, 1, 1000, 1e-14, this->seed, this->use_krylov);        
         lancz.diagonalization();
         auto E = lancz.get_eigenvalues();
         double Emin = E(0);
         double Emax = E(E.size() - 1);
         steps = lancz.get_lanczossteps();
-        return std::make_pair(Emin, Emax);
+        return std::make_pair(Emin - 1e-14, Emax + 1e-14);
 	}
 
     /// @brief Find order of polynomial
@@ -46,9 +46,11 @@ namespace polfed{
     {
         //<! set first and second moment
         // change to trace(H) not sigma if made general
-        _ty var     = arma::trace(this->P_H * this->P_H) / double(this->N) - this->sigma * this->sigma;
+        // _ty var     = arma::trace(this->H * this->H) / double(this->N) - this->sigma * this->sigma;
         // _ty DOS     = this->N * (Emax - Emin) / 2.0 / ( std::sqrt(2.0 * two_pi * var) );
-        _ty DOS     = this->N / ( std::sqrt(2.0 * two_pi * var) );
+        _ty mu      = arma::trace(this->P_H) / double(this->N);
+        _ty var     = arma::trace(this->P_H * this->P_H) / double(this->N) - mu * mu;
+        _ty DOS     = double(this->N) / ( std::sqrt(2.0 * two_pi * var) );
         _ty delta   = this->num_of_eigval / (2.0 * DOS);
         
         this->K = 15;
@@ -106,24 +108,31 @@ namespace polfed{
         auto kernel = [this, D](const arma::Mat<_ty>& bundle) -> arma::Mat<_ty>
             { return -1.0 * clenshaw::chebyshev(this->K, this->coeff, this->P_H, bundle) / D; };
         this->PH_multiply = hamiltonian_func_ptr<arma::Mat<_ty>>(kernel);
-        // double D = clenshaw::chebyshev(K, this->coeff, sigma);
-        // this->P_H = clenshaw::chebyshev(K, this->coeff, this->P_H) / D;
-        _debug_end( std::cout << "\t\tSet tranform (on-the-fly) of Hamiltonian to polynomial series:\tin " << tim_s(start) << " seconds" << std::endl; )
-        
-        // auto Efull = arma::eig_sym(arma::Mat<_ty>(this->H));
-        // auto Escaled = arma::eig_sym(arma::Mat<_ty>(this->P_H));
-        // auto [E, V] = this->eig();
 
         // std::string name = "./_D=" + std::to_string(this->N);
+        // auto Efull = arma::eig_sym(arma::Mat<_ty>(this->H));
         // Efull.save(arma::hdf5_name(name + ".hdf5", "full"));
+
+        // auto Escaled = arma::eig_sym(arma::Mat<_ty>(this->P_H));
         // Escaled.save(arma::hdf5_name(name + ".hdf5", "scaled", arma::hdf5_opts::append));
+
+        // auto HhH = clenshaw::chebyshev(this->K, this->coeff, this->P_H) / D;
+        // auto Epolf = arma::eig_sym(arma::Mat<_ty>(HhH));
+        // Epolf.save(arma::hdf5_name(name + ".hdf5", "transformed", arma::hdf5_opts::append));
+        
+        // auto [E, V] = this->eig();
+
         // E.save(arma::hdf5_name(name + ".hdf5", "polfed", arma::hdf5_opts::append));
         // this->coeff.save(arma::hdf5_name(name + ".hdf5", "coeff", arma::hdf5_opts::append));
-        // arma::vec params(3);
+        // arma::vec params(5);
         // params(0) = this->num_of_eigval;
         // params(1) = this->K;
         // params(2) = this->sigma;
+        // params(3) = Emin;
+        // params(4) = Emax;
         // params.save(arma::hdf5_name(name + ".hdf5", "params", arma::hdf5_opts::append));
+
+        _debug_end( std::cout << "\t\tSet tranform (on-the-fly) of Hamiltonian to polynomial series:\tin " << tim_s(start) << " seconds" << std::endl; )
         
 	}
 }
