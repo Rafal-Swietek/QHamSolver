@@ -547,11 +547,11 @@ void ui::parse_cmd_options(int argc, std::vector<std::string> argv)
 
     //<! FOLDER
     std::string folder = "." + kPSep + "results" + kPSep;
-    #ifdef USE_SYMMETRIES
-        folder += "symmetries" + kPSep;
-    #else
-        folder += "disorder" + kPSep;
-    #endif
+    // #ifdef USE_SYMMETRIES
+    //     folder += "symmetries" + kPSep;
+    // #else
+    //     folder += "disorder" + kPSep;
+    // #endif
     switch(this->boundary_conditions){
         case 0: folder += "PBC" + kPSep; break;
         case 1: folder += "OBC" + kPSep; break;

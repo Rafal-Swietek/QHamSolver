@@ -29,6 +29,7 @@ namespace spectrals{
 		double tol = 2.0;			//<! width of antidiagonal to get matrix elements
 		double E_av = 0.0;			//<! mean energy (E_n + E_m)/2 ~ E_av 
 	public:
+		int num_of_omegas = 0;
 		preset_omega() = default;
 		explicit preset_omega(
 			const arma::vec& _eigenvalues,	//<! input eigenvalues
@@ -62,6 +63,7 @@ namespace spectrals{
 			apply_permutation(this->energy_diferences, permut);
 			apply_permutation(this->idx_beta, permut);
 			apply_permutation(this->idx_alfa, permut);
+			this->num_of_omegas = this->energy_diferences.size();
 		}
 
 
@@ -99,6 +101,18 @@ namespace spectrals{
 		auto get_eigenvalues() const
 			{ return this->eigenvalues; }
 
+		template <typename _ty>
+		inline
+		std::pair<arma::vec, arma::vec> get_matrix_elements(const arma::Mat<_ty>& mat_elem) const 
+		{
+			arma::vec omegas = this->energy_diferences;
+			arma::vec mat_elem_to_save = arma::vec(this->energy_diferences.size(), arma::fill::zeros);
+			for(int i = 0; i < this->energy_diferences.size(); i++){
+				double element = abs(mat_elem(this->idx_alfa[i], this->idx_beta[i]));
+				mat_elem_to_save(i) = element * element;
+			}
+			return std::make_pair(omegas, mat_elem_to_save);
+		}
 
 		//--------------------------- SAVERS
 		template <typename _ty>
@@ -389,7 +403,7 @@ namespace spectrals{
 		for (long int k = 0; k < N; k++)
 		{
 			cpx temp = mat_elem(k, k);
-			LTA += abs(temp * temp);
+			LTA += std::abs(temp * temp);
 		}
 		LTA /= double(N);
 		arma::vec timeEv(times.size(), arma::fill::zeros);
@@ -400,11 +414,11 @@ namespace spectrals{
 			double overlap = 0.;
 			for (long int n = 0; n < N; n++)
 			{
-				overlap += abs(mat_elem(n, n) * conj(mat_elem(n, n)));
+				overlap += std::abs(mat_elem(n, n) * std::conj(mat_elem(n, n)));
 				for (long int m = n + 1; m < N; m++)
 				{
 					const double w_nm = eigenvalues(n) - eigenvalues(m);
-					overlap += 2. * abs(mat_elem(n, m) * conj(mat_elem(n, m))) * std::cos(w_nm * t);
+					overlap += 2. * std::abs(mat_elem(n, m) * std::conj(mat_elem(n, m))) * std::cos(w_nm * t);
 				}
 			}
 			overlap *= 1. / double(N);

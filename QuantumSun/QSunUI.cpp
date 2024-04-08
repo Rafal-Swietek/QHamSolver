@@ -12,11 +12,35 @@ void ui::make_sim(){
 	clk::time_point start = std::chrono::system_clock::now();
     
 	this->ptr_to_model = this->create_new_model_pointer();
-	auto Hamil = this->ptr_to_model->get_hamiltonian();
-	auto polfed = polfed::POLFED<ui::element_type>(Hamil, this->l_steps, this->l_bundle, -1, this->tol, 0.2, this->seed, true);
-	auto [E, V] = polfed.eig();
+	// auto Hamil = this->ptr_to_model->get_hamiltonian();
+	// arma::sp_mat H = Hamil;
+	// auto polfed = polfed::POLFED<ui::element_type>(H, this->l_steps, this->l_bundle, -1, this->tol, 0.2, this->seed, true);
+	// arma::vec E;
+	// arma::mat V;
+	// std::tie(E, V) = polfed.eig();
+	// E = arma::sort(E);
+	
+	// std::cout << "-------> POLFED finished in " << tim_s(start) << " s" << std::endl;
+	// arma::vec E_ED;
+	// arma::eig_sym(E_ED, V, arma::mat(Hamil));
+	// double Emin = arma::min(E);
+	// auto i = std::min_element(std::begin(E_ED), std::end(E_ED), [=](double x, double y) {
+	// 	return std::abs(x - Emin) < std::abs(y - Emin);
+	// 	});
+	// u64 idx = i - std::begin(E_ED);
 
-	return;
+	// start = std::chrono::system_clock::now();
+	// arma::eigs_opts _opts;
+	// _opts.tol = 0;
+	// _opts.maxiter = 30 * this->l_steps;
+	// arma::vec E2;
+	// arma::eigs_sym(E2, V, Hamil, this->l_steps, arma::trace(Hamil) / double(Hamil.n_cols), _opts);
+	// std::cout << "-------> ARMA::LU finished in " << tim_s(start) << " s" << std::endl;
+	// for(int i =0; i < E.size(); i++){
+	// 	printSeparated(std::cout, "\t", 16, true, E(i), E2(i), E_ED(i + idx), std::abs(E(i) - E2(i)));
+	// }
+
+	// return;
 
     switch (this->fun)
 	{
@@ -40,6 +64,9 @@ void ui::make_sim(){
 		break;
 	case 6:
 		matrix_elements();
+		break;
+	case 7:
+		correlators();
 		break;
 	default:
 		#define generate_scaling_array(name) arma::linspace(this->name, this->name + this->name##s * (this->name##n - 1), this->name##n);
@@ -74,9 +101,15 @@ void ui::make_sim(){
 								const auto start_loop = std::chrono::system_clock::now();
 								std::cout << " - - START NEW ITERATION:\t\t par = "; // simulation end
 								printSeparated(std::cout, "\t", 16, true, this->L_loc, this->J, this->alfa, this->h, this->w, this->gamma);
-								
+
+								auto Hamil = this->ptr_to_model->get_hamiltonian();
+								this->l_steps = 0.05 * Hamil.n_cols;
+								if(this->l_steps > 200)
+									this->l_steps = 200;
+								auto polfed = polfed::POLFED<ui::element_type>(Hamil, this->l_steps, this->l_bundle, -1, this->tol, 0.2, this->seed, true);
+								auto [E, V] = polfed.eig();
 								// eigenstate_entanglement();
-								matrix_elements();
+								// matrix_elements();
 								// spectral_form_factor();
 								// diagonalize();
 								// survival_probability();
@@ -318,7 +351,218 @@ void ui::matrix_elements()
 	#endif
 }
 
+/// @brief Calculate matrix elements of local operators
+void ui::correlators()
+{
+	std::string dir = this->saving_dir + "Correlators" + kPSep;
+	createDirs(dir);
+	
+	size_t dim = this->ptr_to_model->get_hilbert_size();
+	std::string info = this->set_info();
 
+	// arma::vec sites = arma::linspace(0, this->L-1, this->L);
+	const int Lhalf = this->L / 2;
+	std::vector<std::pair<int,int>> site_pairs = std::vector<std::pair<int,int>>(
+			{std::make_pair(this->grain_size, this->grain_size + 1), std::make_pair(this->grain_size, this->grain_size + 2),
+			std::make_pair(this->grain_size, this->L - 1), std::make_pair(this->grain_size + 1, this->L - 1),
+			std::make_pair(Lhalf, Lhalf + 1), std::make_pair(Lhalf, this->L - 1)}
+			);
+	std::cout << "site pairs:" << std::endl;
+	for(auto& pair : site_pairs)
+		std::cout << pair.first << " " << pair.second << std::endl;
+
+	const double chi = 0.341345;
+
+	const double wH = std::sqrt(this->L) / (chi * dim);
+	double tH = 1. / wH;
+	double r1 = 0.0, r2 = 0.0;
+	int time_end = (int)std::ceil(std::log10(5 * tH));
+	time_end = (time_end / std::log10(tH) < 1.5) ? time_end + 1 : time_end;
+
+	arma::vec times = arma::logspace(-2, time_end, this->num_of_points);
+
+	arma::vec agp_norm(site_pairs.size(), arma::fill::zeros);
+	arma::vec typ_susc(site_pairs.size(), arma::fill::zeros);
+	arma::mat diag_mat_elem(dim, site_pairs.size(), arma::fill::zeros);
+
+	arma::vec energies(dim, arma::fill::zeros);
+
+	int Ll = this->L;
+	int N = this->grain_size;
+
+	int counter = 0;
+// #pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
+	for(int realis = 0; realis < this->realisations; realis++)
+	{
+		clk::time_point start_re = std::chrono::system_clock::now();
+		if(realis > 0)
+			this->ptr_to_model->generate_hamiltonian();
+		
+		clk::time_point start = std::chrono::system_clock::now();
+    	this->ptr_to_model->diagonalization();
+		auto Eav_idx = this->ptr_to_model->E_av_idx;
+
+		std::cout << " - - - - - - finished diagonalization in : " << tim_s(start) << " s for realis = " << realis << " - - - - - - " << std::endl; // simulation end
+		start = std::chrono::system_clock::now();
+		
+		const arma::vec E = this->ptr_to_model->get_eigenvalues();
+		const auto& V = this->ptr_to_model->get_eigenvectors();
+		
+
+		std::string dir_realis = dir + "realisation=" + std::to_string(this->jobid + realis) + kPSep;
+		createDirs(dir_realis);
+		E.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "energies",   arma::hdf5_opts::append));
+		
+		arma::vec LTA_r(site_pairs.size() + 1, arma::fill::zeros);
+		arma::vec agp_norm_r(site_pairs.size() + 1, arma::fill::zeros);
+		arma::vec typ_susc_r(site_pairs.size() + 1, arma::fill::zeros);
+		arma::Mat<element_type> diag_mat_elem_r(dim, site_pairs.size(), arma::fill::zeros);
+
+		const double window_width = 0.001 * this->L;
+		spectrals::preset_omega set_omega(E, window_width, E(Eav_idx));
+		arma::vec omegas(set_omega.num_of_omegas, arma::fill::zeros);
+		arma::Mat<element_type> spectral_funs(set_omega.num_of_omegas, site_pairs.size(), arma::fill::zeros);
+
+		arma::mat quench_FM(times.size(), site_pairs.size(), arma::fill::zeros);
+		arma::mat quench_AFM(times.size(), site_pairs.size(), arma::fill::zeros);
+		arma::mat autocorr(times.size(), site_pairs.size(), arma::fill::zeros);
+
+		arma::cx_mat psi_FM(dim, times.size(), arma::fill::zeros);
+		arma::cx_mat psi_AFM(dim, times.size(), arma::fill::zeros);
+		u64 idx = (dim - 1) / 3;
+		start = std::chrono::system_clock::now();
+	#pragma omp parallel for
+		for(long t_idx = 0; t_idx < times.size(); t_idx++)
+		{
+			double time = times(t_idx);
+			for(long alfa = 0; alfa < dim; alfa++)
+			{
+				arma::Col<element_type> state = V.col(alfa);
+				psi_FM.col(t_idx) += std::exp(-1i * time * E(alfa)) * state * state(0);
+				psi_AFM.col(t_idx) += std::exp(-1i * time * E(alfa)) * state * state(idx);
+			}
+		}
+		arma::vec quench_E(2);
+		quench_E(0) = this->ptr_to_model->get_hamiltonian()(0, 0);
+		quench_E(1) = this->ptr_to_model->get_hamiltonian()(idx, idx);
+
+		std::cout << " - - - - - - finished preparing initial states (FM and AFM) in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
+		for(int i = 0; i < site_pairs.size(); i++)
+		{
+			int site_1 = site_pairs[i].first;
+			int site_2 = site_pairs[i].second;
+			double _agp, _typ_susc, _susc;
+			arma::vec tmp;
+			start = std::chrono::system_clock::now();
+			// arma::Mat<element_type> mat_elem = V * Sz_ops[i] * V.t();
+			auto kernel = [Ll, N, site_1, site_2](u64 state){ 
+				auto [val1, tmp22] = operators::sigma_z(state, Ll, site_1 );
+				auto [val2, tmp33] = operators::sigma_z(state, Ll, site_2 );
+				return std::make_pair(state, val1 * val2);
+				};
+			auto _operator = QOps::generic_operator<>(this->L, std::move(kernel), 1.0);
+			arma::sp_mat op = arma::real(_operator.to_matrix(dim));
+			arma::Mat<element_type> mat_elem = V.t() * op * V;
+			std::tie(_agp, _typ_susc, _susc, tmp) = adiabatics::gauge_potential(mat_elem, E, this->L);
+			agp_norm_r(i) = _agp;
+			typ_susc_r(i) = _typ_susc;
+			diag_mat_elem_r.col(i) = arma::diagvec(mat_elem);
+			
+			auto [omegas_i, matter] = set_omega.get_matrix_elements(mat_elem);
+			omegas = omegas_i;
+			spectral_funs.col(i) = matter;
+
+    		std::cout << " - - - - - - finished matrix elements for sites: i=" << site_1 << ", j=" << site_2 << " in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
+			start = std::chrono::system_clock::now();
+		#pragma omp parallel for
+			for(long t_idx = 0; t_idx < times.size(); t_idx++)
+			{
+				quench_FM(t_idx, i) = std::real(arma::cdot(psi_FM.col(t_idx), op * psi_FM.col(t_idx)));
+				quench_AFM(t_idx, i) = std::real(arma::cdot(psi_AFM.col(t_idx), op * psi_AFM.col(t_idx)));
+			}
+    		std::cout << " - - - - - - finished time evolution for sites: i=" << site_1 << ", j=" << site_2 << " in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
+			start = std::chrono::system_clock::now();
+			auto [_autocorr, LTA] = spectrals::autocorrelation_function(mat_elem, E, times);
+			autocorr.col(i) = _autocorr;
+			LTA_r(i) = LTA;
+    		std::cout << " - - - - - - finished auto correlator time evolution for sites: i=" << site_1 << ", j=" << site_2 << " in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
+		}
+		start = std::chrono::system_clock::now();
+		// arma::Mat<element_type> mat_elem = V * Sz_ops[i] * V.t();
+		auto kernel = [Ll, N](u64 state){ 
+			auto [val1, tmp22] = operators::sigma_z(state, Ll, Ll - 1 );
+			return std::make_pair(state, val1);
+			};
+		auto _operator = QOps::generic_operator<>(this->L, std::move(kernel), 1.0);
+		arma::sp_mat op = arma::real(_operator.to_matrix(dim));
+		arma::Mat<element_type> mat_elem = V.t() * op * V;
+		auto [_agp, _typ_susc, _susc, tmp] = adiabatics::gauge_potential(mat_elem, E, this->L);
+		agp_norm_r(site_pairs.size()) = _agp;
+		typ_susc_r(site_pairs.size()) = _typ_susc;
+		arma::vec diag_mat_elem_Sz_r = arma::diagvec(mat_elem);
+		auto [omegas_i, matter] = set_omega.get_matrix_elements(mat_elem);
+
+		std::cout << " - - - - - - finished Sz_L matrix elements in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
+		start = std::chrono::system_clock::now();
+		arma::vec quench_FM_Sz(times.size(), arma::fill::zeros);
+		arma::vec quench_AFM_Sz(times.size(), arma::fill::zeros);
+	#pragma omp parallel for
+		for(long t_idx = 0; t_idx < times.size(); t_idx++)
+		{
+			quench_FM_Sz(t_idx) = std::real(arma::cdot(psi_FM.col(t_idx), op * psi_FM.col(t_idx)));
+			quench_AFM_Sz(t_idx) = std::real(arma::cdot(psi_AFM.col(t_idx), op * psi_AFM.col(t_idx)));
+		}
+		std::cout << " - - - - - - finished time evolution for Sz_L in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
+		start = std::chrono::system_clock::now();
+		auto [autocorr_Sz, LTA_Sz] = spectrals::autocorrelation_function(mat_elem, E, times);
+		LTA_r(site_pairs.size()) = LTA_Sz;
+		std::cout << " - - - - - - finished auto correlator time evolution for Sz_L in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
+		// #ifndef MY_MAC
+		{
+			agp_norm_r.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "agp",   arma::hdf5_opts::append));
+			typ_susc_r.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "typ_susc",   arma::hdf5_opts::append));
+			diag_mat_elem_r.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "diag_mat",   arma::hdf5_opts::append));
+			omegas.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "omegas",   arma::hdf5_opts::append));
+			spectral_funs.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "spectral_funs",   arma::hdf5_opts::append));
+
+			matter.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "spectral_Sz_L",   arma::hdf5_opts::append));
+			diag_mat_elem_Sz_r.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "diag_mat_Sz_L",   arma::hdf5_opts::append));
+			quench_FM_Sz.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "quench_FM_Sz_L",   arma::hdf5_opts::append));
+			quench_AFM_Sz.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "quench_AFM_Sz_L",   arma::hdf5_opts::append));
+			autocorr_Sz.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "autocorr_Sz_L",   arma::hdf5_opts::append));
+
+			times.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "times",   arma::hdf5_opts::append));
+			quench_FM.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "quench_FM",   arma::hdf5_opts::append));
+			quench_AFM.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "quench_AFM",   arma::hdf5_opts::append));
+			autocorr.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "autocorr",   arma::hdf5_opts::append));
+			LTA_r.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "LTA",   arma::hdf5_opts::append));
+
+			quench_E.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "quench_energy",   arma::hdf5_opts::append));
+		}
+		// #endif
+		
+		// agp_norm += agp_norm_r;
+		// typ_susc += arma::log(typ_susc_r);
+		// diag_mat_elem += diag_mat_elem_r;
+
+		// energies += E;
+		// counter++;
+		std::cout << " - - - - - - finished realisation realis = " << realis << " in : " << tim_s(start_re) << " s - - - - - - " << std::endl; // simulation end
+	}
+	if(counter == 0) return;
+	
+	// #ifdef MY_MAC
+	// 	agp_norm /= double(counter);
+	// 	typ_susc = arma::exp(typ_susc / double(counter));
+	// 	diag_mat_elem /= double(counter);
+
+	// 	energies /= double(counter);
+	// 	energies.save(		arma::hdf5_name(dir + info + ".hdf5", "energies",   arma::hdf5_opts::append));
+	// 	agp_norm.save(	arma::hdf5_name(dir + info + ".hdf5", "agp",   arma::hdf5_opts::append));
+	// 	typ_susc.save(	arma::hdf5_name(dir + info + ".hdf5", "typ_susc",   arma::hdf5_opts::append));
+	// 	diag_mat_elem.save(   arma::hdf5_name(dir + info + ".hdf5", "diag_mat",   arma::hdf5_opts::append));
+	// #endif
+}
 
 
 // -------------------------------------------------------------------------------------------------------------------------------------
