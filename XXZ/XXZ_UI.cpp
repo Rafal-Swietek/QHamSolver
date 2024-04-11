@@ -19,56 +19,64 @@ namespace XXZ_UI{
 void ui::make_sim(){
     printAllOptions();
 
-    this->ptr_to_model = create_new_model_pointer();
-    this->ptr_to_model->diagonalization(false);
-    arma::vec E_ED = this->ptr_to_model->get_eigenvalues();
+	this->ptr_to_model = this->create_new_model_pointer();
+	auto Hamil = this->ptr_to_model->get_hamiltonian();
+	this->l_steps = 0.05 * Hamil.n_cols;
+	if(this->l_steps > 200)
+		this->l_steps = 200;
+	auto polfed = polfed::POLFED<ui::element_type>(Hamil, this->l_steps, this->l_bundle, -1, this->tol, 0.2, this->seed, true);
+	auto [E, V] = polfed.eig();
+	return;
+//     this->ptr_to_model = create_new_model_pointer();
+//     this->ptr_to_model->diagonalization(false);
+//     arma::vec E_ED = this->ptr_to_model->get_eigenvalues();
 
-    auto H = this->ptr_to_model->get_hamiltonian();
-    u64 dim = this->ptr_to_model->get_hilbert_size();
-    // this->l_steps = int(dim / 20.0);
+//     auto H = this->ptr_to_model->get_hamiltonian();
+//     u64 dim = this->ptr_to_model->get_hilbert_size();
+//     // this->l_steps = int(dim / 20.0);
 
-    auto tol_arr = arma::logspace(-15, -2, 50);
-    // std::cout << tol_arr.t() << std::endl;
-    arma::vec steps(tol_arr.size(), arma::fill::zeros);
-    arma::vec E_err(tol_arr.size(), arma::fill::zeros);
-    arma::vec V_err(tol_arr.size(), arma::fill::zeros);
-// #pragma omp parallel
-    for(int ii = 0; ii < tol_arr.size(); ii++)
-    {
-        this->tol = tol_arr(ii);
-        auto polfed = polfed::POLFED<ui::element_type>(H, this->l_steps, this->l_bundle, -1, tol_arr(ii), 0.2, this->seed, this->reorthogonalize);
-        arma::vec E; arma::mat V;
-        std::tie(E, V) = polfed.eig();
-        steps(ii) = polfed.get_convergence_steps();
+//     auto tol_arr = arma::logspace(-15, -2, 50);
+//     // std::cout << tol_arr.t() << std::endl;
+//     arma::vec steps(tol_arr.size(), arma::fill::zeros);
+//     arma::vec E_err(tol_arr.size(), arma::fill::zeros);
+//     arma::vec V_err(tol_arr.size(), arma::fill::zeros);
+// // #pragma omp parallel
+//     for(int ii = 0; ii < tol_arr.size(); ii++)
+//     {
+//         this->tol = tol_arr(ii);
+//         auto polfed = polfed::POLFED<ui::element_type>(H, this->l_steps, this->l_bundle, -1, tol_arr(ii), 0.2, this->seed, this->reorthogonalize);
+//         arma::vec E; arma::mat V;
+//         std::tie(E, V) = polfed.eig();
+//         steps(ii) = polfed.get_convergence_steps();
 
-        double Emin = arma::min(E);
-        auto i = std::min_element(std::begin(E_ED), std::end(E_ED), [=](double x, double y) {
-            return std::abs(x - Emin) < std::abs(y - Emin);
-            });
-        u64 idx = i - std::begin(E_ED);
+//         double Emin = arma::min(E);
+//         auto i = std::min_element(std::begin(E_ED), std::end(E_ED), [=](double x, double y) {
+//             return std::abs(x - Emin) < std::abs(y - Emin);
+//             });
+//         u64 idx = i - std::begin(E_ED);
 
-        arma::vec error(E.size(), arma::fill::zeros);
-        for(int k = 0; k < E.size(); k++){
-            error(k) = arma::norm(H * V.col(k) - E(k) * V.col(k));
-        }
-        V_err(ii) = arma::max(error);
-        auto permut = sort_permutation(E, [](const double a, const double b)
-								   { return a < b; });
-        apply_permutation(E, permut);
-        error  = arma::vec(E.size(), arma::fill::zeros);
-        for(int k = 0; k < E.size(); k++){
-            error(k) = std::abs(E_ED(idx + k) - E(k));
-        }
-        E_err(ii) = arma::max(error);
-        printSeparated(std::cout, "\t", 16, true, this->tol, E_err(ii), V_err(ii), steps(ii));
-    }
-    std::string name = this->saving_dir + this->set_info() + "_jobid=" + std::to_string(this->jobid);
-    steps.save(arma::hdf5_name(name + ".hdf5", "steps"));
-    E_err.save(arma::hdf5_name(name + ".hdf5", "energy error", arma::hdf5_opts::append));
-    V_err.save(arma::hdf5_name(name + ".hdf5", "state error", arma::hdf5_opts::append));
-    tol_arr.save(arma::hdf5_name(name + ".hdf5", "tolerance", arma::hdf5_opts::append));
-    // compare_energies();
-    return;
+//         arma::vec error(E.size(), arma::fill::zeros);
+//         for(int k = 0; k < E.size(); k++){
+//             error(k) = arma::norm(H * V.col(k) - E(k) * V.col(k));
+//         }
+//         V_err(ii) = arma::max(error);
+//         auto permut = sort_permutation(E, [](const double a, const double b)
+// 								   { return a < b; });
+//         apply_permutation(E, permut);
+//         error  = arma::vec(E.size(), arma::fill::zeros);
+//         for(int k = 0; k < E.size(); k++){
+//             error(k) = std::abs(E_ED(idx + k) - E(k));
+//         }
+//         E_err(ii) = arma::max(error);
+//         printSeparated(std::cout, "\t", 16, true, this->tol, E_err(ii), V_err(ii), steps(ii));
+//     }
+//     std::string name = this->saving_dir + this->set_info() + "_jobid=" + std::to_string(this->jobid);
+//     steps.save(arma::hdf5_name(name + ".hdf5", "steps"));
+//     E_err.save(arma::hdf5_name(name + ".hdf5", "energy error", arma::hdf5_opts::append));
+//     V_err.save(arma::hdf5_name(name + ".hdf5", "state error", arma::hdf5_opts::append));
+//     tol_arr.save(arma::hdf5_name(name + ".hdf5", "tolerance", arma::hdf5_opts::append));
+//     // compare_energies();
+//     return;
 
 
 	clk::time_point start = std::chrono::system_clock::now();
@@ -126,9 +134,13 @@ void ui::make_sim(){
                                         // this->eigenstate_entanglement_degenerate();
 
                                     };
-            loopSymmetrySectors(kernel); continue;
+            // loopSymmetrySectors(kernel); continue;
             this->reset_model_pointer();
-
+            auto Hamil = this->ptr_to_model->get_hamiltonian();
+            this->l_steps = 0.05 * Hamil.n_cols;
+            if(this->l_steps > 200) this->l_steps = 200;
+            auto polfed = polfed::POLFED<ui::element_type>(Hamil, this->l_steps, this->l_bundle, -1, this->tol, 0.2, this->seed, true);
+            continue;
             this->eigenstate_entanglement_degenerate(); 
             continue;
 
