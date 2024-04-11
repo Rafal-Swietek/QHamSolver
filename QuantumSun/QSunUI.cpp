@@ -12,6 +12,12 @@ void ui::make_sim(){
 	clk::time_point start = std::chrono::system_clock::now();
     
 	this->ptr_to_model = this->create_new_model_pointer();
+	auto Hamil = this->ptr_to_model->get_hamiltonian();
+	this->l_steps = 0.05 * Hamil.n_cols;
+	if(this->l_steps > 200)
+		this->l_steps = 200;
+	auto polfed = polfed::POLFED<ui::element_type>(Hamil, this->l_steps, this->l_bundle, -1, this->tol, 0.2, this->seed, true);
+	auto [E, V] = polfed.eig();
 	// auto Hamil = this->ptr_to_model->get_hamiltonian();
 	// arma::sp_mat H = Hamil;
 	// auto polfed = polfed::POLFED<ui::element_type>(H, this->l_steps, this->l_bundle, -1, this->tol, 0.2, this->seed, true);
