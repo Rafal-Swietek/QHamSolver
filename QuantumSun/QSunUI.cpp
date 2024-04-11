@@ -18,6 +18,9 @@ void ui::make_sim(){
 		this->l_steps = 200;
 	auto polfed = polfed::POLFED<ui::element_type>(Hamil, this->l_steps, this->l_bundle, -1, this->tol, 0.2, this->seed, true);
 	auto [E, V] = polfed.eig();
+	return;
+
+	
 	// auto Hamil = this->ptr_to_model->get_hamiltonian();
 	// arma::sp_mat H = Hamil;
 	// auto polfed = polfed::POLFED<ui::element_type>(H, this->l_steps, this->l_bundle, -1, this->tol, 0.2, this->seed, true);
