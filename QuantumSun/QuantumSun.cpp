@@ -124,6 +124,7 @@ void QuantumSun::create_hamiltonian()
     )
 
     /* Generate coupling and spin hamiltonian */
+    clk::time_point start = std::chrono::system_clock::now();
     for (u64 k = 0; k < this->dim; k++) {
 		u64 base_state = this->_hilbert_space(k);
 		for (int j = this->grain_size; j < this->system_size; j++)  // sum over spin d.o.f
@@ -143,11 +144,12 @@ void QuantumSun::create_hamiltonian()
 			this->set_hamiltonian_elements(k, this->_J * this->_long_range_couplings(pos_in_array) * real(val1 * val2), SxSx_k);
 		}
 	}
+    std::cout << " - - - - - - finished Hamiltonian in : " << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
     if constexpr (conf_disorder == 1){
-        arma::mat H_loc = arma::kron(arma::eye(dim_erg, dim_erg), arma::mat(arma::diagmat(this->_disorder)));
+        arma::sp_mat H_loc = arma::kron<arma::sp_mat>(arma::eye<arma::sp_mat>(dim_erg, dim_erg), arma::sp_mat(arma::diagmat(this->_disorder)));
         this->H = this->H + H_loc;
     }
-	this->H = this->H + arma::kron(H_grain, arma::eye(dim_loc, dim_loc));
+	this->H = this->H + arma::kron<arma::sp_mat>(arma::sp_mat(H_grain), arma::eye<arma::sp_mat>(dim_loc, dim_loc));
 }
 
 
