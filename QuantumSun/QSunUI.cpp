@@ -11,6 +11,7 @@ void ui::make_sim(){
     printAllOptions();
 	clk::time_point start = std::chrono::system_clock::now();
     
+	std::cout << "Using num  of threads = " << omp_get_num_threads() << std::endl;
 	this->ptr_to_model = this->create_new_model_pointer();
 	auto Hamil = this->ptr_to_model->get_hamiltonian();
 	this->l_steps = 0.05 * Hamil.n_cols;
@@ -20,7 +21,7 @@ void ui::make_sim(){
 	auto [E, V] = polfed.eig();
 	return;
 
-	
+
 	// auto Hamil = this->ptr_to_model->get_hamiltonian();
 	// arma::sp_mat H = Hamil;
 	// auto polfed = polfed::POLFED<ui::element_type>(H, this->l_steps, this->l_bundle, -1, this->tol, 0.2, this->seed, true);

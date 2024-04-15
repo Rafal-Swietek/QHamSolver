@@ -115,6 +115,7 @@ namespace lanczos
 						alfa(this->bundle_size, this->bundle_size), 
 						Vk(this->N, this->bundle_size), 
 						W(this->N, this->bundle_size);
+		std::cout << "Using num  of threads = " << omp_get_num_threads() << std::endl;
 		for (int j = 0; j < this->maxiter; j++) 
 		{
 			Vk = this->krylov_space.cols(j * this->bundle_size, (j+1) * this->bundle_size - 1);
