@@ -288,9 +288,11 @@ void user_interface<Hamiltonian>::parse_cmd_options(int argc, std::vector<std::s
 		_assert_(false, "Wrong number of threads. Exceeding hardware\n");
 
 	if(this->thread_number <= 0) this->thread_number = 1;
+	omp_set_dynamic(0);
 	omp_set_num_threads(this->thread_number);
 	num_of_threads = this->thread_number;
 
+	std::cout << "Using num  of threads = " << omp_get_num_threads() << std::endl;
 	// get help
 	choosen_option = "-help";
 	if (std::string option = this->getCmdOption(argv, choosen_option); option != "")

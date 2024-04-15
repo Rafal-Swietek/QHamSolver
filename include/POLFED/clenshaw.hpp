@@ -150,14 +150,19 @@ namespace polfed{
             arma::Mat<_ty> bk_1(states.n_rows, states.n_cols, arma::fill::zeros);
             arma::Mat<_ty> bk  (states.n_rows, states.n_cols, arma::fill::zeros);
             // perform recurence relation in loop
+            // const int max_th = num_of_threads;
             for(int n = K; n > 0; n--){
                 // _extra_debug_( auto start = std::chrono::system_clock::now(); )
-                bk = coeff(n) * states + 2.0 * matrix * bk_1 - bk_2;
+                _mult_sp_and_mat(matrix, bk_1, bk, num_of_threads);
+                bk = coeff(n) * states + 2.0 * bk - bk_2;
+                // bk = coeff(n) * states + 2.0 * matrix * bk_1 - bk_2;
                 bk_2 = bk_1;
                 bk_1 = bk;
                 // _extra_debug( std::cout << "Clenchaw: "; printSeparated(std::cout, "\t", 20, true, n, coeff(n), tim_s(start)); )
             }
-            return coeff(0) * states + matrix * bk_1 - bk_2;
+            _mult_sp_and_mat(matrix, bk_1, bk, num_of_threads);
+            return coeff(0) * states + matrix * bk - bk_2;
+            // return coeff(0) * states + matrix * bk_1 - bk_2;
         }
         
     }

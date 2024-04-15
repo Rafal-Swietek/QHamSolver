@@ -149,6 +149,7 @@ inline arma::sp_cx_mat cast_cx_sparse(const arma::sp_cx_mat& mat)
 //general_dot_prod(arma::subview_col, arma::subview_col);
 
 
+//! -------------------------------------------------------- MULTIPLICATION READY FOR PARALLELIZATION
 /// @brief 
 /// @tparam elem_ty 
 /// @param res 
@@ -167,4 +168,23 @@ matmul(arma::SpMat<elem_ty>& res, const arma::SpMat<elem_ty>& A, const arma::SpM
 			for(long k = 0; k < B.n_rows; k++){
 				res(n, m) += A(n, k) * B(k, m);
 	}}}
+}
+
+
+
+/// @brief Multiplication of sparse matrix with matrix
+/// @tparam _ty template type of input matrices
+/// @param A sparse matrix to multiply with
+/// @param B matrix to act with sparse matrix on
+/// @param result preallocated resulting matrix to save on allocation
+template <typename _ty>
+inline
+void _mult_sp_and_mat(const arma::SpMat<_ty>& A, const arma::Mat<_ty>& B, arma::Mat<_ty>& result, int max_threads = 10)
+{
+	const int num_th = std::min((int)B.n_cols, max_threads);	// Get at most the number of columns in the matrix as thread number
+
+	// Go through all columns and perform sparse_matrix-vector products
+#pragma omp parallel for num_threads(num_th)
+	for(int i = 0; i < B.n_cols; i++)
+		result.col(i) = A * B.col(i);
 }

@@ -50,7 +50,7 @@ namespace polfed{
         // _ty DOS     = this->N * (Emax - Emin) / 2.0 / ( std::sqrt(2.0 * two_pi * var) );
         _ty mu      = arma::trace(this->P_H) / double(this->N);
         _ty var     = arma::trace(this->P_H * this->P_H) / double(this->N) - mu * mu;
-        _ty DOS     = double(this->N) / ( std::sqrt(2.0 * two_pi * var) );
+        _ty DOS     = double(this->N) / ( std::sqrt(2.0 * two_pi * var) ) * std::exp( -(this->sigma - mu)*(this->sigma - mu) / (2 * var) );
         _ty delta   = this->num_of_eigval / (2.0 * DOS);
         
         this->K = 15;
@@ -75,7 +75,6 @@ namespace polfed{
 	template <typename _ty, converge converge_type>
 	inline 
     void POLFED<_ty, converge_type>::transform_matrix() {
-
         //<! get energy boundaries (to rescale E \in [-1,1])
         _debug_start( clk::time_point start = std::chrono::system_clock::now(); )
         this->P_H = this->H;
@@ -97,9 +96,9 @@ namespace polfed{
         for(int n = 1; n < K+1; n++)
             this->coeff(n) = 2.0 * std::cos(n * std::acos(this->sigma));
 
-        _debug_end( std::cout << "\t\tSet coefficients for polynomial:\t" 
-                                <<  this->coeff.t() 
-                                << "\tin " << tim_s(start) << " seconds" << std::endl; )
+        // _debug_end( std::cout << "\t\tSet coefficients for polynomial:\t" 
+        //                         <<  this->coeff.t() 
+        //                         << "\tin " << tim_s(start) << " seconds" << std::endl; )
 
 
         // final transform
@@ -116,9 +115,9 @@ namespace polfed{
         // auto Escaled = arma::eig_sym(arma::Mat<_ty>(this->P_H));
         // Escaled.save(arma::hdf5_name(name + ".hdf5", "scaled", arma::hdf5_opts::append));
 
-        // auto HhH = clenshaw::chebyshev(this->K, this->coeff, this->P_H) / D;
-        // auto Epolf = arma::eig_sym(arma::Mat<_ty>(HhH));
-        // Epolf.save(arma::hdf5_name(name + ".hdf5", "transformed", arma::hdf5_opts::append));
+        // // auto HhH = clenshaw::chebyshev(this->K, this->coeff, this->P_H) / D;
+        // // auto Epolf = arma::eig_sym(arma::Mat<_ty>(HhH));
+        // // Epolf.save(arma::hdf5_name(name + ".hdf5", "transformed", arma::hdf5_opts::append));
         
         // auto [E, V] = this->eig();
 
