@@ -9,17 +9,32 @@ namespace QSunUI{
 
 void ui::make_sim(){
     printAllOptions();
+	
 	clk::time_point start = std::chrono::system_clock::now();
-    
-	std::cout << "Using num  of threads = " << omp_get_num_threads() << std::endl;
 	this->ptr_to_model = this->create_new_model_pointer();
-	auto Hamil = this->ptr_to_model->get_hamiltonian();
-	this->l_steps = 0.05 * Hamil.n_cols;
-	if(this->l_steps > 200)
-		this->l_steps = 200;
-	auto polfed = polfed::POLFED<ui::element_type>(Hamil, this->l_steps, this->l_bundle, -1, this->tol, 0.2, this->seed, true);
-	auto [E, V] = polfed.eig();
+	arma::sp_mat Hamil = this->ptr_to_model->get_hamiltonian();
+	auto dim = Hamil.n_cols;
+	arma::mat B(dim, 10, arma::fill::randu);
+	arma::mat C(dim, 10, arma::fill::zeros);
+	
+	std::cout << "-------> Building matrices finished in " << tim_s(start) << " s" << std::endl;
+	start = std::chrono::system_clock::now();
+	for(int j = 0 ; j < 100; j++){
+		clk::time_point start_loop = std::chrono::system_clock::now();
+		C = Hamil * B;
+		std::cout << "-------> iteration i=" << j << " at time step t = " << tim_s(start_loop) << " s" << std::endl;
+	}
+	std::cout << "-------> Test finished in " << tim_s(start) << " s" << std::endl;
 	return;
+
+	// this->ptr_to_model = this->create_new_model_pointer();
+	// auto Hamil = this->ptr_to_model->get_hamiltonian();
+	// this->l_steps = 0.05 * Hamil.n_cols;
+	// if(this->l_steps > 200)
+	// 	this->l_steps = 200;
+	// auto polfed = polfed::POLFED<ui::element_type>(Hamil, this->l_steps, this->l_bundle, -1, this->tol, 0.2, this->seed, true);
+	// auto [E, V] = polfed.eig();
+	// return;
 
 
 	// auto Hamil = this->ptr_to_model->get_hamiltonian();
