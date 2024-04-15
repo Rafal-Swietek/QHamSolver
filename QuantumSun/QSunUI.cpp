@@ -5,6 +5,15 @@ int num_of_threads = 1;
 
 bool normalize_grain = 1;
 
+template <typename _ty>
+void _mult_sp_and_mat(arma::SpMat<_ty>& A, arma::Mat<_ty>& B, arma::Mat<_ty>& result)
+{
+	const int num_th = std::min((int)B.n_cols, num_of_threads);
+#pragma omp parallel for num_threads(num_th)
+	for(int i = 0; i < B.n_cols; i++)
+		result.col(i) = A * B.col(i);
+}
+
 namespace QSunUI{
 
 void ui::make_sim(){
@@ -16,13 +25,19 @@ void ui::make_sim(){
 	auto dim = Hamil.n_cols;
 	arma::mat B(dim, 10, arma::fill::randu);
 	arma::mat C(dim, 10, arma::fill::zeros);
+	arma::mat D(dim, 10, arma::fill::zeros);
 	
 	std::cout << "-------> Building matrices finished in " << tim_s(start) << " s" << std::endl;
 	start = std::chrono::system_clock::now();
+	printSeparated(std::cout, "\t", 20, true, "iteration", "mult #1", "mult #2", "speedup", "check");
 	for(int j = 0 ; j < 100; j++){
 		clk::time_point start_loop = std::chrono::system_clock::now();
 		C = Hamil * B;
-		std::cout << "-------> iteration i=" << j << " at time step t = " << tim_s(start_loop) << " s" << std::endl;
+		printSeparated(std::cout, "\t", 20, false, j, tim_s(start_loop));
+		double x = tim_s(start_loop);
+		start_loop = std::chrono::system_clock::now();
+		_mult_sp_and_mat(Hamil, B, D);
+		printSeparated(std::cout, "\t", 20, true, tim_s(start_loop), x / tim_s(start_loop), (C - D).is_zero(1e-14));
 	}
 	std::cout << "-------> Test finished in " << tim_s(start) << " s" << std::endl;
 	return;
