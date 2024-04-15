@@ -135,7 +135,7 @@ namespace QHS{
     void QHamSolver<Hamiltonian>::diag_sparse(int Nev, int s, double tol, int seed)
     {
         auto Hamil = this->H.get_hamiltonian();
-        auto polfed = polfed::POLFED<QHamSolver::_ty>(Hamil, Nev, s, -1, tol, 0.2, seed, true);
+        auto polfed = polfed::POLFED<QHamSolver::_ty>(Hamil, Nev, s, -1, tol, 0.17, seed, true);
         std::tie(this->eigenvalues, this->eigenvectors) = polfed.eig();
     }
 }
