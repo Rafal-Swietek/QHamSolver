@@ -92,7 +92,7 @@ namespace QHS{
         try {
             H_temp = this->H.get_dense_hamiltonian();
             if (get_eigenvectors){
-                if(this->dim > 1e5)
+                if(this->dim > 2e5)
                     method = "std"; // Change method due to smaller memory consumption (higher CPU time though -- benchmark)
                 arma::eig_sym(this->eigenvalues, this->eigenvectors, H_temp, method);
             }
