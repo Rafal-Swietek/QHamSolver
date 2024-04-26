@@ -5,6 +5,8 @@ int num_of_threads = 1;
 
 bool normalize_grain = 1;
 
+#include "../include/hilbert_space/constrained.hpp"
+
 namespace QSunUI{
 
 void ui::make_sim(){
@@ -13,6 +15,18 @@ void ui::make_sim(){
 	clk::time_point start = std::chrono::system_clock::now();
 
 	this->ptr_to_model = this->create_new_model_pointer();
+	
+	// auto Translate = QOps::__builtins::translation(this->L, 1);
+	// auto some_kernel = [&Translate](u64 n){
+	// 	return !(n & std::get<0>( Translate(n) ) );
+	// };
+	// auto _hilbert = QHS::constrained_hilbert_space(this->L, std::move(some_kernel));
+	// auto my_map = _hilbert.get_mapping();
+	// for(auto& item : my_map){
+	// 	auto vec = boost::dynamic_bitset<>(this->L, item);
+	// 	printSeparated(std::cout, "\t", 16, true, item, vec);
+	// }
+	// return;
 
 	// auto Hamil = this->ptr_to_model->get_hamiltonian();
 	// this->l_steps = 0.1 * Hamil.n_cols;
@@ -437,55 +451,55 @@ void ui::correlators()
 		arma::vec omegas(set_omega.num_of_omegas, arma::fill::zeros);
 		arma::Mat<element_type> spectral_funs(set_omega.num_of_omegas, site_pairs.size(), arma::fill::zeros);
 
-		arma::mat quench_AFM(times.size(), site_pairs.size(), arma::fill::zeros);
-		arma::mat quench_random(times.size(), site_pairs.size(), arma::fill::zeros);
-		arma::mat autocorr(times.size(), site_pairs.size(), arma::fill::zeros);
+	// 	arma::mat quench_AFM(times.size(), site_pairs.size(), arma::fill::zeros);
+	// 	arma::mat quench_random(times.size(), site_pairs.size(), arma::fill::zeros);
+	// 	arma::mat autocorr(times.size(), site_pairs.size(), arma::fill::zeros);
 
-		arma::cx_mat psi_AFM(dim, times.size(), arma::fill::zeros);
-		arma::cx_mat psi_random(dim, times.size(), arma::fill::zeros);
-		u64 idx = (dim - 1) / 3;
+	// 	arma::cx_mat psi_AFM(dim, times.size(), arma::fill::zeros);
+	// 	arma::cx_mat psi_random(dim, times.size(), arma::fill::zeros);
+	// 	u64 idx = (dim - 1) / 3;
 
+	// 	start = std::chrono::system_clock::now();
+	// 	arma::cx_vec random_state = this->random_product_state();
+	// 	// arma::mat R(2, 2);
+	// 	// arma::vec spiral_state = up;
+	// 	// for (int j = 1; j < this->L; j++)
+	// 	// {
+	// 	// 	auto the = pi / this->L * double(j);
+	// 	// 	R(0, 0) = std::cos(the); R(1, 1) = std::cos(the);
+	// 	// 	R(0, 1) = std::sin(the); R(1, 0) = -std::sin(the);
+	// 	// 	spiral_state = arma::kron(spiral_state, R * up);
+	// 	// }
+	// 	// spiral_state = arma::normalise(spiral_state);
+	// 	// arma::vec coeff_spiral(dim);
+	// 	arma::cx_vec coeff_random(dim);
+	// #pragma omp parallel for
+	// 	for(long alfa = 0; alfa < dim; alfa++)
+	// 	{
+	// 		auto state = V.col(alfa);
+	// 		// coeff_spiral(alfa) = dot_prod(state, spiral_state);
+	// 		coeff_random(alfa) = dot_prod(state, random_state);
+	// 	}
+	// 	std::cout << " - - - - - - finished preparing initial states FM, AFM, spiral, random product in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
 		start = std::chrono::system_clock::now();
-		arma::cx_vec random_state = this->random_product_state();
-		// arma::mat R(2, 2);
-		// arma::vec spiral_state = up;
-		// for (int j = 1; j < this->L; j++)
-		// {
-		// 	auto the = pi / this->L * double(j);
-		// 	R(0, 0) = std::cos(the); R(1, 1) = std::cos(the);
-		// 	R(0, 1) = std::sin(the); R(1, 0) = -std::sin(the);
-		// 	spiral_state = arma::kron(spiral_state, R * up);
-		// }
-		// spiral_state = arma::normalise(spiral_state);
-		// arma::vec coeff_spiral(dim);
-		arma::cx_vec coeff_random(dim);
-	#pragma omp parallel for
-		for(long alfa = 0; alfa < dim; alfa++)
-		{
-			auto state = V.col(alfa);
-			// coeff_spiral(alfa) = dot_prod(state, spiral_state);
-			coeff_random(alfa) = dot_prod(state, random_state);
-		}
-		std::cout << " - - - - - - finished preparing initial states FM, AFM, spiral, random product in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
-		start = std::chrono::system_clock::now();
-	#pragma omp parallel for
-		for(long t_idx = 0; t_idx < times.size(); t_idx++)
-		{
-			double time = times(t_idx);
-			for(long alfa = 0; alfa < dim; alfa++)
-			{
-				auto state = V.col(alfa);
-				// psi_FM.col(t_idx) += std::exp(-1i * time * E(alfa)) * state * state(0);
-				psi_AFM.col(t_idx) += std::exp(-1i * time * E(alfa)) * state * state(idx);
-				// psi_spiral.col(t_idx) += std::exp(-1i * time * E(alfa)) * state * coeff_spiral(alfa);
-				psi_random.col(t_idx) += std::exp(-1i * time * E(alfa)) * state * coeff_random(alfa);
-			}
-		}
-		arma::vec quench_E(2);
-		auto H = this->ptr_to_model->get_hamiltonian();
-		quench_E(0) = H(idx, idx);
-		quench_E(1) = std::real(arma::cdot(random_state, H * random_state));
-		// quench_E(2) = arma::cdot(spiral_state, H * spiral_state);
+	// #pragma omp parallel for
+	// 	for(long t_idx = 0; t_idx < times.size(); t_idx++)
+	// 	{
+	// 		double time = times(t_idx);
+	// 		for(long alfa = 0; alfa < dim; alfa++)
+	// 		{
+	// 			auto state = V.col(alfa);
+	// 			// psi_FM.col(t_idx) += std::exp(-1i * time * E(alfa)) * state * state(0);
+	// 			psi_AFM.col(t_idx) += std::exp(-1i * time * E(alfa)) * state * state(idx);
+	// 			// psi_spiral.col(t_idx) += std::exp(-1i * time * E(alfa)) * state * coeff_spiral(alfa);
+	// 			psi_random.col(t_idx) += std::exp(-1i * time * E(alfa)) * state * coeff_random(alfa);
+	// 		}
+	// 	}
+	// 	arma::vec quench_E(2);
+	// 	auto H = this->ptr_to_model->get_hamiltonian();
+	// 	quench_E(0) = H(idx, idx);
+	// 	quench_E(1) = std::real(arma::cdot(random_state, H * random_state));
+	// 	// quench_E(2) = arma::cdot(spiral_state, H * spiral_state);
 
 		std::cout << " - - - - - - finished preparing initial states for all times in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
 		for(int i = 0; i < site_pairs.size(); i++)
@@ -514,21 +528,21 @@ void ui::correlators()
 			spectral_funs.col(i) = matter;
 
     		std::cout << " - - - - - - finished matrix elements for sites: i=" << site_1 << ", j=" << site_2 << " in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
-			start = std::chrono::system_clock::now();
-		#pragma omp parallel for
-			for(long t_idx = 0; t_idx < times.size(); t_idx++)
-			{
-				// quench_FM(t_idx, i) = std::real(arma::cdot(psi_FM.col(t_idx), op * psi_FM.col(t_idx)));
-				quench_AFM(t_idx, i) = std::real(arma::cdot(psi_AFM.col(t_idx), op * psi_AFM.col(t_idx)));
-				// quench_spiral(t_idx, i) = std::real(arma::cdot(psi_spiral.col(t_idx), op * psi_spiral.col(t_idx)));
-				quench_random(t_idx, i) = std::real(arma::cdot(psi_random.col(t_idx), op * psi_random.col(t_idx)));
-			}
-    		std::cout << " - - - - - - finished time evolution for sites: i=" << site_1 << ", j=" << site_2 << " in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
-			start = std::chrono::system_clock::now();
-			auto [_autocorr, LTA] = spectrals::autocorrelation_function(mat_elem, E, times);
-			autocorr.col(i) = _autocorr;
-			LTA_r(i) = LTA;
-    		std::cout << " - - - - - - finished auto correlator time evolution for sites: i=" << site_1 << ", j=" << site_2 << " in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
+		// 	start = std::chrono::system_clock::now();
+		// #pragma omp parallel for
+		// 	for(long t_idx = 0; t_idx < times.size(); t_idx++)
+		// 	{
+		// 		// quench_FM(t_idx, i) = std::real(arma::cdot(psi_FM.col(t_idx), op * psi_FM.col(t_idx)));
+		// 		quench_AFM(t_idx, i) = std::real(arma::cdot(psi_AFM.col(t_idx), op * psi_AFM.col(t_idx)));
+		// 		// quench_spiral(t_idx, i) = std::real(arma::cdot(psi_spiral.col(t_idx), op * psi_spiral.col(t_idx)));
+		// 		quench_random(t_idx, i) = std::real(arma::cdot(psi_random.col(t_idx), op * psi_random.col(t_idx)));
+		// 	}
+    	// 	std::cout << " - - - - - - finished time evolution for sites: i=" << site_1 << ", j=" << site_2 << " in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
+		// 	start = std::chrono::system_clock::now();
+		// 	auto [_autocorr, LTA] = spectrals::autocorrelation_function(mat_elem, E, times);
+		// 	autocorr.col(i) = _autocorr;
+		// 	LTA_r(i) = LTA;
+    		// std::cout << " - - - - - - finished auto correlator time evolution for sites: i=" << site_1 << ", j=" << site_2 << " in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
 		}
 		start = std::chrono::system_clock::now();
 		// arma::Mat<element_type> mat_elem = V * Sz_ops[i] * V.t();
@@ -546,24 +560,24 @@ void ui::correlators()
 		auto [omegas_i, matter] = set_omega.get_matrix_elements(mat_elem);
 
 		std::cout << " - - - - - - finished Sz_L matrix elements in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
-		start = std::chrono::system_clock::now();
-		// arma::vec quench_FM_Sz(times.size(), arma::fill::zeros);
-		arma::vec quench_AFM_Sz(times.size(), arma::fill::zeros);
-		// arma::vec quench_spiral_Sz(times.size(), arma::fill::zeros);
-		arma::vec quench_random_Sz(times.size(), arma::fill::zeros);
-	#pragma omp parallel for
-		for(long t_idx = 0; t_idx < times.size(); t_idx++)
-		{
-			// quench_FM_Sz(t_idx) = std::real(arma::cdot(psi_FM.col(t_idx), op * psi_FM.col(t_idx)));
-			quench_AFM_Sz(t_idx) = std::real(arma::cdot(psi_AFM.col(t_idx), op * psi_AFM.col(t_idx)));
-			// quench_spiral_Sz(t_idx) = std::real(arma::cdot(psi_spiral.col(t_idx), op * psi_spiral.col(t_idx)));
-			quench_random_Sz(t_idx) = std::real(arma::cdot(psi_random.col(t_idx), op * psi_random.col(t_idx)));
-		}
-		std::cout << " - - - - - - finished time evolution for Sz_L in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
-		start = std::chrono::system_clock::now();
-		auto [autocorr_Sz, LTA_Sz] = spectrals::autocorrelation_function(mat_elem, E, times);
-		LTA_r(site_pairs.size()) = LTA_Sz;
-		std::cout << " - - - - - - finished auto correlator time evolution for Sz_L in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
+	// 	start = std::chrono::system_clock::now();
+	// 	// arma::vec quench_FM_Sz(times.size(), arma::fill::zeros);
+	// 	arma::vec quench_AFM_Sz(times.size(), arma::fill::zeros);
+	// 	// arma::vec quench_spiral_Sz(times.size(), arma::fill::zeros);
+	// 	arma::vec quench_random_Sz(times.size(), arma::fill::zeros);
+	// #pragma omp parallel for
+	// 	for(long t_idx = 0; t_idx < times.size(); t_idx++)
+	// 	{
+	// 		// quench_FM_Sz(t_idx) = std::real(arma::cdot(psi_FM.col(t_idx), op * psi_FM.col(t_idx)));
+	// 		quench_AFM_Sz(t_idx) = std::real(arma::cdot(psi_AFM.col(t_idx), op * psi_AFM.col(t_idx)));
+	// 		// quench_spiral_Sz(t_idx) = std::real(arma::cdot(psi_spiral.col(t_idx), op * psi_spiral.col(t_idx)));
+	// 		quench_random_Sz(t_idx) = std::real(arma::cdot(psi_random.col(t_idx), op * psi_random.col(t_idx)));
+	// 	}
+	// 	std::cout << " - - - - - - finished time evolution for Sz_L in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
+	// 	start = std::chrono::system_clock::now();
+	// 	auto [autocorr_Sz, LTA_Sz] = spectrals::autocorrelation_function(mat_elem, E, times);
+	// 	LTA_r(site_pairs.size()) = LTA_Sz;
+	// 	std::cout << " - - - - - - finished auto correlator time evolution for Sz_L in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
 		// #ifndef MY_MAC
 		{
 			agp_norm_r.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "agp",   arma::hdf5_opts::append));
@@ -575,20 +589,20 @@ void ui::correlators()
 			matter.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "spectral_Sz_L",   arma::hdf5_opts::append));
 			diag_mat_elem_Sz_r.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "diag_mat_Sz_L",   arma::hdf5_opts::append));
 			// quench_FM_Sz.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "quench_FM_Sz_L",   arma::hdf5_opts::append));
-			quench_AFM_Sz.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "quench_AFM_Sz_L",   arma::hdf5_opts::append));
-			// quench_spiral_Sz.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "quench_spiral_Sz_L",   arma::hdf5_opts::append));
-			quench_random_Sz.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "quench_random_Sz_L",   arma::hdf5_opts::append));
-			autocorr_Sz.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "autocorr_Sz_L",   arma::hdf5_opts::append));
+			// quench_AFM_Sz.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "quench_AFM_Sz_L",   arma::hdf5_opts::append));
+			// // quench_spiral_Sz.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "quench_spiral_Sz_L",   arma::hdf5_opts::append));
+			// quench_random_Sz.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "quench_random_Sz_L",   arma::hdf5_opts::append));
+			// autocorr_Sz.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "autocorr_Sz_L",   arma::hdf5_opts::append));
 
-			times.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "times",   arma::hdf5_opts::append));
-			// quench_FM.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "quench_FM",   arma::hdf5_opts::append));
-			quench_AFM.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "quench_AFM",   arma::hdf5_opts::append));
-			// quench_spiral.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "quench_spiral",   arma::hdf5_opts::append));
-			quench_random.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "quench_random",   arma::hdf5_opts::append));
-			autocorr.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "autocorr",   arma::hdf5_opts::append));
-			LTA_r.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "LTA",   arma::hdf5_opts::append));
+			// times.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "times",   arma::hdf5_opts::append));
+			// // quench_FM.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "quench_FM",   arma::hdf5_opts::append));
+			// quench_AFM.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "quench_AFM",   arma::hdf5_opts::append));
+			// // quench_spiral.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "quench_spiral",   arma::hdf5_opts::append));
+			// quench_random.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "quench_random",   arma::hdf5_opts::append));
+			// autocorr.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "autocorr",   arma::hdf5_opts::append));
+			// LTA_r.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "LTA",   arma::hdf5_opts::append));
 
-			quench_E.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "quench_energy",   arma::hdf5_opts::append));
+			// quench_E.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "quench_energy",   arma::hdf5_opts::append));
 		}
 		// #endif
 		
