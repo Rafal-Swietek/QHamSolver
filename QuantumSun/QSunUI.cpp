@@ -5,8 +5,6 @@ int num_of_threads = 1;
 
 bool normalize_grain = 1;
 
-#include "../include/hilbert_space/constrained.hpp"
-
 namespace QSunUI{
 
 void ui::make_sim(){
@@ -17,8 +15,10 @@ void ui::make_sim(){
 	this->ptr_to_model = this->create_new_model_pointer();
 	
 	// auto Translate = QOps::__builtins::translation(this->L, 1);
-	// auto some_kernel = [&Translate](u64 n){
-	// 	return !(n & std::get<0>( Translate(n) ) );
+	// auto flip = QOps::__builtins::spin_flip_x(this->L);
+	// auto some_kernel = [&Translate, &flip](u64 n){
+	// 	n = std::get<0>(flip(n));
+	// 	return !( (n) & std::get<0>( Translate(n) ) );
 	// };
 	// auto _hilbert = QHS::constrained_hilbert_space(this->L, std::move(some_kernel));
 	// auto my_map = _hilbert.get_mapping();
@@ -385,6 +385,8 @@ void ui::correlators()
 	size_t dim = this->ptr_to_model->get_hilbert_size();
 	std::string info = this->set_info();
 
+	const size_t size = dim > 1e5? this->l_steps : dim;
+
 	// arma::vec sites = arma::linspace(0, this->L-1, this->L);
 	const int Lhalf = this->L / 2;
 	// std::vector<std::pair<int,int>> site_pairs = std::vector<std::pair<int,int>>(
@@ -413,7 +415,7 @@ void ui::correlators()
 	arma::vec typ_susc(site_pairs.size(), arma::fill::zeros);
 	arma::mat diag_mat_elem(dim, site_pairs.size(), arma::fill::zeros);
 
-	arma::vec energies(dim, arma::fill::zeros);
+	arma::vec energies(size, arma::fill::zeros);
 
 	int Ll = this->L;
 	int N = this->grain_size;
@@ -427,24 +429,32 @@ void ui::correlators()
 			this->ptr_to_model->generate_hamiltonian();
 		
 		clk::time_point start = std::chrono::system_clock::now();
-    	this->ptr_to_model->diagonalization();
-		auto Eav_idx = this->ptr_to_model->E_av_idx;
-
+		if(dim > 1e5){
+			this->ptr_to_model->diag_sparse(this->l_steps, this->l_bundle, this->tol, this->seed);	
+		}
+		else{
+        	this->ptr_to_model->diagonalization();
+		}
 		std::cout << " - - - - - - finished diagonalization in : " << tim_s(start) << " s for realis = " << realis << " - - - - - - " << std::endl; // simulation end
 		start = std::chrono::system_clock::now();
 		
 		const arma::vec E = this->ptr_to_model->get_eigenvalues();
 		const auto& V = this->ptr_to_model->get_eigenvectors();
-		
+		double E_av = arma::trace(E) / double(N);
+		auto i = min_element(begin(E), end(E), [=](double x, double y) {
+			return abs(x - E_av) < abs(y - E_av);
+		});
+		const long Eav_idx = i - begin(E);
 
 		std::string dir_realis = dir + "realisation=" + std::to_string(this->jobid + realis) + kPSep;
 		createDirs(dir_realis);
-		E.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "energies",   arma::hdf5_opts::append));
+		E.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "energies"));
 		
+
 		arma::vec LTA_r(site_pairs.size() + 1, arma::fill::zeros);
 		arma::vec agp_norm_r(site_pairs.size() + 1, arma::fill::zeros);
 		arma::vec typ_susc_r(site_pairs.size() + 1, arma::fill::zeros);
-		arma::Mat<element_type> diag_mat_elem_r(dim, site_pairs.size(), arma::fill::zeros);
+		arma::Mat<element_type> diag_mat_elem_r(size, site_pairs.size(), arma::fill::zeros);
 
 		const double window_width = 0.001 * this->L;
 		spectrals::preset_omega set_omega(E, window_width, E(Eav_idx));

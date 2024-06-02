@@ -67,7 +67,7 @@ namespace lanczos
 			this->H_lanczos.submat(j * this->bundle_size, j * this->bundle_size, (j+1) * this->bundle_size - 1, (j+1) * this->bundle_size - 1) = alfa;
 
 			//<! convergence
-			if(j > this->lanczos_steps / this->bundle_size && (j - this->lanczos_steps / this->bundle_size) % 1 == 0)
+			if(j > this->lanczos_steps / this->bundle_size && (j - this->lanczos_steps / this->bundle_size) % 10 == 0)
 			{	
 				double conv = this->_calculate_convergence(E0, beta);
 				_extra_debug( std::cout << "BlockLanczos: "; printSeparated(std::cout, "\t", 15, true, this->N, j, conv); )
@@ -115,7 +115,7 @@ namespace lanczos
 						alfa(this->bundle_size, this->bundle_size), 
 						Vk(this->N, this->bundle_size), 
 						W(this->N, this->bundle_size);
-		std::cout << "Using num  of threads = " << omp_get_num_threads() << std::endl;
+		
 		for (int j = 0; j < this->maxiter; j++) 
 		{
 			Vk = this->krylov_space.cols(j * this->bundle_size, (j+1) * this->bundle_size - 1);
@@ -125,7 +125,7 @@ namespace lanczos
 			this->H_lanczos.submat(j * this->bundle_size, j * this->bundle_size, (j + 1) * this->bundle_size - 1, (j + 1) * this->bundle_size - 1) = alfa;
 
 			//<! convergence
-			if(j >= this->lanczos_steps / this->bundle_size && (j - this->lanczos_steps / this->bundle_size) % 1 == 0)
+			if(j >= this->lanczos_steps / this->bundle_size && (j - this->lanczos_steps / this->bundle_size) % 10 == 0)
 			{
 				double conv = this->_calculate_convergence(E0, beta);
 				_extra_debug( std::cout << "BlockLanczos: "; printSeparated(std::cout, "\t", 15, true, this->N, j, conv, "time=", tim_s(start)); )

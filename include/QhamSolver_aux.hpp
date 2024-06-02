@@ -135,7 +135,19 @@ namespace QHS{
     void QHamSolver<Hamiltonian>::diag_sparse(int Nev, int s, double tol, int seed)
     {
         auto Hamil = this->H.get_hamiltonian();
-        auto polfed = polfed::POLFED<QHamSolver::_ty>(Hamil, Nev, s, -1, tol, 0.17, seed, true);
-        std::tie(this->eigenvalues, this->eigenvectors) = polfed.eig();
+        auto polfed = polfed::POLFED<QHamSolver::_ty>(Hamil, Nev, s, -1, tol, 0.2, seed, true);
+        auto [E, V] = polfed.eig();
+        auto indices = arma::sort_index(E);
+        this->eigenvalues = E( indices );
+        this->eigenvectors = V.cols( indices );
+        #ifdef EXTRA_DEBUG
+            std::cout << "-------------------------------------- TEST POLFED SPECTRUM --------------------------------------" << std::endl;
+            for(int n = 0; n < this->eigenvalues.size(); n++)
+            {
+                auto value = arma::cdot(this->eigenvectors.col(n), Hamil * this->eigenvectors.col(n));
+                printSeparated(std::cout, "\t", 20, true, n, this->eigenvalues(n), value, std::abs(value - this->eigenvalues(n)));
+            }
+            std::cout << "-------------------------------------- TEST POLFED SPECTRUM --------------------------------------" << std::endl;
+        #endif
     }
 }
