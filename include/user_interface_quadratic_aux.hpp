@@ -240,8 +240,12 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
 	std::string info = this->set_info();
 	std::string filename = info;// + "_subsize=" + std::to_string(VA);
 
-	const int Gamma_max = this->num_of_points;
-	u64 num_states = 1e4;//500 * Gamma_max;//ULLPOW(14);
+	// const int Gamma_max = this->num_of_points;
+	u64 num_states = 1e5;//500 * Gamma_max;//ULLPOW(14);
+	
+	arma::Col<int> Gammas = arma::Col<int>({1, 2, 4, int(std::log2(this->V)), this->V / 2, this->V / 2, this->V});
+	const int Gamma_max = Gammas.size();
+	arma::vec qs = arma::vec({0.25, 0.5, 0.75, 2});
 
 	// arma::Col<int> subsystem_sizes = arma::conv_to<arma::Col<int>>::from(arma::linspace(0, this->V / 2, this->V / 2 + 1));
 	arma::Col<int> subsystem_sizes = arma::Col<int>({this->V / 2});
@@ -251,6 +255,7 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
 
 	arma::mat entropies(Gamma_max, subsystem_sizes.size(), arma::fill::zeros);
 	arma::mat single_site_entropy(Gamma_max, subsystem_sizes.size(), arma::fill::zeros);
+	arma::mat participation_ratios(Gamma_max, qs.size(), arma::fill::zeros);
 
 	int counter = 0;
 
@@ -291,9 +296,9 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
 		arma::cx_mat orbitals = arma::cx_mat(this->V, this->V, arma::fill::zeros);
         //<! Make general for complex matrices
         
+
 		arma::mat S(Gamma_max, subsystem_sizes.size(), arma::fill::zeros);
 		arma::mat S_site(Gamma_max, subsystem_sizes.size(), arma::fill::zeros);
-
 		std::vector<boost::dynamic_bitset<>> mb_states;
 		#ifdef FREE_FERMIONS
 			if(this->op == 1)		mb_states = QHS::single_particle::mb_config(num_states, this->V, random_generator, N);
@@ -339,15 +344,18 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
 
 		std::cout << " - - - - - - finished setting slater converter in : " << tim_s(start) << " s for realis = " << realis << " - - - - - - " << std::endl;
 		// for(auto& VA : subsystem_sizes)
+		arma::mat prs(Gamma_max, qs.size(), arma::fill::zeros);
 		for(int VA_idx = 0; VA_idx < subsystem_sizes.size(); VA_idx++)
 		{
 			auto VA = subsystem_sizes(VA_idx);
 			auto start_VA = std::chrono::system_clock::now();
 			
 			start_VA = std::chrono::system_clock::now();
-
-			for(int gamma_a = 1; gamma_a <= Gamma_max; gamma_a++)
+			prs.zeros();
+			// for(int gamma_a = 1; gamma_a <= Gamma_max; gamma_a++)
+			for(int ii = 0; ii < Gammas.size(); ii++)
 			{
+				int gamma_a = Gammas(ii);
 				int counter_states = 0;
 
 				double entropy_single_site = 0;
@@ -356,6 +364,7 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
 			// #pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
 				for(u64 unused = 0; unused < 50; unused++)
 				{
+					arma::vec _prs_(qs.size(), arma::fill::zeros);
 					arma::cx_mat U = random_matrix.generate_matrix(gamma_a);
 					arma::cx_mat J_m(VA, VA, arma::fill::zeros);
 					
@@ -372,16 +381,18 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
 						auto state_n = mb_states[indices(n)];
 
 						// Fill state with appropriate values --------------------------------------------------
-						SlaterConverter.convert(fullstate, state_n, coeff(n));
+						SlaterConverter.convert(fullstate, state_n, coeff(n), qs, _prs_);
 						// --------------------------------------------------------------------------------------
 					}
 					entropy += entropy::schmidt_decomposition(fullstate, VA, this->V);
+					prs.row(ii) += _prs_.t();
 					counter_states++;
 				}
+				participation_ratios(ii) = prs(ii) / (double)counter_states;
 
 				// printSeparated(std::cout, "\t", 16, true, VA, gamma_a, entropy / (double)counter_states, entropy_test / (double)counter_states, entropy / (double)counter_states - entropy_test / (double)counter_states);
 				
-				S(gamma_a-1, VA_idx) 		= entropy / (double)counter_states;				// entanglement of subsystem VA using Slater determiniants
+				S(ii, VA_idx) 		= entropy / (double)counter_states;				// entanglement of subsystem VA using Slater determiniants
 				// S_site(gamma_a-1, VA_idx) 	= entropy_single_site / double(counter_states);	// single site entanglement at site VA
 			}
     		std::cout << "\n - - - - - - finished entropy size VA: " << VA << " in time:" << tim_s(start_VA) << " s - - - - - - " << std::endl; // simuVAtion end
@@ -393,6 +404,9 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
 			createDirs(dir_realis);
 			S.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "entropy"));
 			S_site.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "single_site_entropy", arma::hdf5_opts::append));
+			subsystem_sizes.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "subsystem_sizes", arma::hdf5_opts::append));
+			qs.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "qs", arma::hdf5_opts::append));
+			prs.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "participation_ratio", arma::hdf5_opts::append));
 			single_particle_energy.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "single particle energy", arma::hdf5_opts::append));
 		}
 		entropies += S;
@@ -404,12 +418,12 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
 		std::cout << " - - - - - - finished realisation realis = " << realis << " in : " << tim_s(start) << " s - - - - - - " << std::endl; // simuVAtion end
 	}
     
-	entropies /= double(counter);
-	single_site_entropy /= double(counter);
+	// entropies /= double(counter);
+	// single_site_entropy /= double(counter);
 
-	filename += "_jobid=" + std::to_string(this->jobid);
-	entropies.save(arma::hdf5_name(dir + filename + ".hdf5", "entropy"));
-	single_site_entropy.save(arma::hdf5_name(dir + filename + ".hdf5", "single_site_entropy", arma::hdf5_opts::append));
+	// filename += "_jobid=" + std::to_string(this->jobid);
+	// entropies.save(arma::hdf5_name(dir + filename + ".hdf5", "entropy"));
+	// single_site_entropy.save(arma::hdf5_name(dir + filename + ".hdf5", "single_site_entropy", arma::hdf5_opts::append));
     std::cout << " - - - - - - FINISHED ENTROPY CALCUVATION IN : " << tim_s(start) << " seconds - - - - - - " << std::endl; // simuVAtion end
 }
 

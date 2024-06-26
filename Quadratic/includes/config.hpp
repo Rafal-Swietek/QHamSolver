@@ -12,7 +12,7 @@
 
 
 #ifndef MODEL
-    #define MODEL 4
+    #define MODEL 3
 #endif
 
 //------------------- Translate Macro
