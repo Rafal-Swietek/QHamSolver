@@ -22,7 +22,7 @@ void user_interface_dis<Hamiltonian>::diagonalize(){
 		
 		if(realis > 0)
 			this->ptr_to_model->generate_hamiltonian();
-		this->ptr_to_model->diagonalization(!this->ch);
+		this->ptr_to_model->diagonalization(this->ch);
 		arma::vec eigenvalues = this->ptr_to_model->get_eigenvalues();
 		
 		std::cout << "\t\t	--> finished diagonalizing for " << info + _suffix << " - in time : " << tim_s(start) << "s" << std::endl;
@@ -31,7 +31,7 @@ void user_interface_dis<Hamiltonian>::diagonalize(){
 		// std::cout << eigenvalues << std::endl;
 
 		std::string name = dir_re + info + ".hdf5";
-		eigenvalues.save(arma::hdf5_name(name, "eigenvalues", arma::hdf5_opts::append));
+		eigenvalues.save(arma::hdf5_name(name, "eigenvalues"));
 		std::cout << "\t\t	--> finished saving eigenvalues for " << info + _suffix << " - in time : " << tim_s(start) << "s" << std::endl;
 		if(this->ch){
 			auto H = this->ptr_to_model->get_dense_hamiltonian();

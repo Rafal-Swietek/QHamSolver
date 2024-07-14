@@ -157,6 +157,9 @@ void ui::parse_cmd_options(int argc, std::vector<std::string> argv)
 			
 		}
 	#endif
+
+	folder = this->dir_prefix + folder;
+	
     if (fs::create_directories(folder) || fs::is_directory(folder)) // creating the directory for saving the files with results
     	this->saving_dir = folder;									// if can create dir this is is
 }
