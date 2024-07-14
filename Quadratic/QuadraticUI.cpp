@@ -51,6 +51,7 @@ void ui::make_sim(){
 						std::cout << " - - START NEW ITERATION:\t\t par = "; // simuVAtion end
 						printSeparated(std::cout, "\t", 16, true, this->L, this->J, this->w, this->g);
 						
+						spectral_form_factor(); continue;
 						eigenstate_entanglement(); continue;
 						// eigenstate_entanglement_degenerate();
 						// average_sff();
@@ -120,7 +121,7 @@ void ui::parse_cmd_options(int argc, std::vector<std::string> argv)
 	#if defined(ANDERSON) || defined(AUBRY_ANDRE)
 		set_param(w);
 	#endif
-	#if defined(AUBRY_ANDRE) || defined(PLRB)
+	#if defined(AUBRY_ANDRE) || defined(PLRB) || defined(RP)
 		set_param(g);
 	#endif
 
@@ -137,21 +138,25 @@ void ui::parse_cmd_options(int argc, std::vector<std::string> argv)
 		folder += "PLRB" + kPSep;
 	#elif defined(AUBRY_ANDRE)
 		folder += "AubryAndre" + kPSep;
+	#elif defined(RP)
+		folder += "RP" + kPSep;
 	#else
 		folder += "FreeFermions" + kPSep;
 	#endif
-	#if !defined(SYK2) && !defined(PLRB)
+	#if !defined(SYK2) && !defined(PLRB) && !defined(RP)
 		folder += "dim=" + std::to_string(DIM) + kPSep;
 	#endif
-    switch(this->boundary_conditions){
-        case 0: folder += "PBC" + kPSep; break;
-        case 1: folder += "OBC" + kPSep; break;
-        case 2: folder += "ABC" + kPSep; break;
-        default:
-            folder += "PBC" + kPSep; 
-            break;
-        
-    }
+	#if !defined(SYK2) && !defined(RP)
+		switch(this->boundary_conditions){
+			case 0: folder += "PBC" + kPSep; break;
+			case 1: folder += "OBC" + kPSep; break;
+			case 2: folder += "ABC" + kPSep; break;
+			default:
+				folder += "PBC" + kPSep; 
+				break;
+			
+		}
+	#endif
     if (fs::create_directories(folder) || fs::is_directory(folder)) // creating the directory for saving the files with results
     	this->saving_dir = folder;									// if can create dir this is is
 }
@@ -203,6 +208,8 @@ void ui::printAllOptions() const{
 		std::cout << "SYK2\th_j = 0" << std::endl;
 	#elif defined(AUBRY_ANDRE)
 		std::cout << "Aubry-Andre\th_j = w*cos(2\u03C0j*g + \u03C6)\t\u03C6=0 - random phase (0 for now)" << std::endl;
+	#elif defined(RP)
+		std::cout << "Rozezweig-Porter\th_j = N(0,1); A_{i,j} = GOE(N) / N^{-g/2}" << std::endl;
 	#else
 		std::cout << "Free-Fermions\th_j = 0" << std::endl;
 	#endif
@@ -218,7 +225,7 @@ void ui::printAllOptions() const{
 		  << "ws = " << this->ws << std::endl
 		  << "wn = " << this->wn << std::endl;
 	#endif
-	#if defined(AUBRY_ANDRE) || defined(PLRB)
+	#if defined(AUBRY_ANDRE) || defined(PLRB) || defined(RP)
 		std::cout
 		  << "g  = " << this->g << std::endl
 		  << "gs = " << this->gs << std::endl
@@ -236,7 +243,7 @@ std::string ui::set_info(std::vector<std::string> skip, std::string sep) const
 		#if defined(ANDERSON) || defined(AUBRY_ANDRE)
 			name += ",w=" + to_string_prec(this->w);
 		#endif
-		#if defined(AUBRY_ANDRE) || defined(PLRB)
+		#if defined(AUBRY_ANDRE) || defined(PLRB) || defined(RP)
         	name += ",g=" + to_string_prec(this->g);
 		#endif
 

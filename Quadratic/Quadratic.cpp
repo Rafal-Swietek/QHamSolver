@@ -91,6 +91,9 @@ void Quadratic::create_hamiltonian()
                 }
             }
         }
+    #elif defined(RP)
+        arma::vec H0 = this->disorder_generator.gaussian(this->dim, 0, 1);
+        this->H = arma::diagmat(H0) + this->random_matrix.generate_matrix(this->dim) / std::pow(this->dim, this->_g / 2.0);
     #else
         #pragma message("No model chosen!!! Leaving empty matrix")
     #endif

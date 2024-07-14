@@ -12,7 +12,7 @@
 
 
 #ifndef MODEL
-    #define MODEL 3
+    #define MODEL 5
 #endif
 
 //------------------- Translate Macro
@@ -36,6 +36,10 @@
 #elif MODEL == 4
     #define PLRB
     #define print_model(x) "Chosen power-law random banded (PLRB) model with GOE matrix elements in " #x "-dimensions!"
+    #define pprint_model(x) print_model(x)
+#elif MODEL == 5
+    #define RP
+    #define print_model(x) "Chosen Rozenzweig-Porter (RP) model with GOE matrix elements in " #x "-dimensions!"
     #define pprint_model(x) print_model(x)
 #else
     #define print_model(x) "DEFAULT: Chosen SYK2 model with GOE matrix elements in " #x "-dimensions!"
