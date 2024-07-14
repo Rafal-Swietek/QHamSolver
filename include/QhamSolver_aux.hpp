@@ -41,7 +41,7 @@ namespace QHS{
             //<! ----------------------------------------------- ROUTINES
             void generate_hamiltonian();
             void diagonalization(bool get_eigenvectors = true, const char* method = "dc");
-            void diag_sparse(int Nev, int s, double tol = 1e-14, int seed = std::random_device{}());
+            double diag_sparse(int Nev, int s, double tol = 1e-14, int seed = std::random_device{}());
     };
 
 
@@ -132,7 +132,7 @@ namespace QHS{
     /// @param tol tolerance for algorithm
     /// @param seed input seed got random computation
     template <class Hamiltonian>
-    void QHamSolver<Hamiltonian>::diag_sparse(int Nev, int s, double tol, int seed)
+    double QHamSolver<Hamiltonian>::diag_sparse(int Nev, int s, double tol, int seed)
     {
         auto Hamil = this->H.get_hamiltonian();
         auto polfed = polfed::POLFED<QHamSolver::_ty>(Hamil, Nev, s, -1, tol, 0.2, seed, true);
@@ -140,14 +140,18 @@ namespace QHS{
         auto indices = arma::sort_index(E);
         this->eigenvalues = E( indices );
         this->eigenvectors = V.cols( indices );
-        #ifdef EXTRA_DEBUG
+        // #ifdef EXTRA_DEBUG
             std::cout << "-------------------------------------- TEST POLFED SPECTRUM --------------------------------------" << std::endl;
+            double error = -100;
             for(int n = 0; n < this->eigenvalues.size(); n++)
             {
                 auto value = arma::cdot(this->eigenvectors.col(n), Hamil * this->eigenvectors.col(n));
-                printSeparated(std::cout, "\t", 20, true, n, this->eigenvalues(n), value, std::abs(value - this->eigenvalues(n)));
+                double error_n = std::abs(value - this->eigenvalues(n));
+                if( error_n > error )   error = error_n;
+                printSeparated(std::cout, "\t", 20, true, n, this->eigenvalues(n), value, error_n);
             }
             std::cout << "-------------------------------------- TEST POLFED SPECTRUM --------------------------------------" << std::endl;
-        #endif
+        // #endif
+        return error;
     }
 }

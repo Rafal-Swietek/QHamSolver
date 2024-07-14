@@ -243,9 +243,9 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
 	// const int Gamma_max = this->num_of_points;
 	u64 num_states = 1e5;//500 * Gamma_max;//ULLPOW(14);
 	
-	arma::Col<int> Gammas = arma::Col<int>({1, 2, 4, int(std::log2(this->V)), this->V / 2, this->V / 2, this->V});
+	arma::Col<int> Gammas = arma::Col<int>({1, 2, 4, this->V / 4, this->V / 2, this->V, this->V * this->V});
 	const int Gamma_max = Gammas.size();
-	arma::vec qs = arma::vec({0.25, 0.5, 0.75, 2});
+	arma::vec qs = arma::vec({0.5, 1, 2});
 
 	// arma::Col<int> subsystem_sizes = arma::conv_to<arma::Col<int>>::from(arma::linspace(0, this->V / 2, this->V / 2 + 1));
 	arma::Col<int> subsystem_sizes = arma::Col<int>({this->V / 2});
@@ -362,7 +362,7 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
 				double entropy = 0;
 				double entropy_test = 0;
 			// #pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
-				for(u64 unused = 0; unused < 50; unused++)
+				for(u64 unused = 0; unused < 1; unused++)
 				{
 					arma::vec _prs_(qs.size(), arma::fill::zeros);
 					arma::cx_mat U = random_matrix.generate_matrix(gamma_a);
@@ -376,6 +376,7 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
 					coeff = arma::normalise(coeff);
 					arma::cx_vec fullstate(ULLPOW(this->V), arma::fill::zeros);
 
+					// auto starta = std::chrono::system_clock::now();
 					for(int n = 0; n < gamma_a; n++)
 					{
 						auto state_n = mb_states[indices(n)];
@@ -384,7 +385,11 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
 						SlaterConverter.convert(fullstate, state_n, coeff(n), qs, _prs_);
 						// --------------------------------------------------------------------------------------
 					}
+					// std::cout << "\n - - - - - - finished Many Body state in time:" << tim_s(starta) << " s - - - - - - " << std::endl; // simuVAtion end
+					// starta = std::chrono::system_clock::now();
 					entropy += entropy::schmidt_decomposition(fullstate, VA, this->V);
+					// std::cout << "\n - - - - - - finished entropy of Many Body state in time:" << tim_s(starta) << " s - - - - - - " << std::endl; // simuVAtion end
+
 					prs.row(ii) += _prs_.t();
 					counter_states++;
 				}

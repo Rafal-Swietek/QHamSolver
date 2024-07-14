@@ -81,7 +81,7 @@ namespace QHS{
 
                     for(int ii = 0; ii < qs.size(); ii++){
                         double q = qs(ii);
-                        prs(ii) += std::pow(std::abs(det), 2 * q);
+                        prs(ii) += std::pow(std::abs(prefactor * det), 2 * q);
                     }
                 }
             }

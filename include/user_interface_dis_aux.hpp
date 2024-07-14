@@ -468,7 +468,8 @@ void user_interface_dis<Hamiltonian>::eigenstate_entanglement()
 	createDirs(dir);
 	
 	size_t dim = this->ptr_to_model->get_hilbert_size();
-	const size_t size = dim > 1e5? this->l_steps : dim;
+	const size_t dim_cut = 100000;
+    const size_t size = dim > dim_cut? this->l_steps : dim;
 	// const size_t size = this->l_steps;
 
 	std::string info = this->set_info();
@@ -511,8 +512,9 @@ void user_interface_dis<Hamiltonian>::eigenstate_entanglement()
 		if(realis > 0)
 			this->ptr_to_model->generate_hamiltonian();
 		start = std::chrono::system_clock::now();
-		if(dim > 1e5){
-			this->ptr_to_model->diag_sparse(this->l_steps, this->l_bundle, this->tol, this->seed);
+		if(dim > dim_cut){
+			double error = this->ptr_to_model->diag_sparse(this->l_steps, this->l_bundle, this->tol, this->seed);
+            if( error > 1e-10 ) { std::cout << "POLFED FAILED: Maximal Error = " << error << std::endl; continue; }
 		}
 		else{
         	this->ptr_to_model->diagonalization();
