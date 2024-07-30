@@ -61,28 +61,24 @@ void user_interface_dis<Hamiltonian>::spectral_form_factor(){
 	//------- PREAMBLE
 	std::string info = this->set_info();
 
-	const double chi = 0.341345;
 	u64 dim = this->ptr_to_model->get_hilbert_size();
 
-	const double wH = sqrt(this->L) / (chi * dim);
-	double tH = 1. / wH;
 	double r1 = 0.0, r2 = 0.0;
-	int time_end = (int)std::ceil(std::log10(5 * tH));
-	time_end = (time_end / std::log10(tH) < 1.5) ? time_end + 1 : time_end;
 
 	arma::vec times = arma::logspace(log10(1.0 / (two_pi * dim)), 0.5, this->num_of_points);
-	arma::vec times_fold = arma::logspace(-2, time_end, this->num_of_points);
+	arma::vec times_fold(this->num_of_points, arma::fill::zeros);
 
 	arma::vec sff1(this->num_of_points, arma::fill::zeros);
 	arma::vec sff2(this->num_of_points, arma::fill::zeros);
 	arma::vec sff3(this->num_of_points, arma::fill::zeros);
-	arma::vec sff4(this->num_of_points, arma::fill::zeros);
 	arma::vec sff_fold(this->num_of_points, arma::fill::zeros);
+	arma::vec sff_fold2(this->num_of_points, arma::fill::zeros);
 	arma::vec sff_raw(this->num_of_points, arma::fill::zeros);
-	double Z1 = 0.0, Z2 = 0.0, Z3 = 0.0, Z4 = 0.0, Z_fold = 0.0, Z_raw = 0.0;
+	double Z1 = 0.0, Z2 = 0.0, Z3 = 0.0, Z_fold = 0.0, Z_fold2 = 0.0, Z_raw = 0.0;
 	double wH_mean = 0.0;
 	double wH_typ  = 0.0;
-	int counter = 0;
+	u64 counter = 0;
+	bool set_folded_times = 0;
 //#pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
 	for(int realis = 0; realis < this->realisations; realis++)
 	{
@@ -125,6 +121,14 @@ void user_interface_dis<Hamiltonian>::spectral_form_factor(){
 			wH_mean_r /= double(count);
 			r1_tmp /= double(count);
 			r2_tmp /= double(num2);
+			if( !set_folded_times ){
+				set_folded_times = 1;
+				double tH_typ_temp = two_pi / std::exp(wH_typ_r / count);
+				double time_end = std::log10(tH_typ_temp);
+				time_end = (time_end / std::log10(tH_typ_temp) < 1.5) ? time_end + 0.3 : time_end;
+				printSeparated(std::cout, "\t", 16, true, tH_typ_temp, time_end);
+				times_fold = arma::logspace(-2.0, time_end, this->num_of_points);
+			}
 		// ------------------------------------- calculate sff
 			// statistics::SFF<statistics::filters::raw> _sff_raw(1.0);
 			// auto sff_r_raw = _sff_raw.calculate(eigenvalues, times_fold);
@@ -140,13 +144,13 @@ void user_interface_dis<Hamiltonian>::spectral_form_factor(){
 
 			auto [sff_r_raw, Z_r_raw] = statistics::spectral_form_factor(eigenvalues, times_fold, this->beta, 1.5);
 
-			auto [sff_r_folded, Z_r_folded] = statistics::spectral_form_factor(eigenvalues, times_fold, this->beta, 0.5);
+			auto [sff_r_folded, Z_r_folded] = statistics::spectral_form_factor(eigenvalues, times_fold, this->beta, 0.3);
+			auto [sff_r_folded2, Z_r_folded2] = statistics::spectral_form_factor(eigenvalues, times_fold, this->beta, 0.5);
 			eigenvalues = statistics::unfolding(eigenvalues);
 
 			auto [sff1_r, Z1_r] = statistics::spectral_form_factor(eigenvalues, times,this->beta, 0.1);
 			auto [sff2_r, Z2_r] = statistics::spectral_form_factor(eigenvalues, times,this->beta, 0.3);
 			auto [sff3_r, Z3_r] = statistics::spectral_form_factor(eigenvalues, times,this->beta, 0.5);
-			auto [sff4_r, Z4_r] = statistics::spectral_form_factor(eigenvalues, times,this->beta, 0.7);
 			#pragma omp critical
 			{
 				r1 += r1_tmp;
@@ -157,13 +161,13 @@ void user_interface_dis<Hamiltonian>::spectral_form_factor(){
 				sff1 += sff1_r;
 				sff2 += sff2_r;
 				sff3 += sff3_r;
-				sff4 += sff4_r;
 				Z1 += Z1_r;
 				Z2 += Z2_r;
 				Z3 += Z3_r;
-				Z4 += Z4_r;
 				sff_fold += sff_r_folded;
+				sff_fold2 += sff_r_folded2;
 				Z_fold += Z_r_folded;
+				Z_fold2 += Z_r_folded2;
 				
 				wH_mean += wH_mean_r;
 				wH_typ  += wH_typ_r / double(count);
@@ -173,34 +177,34 @@ void user_interface_dis<Hamiltonian>::spectral_form_factor(){
 		if(this->fun == 1) std::cout << "\t\t	--> finished realisation for " << prefix + info << " - in time : " << tim_s(start) << "s" << std::endl;
 		
 		//--------- SAVE REALISATION TO FILE
-		#if !defined(MY_MAC)
-			std::string dir_re  = dir + "realisation=" + std::to_string(this->jobid + realis) + kPSep;
-			createDirs(dir_re);
+		// #if !defined(MY_MAC)
+		// 	std::string dir_re  = dir + "realisation=" + std::to_string(this->jobid + realis) + kPSep;
+		// 	createDirs(dir_re);
 
-			times.save(arma::hdf5_name(dir_re + info + ".hdf5", "times"));
+		// 	times.save(arma::hdf5_name(dir_re + info + ".hdf5", "times"));
 
-			sff1_r.save(arma::hdf5_name(dir_re + info + ".hdf5", "sff_eta=0.1", arma::hdf5_opts::append));
-			arma::vec({Z1_r}).save(arma::hdf5_name(dir_re + info + ".hdf5", "Z_eta=0.1", arma::hdf5_opts::append));
-			sff2_r.save(arma::hdf5_name(dir_re + info + ".hdf5", "sff_eta=0.3", arma::hdf5_opts::append));
-			arma::vec({Z2_r}).save(arma::hdf5_name(dir_re + info + ".hdf5", "Z_eta=0.3", arma::hdf5_opts::append));
-			sff3_r.save(arma::hdf5_name(dir_re + info + ".hdf5", "sff_eta=0.5", arma::hdf5_opts::append));
-			arma::vec({Z3_r}).save(arma::hdf5_name(dir_re + info + ".hdf5", "Z_eta=0.5", arma::hdf5_opts::append));
-			sff4_r.save(arma::hdf5_name(dir_re + info + ".hdf5", "sff_eta=0.7", arma::hdf5_opts::append));
-			arma::vec({Z4_r}).save(arma::hdf5_name(dir_re + info + ".hdf5", "Z_eta=0.7", arma::hdf5_opts::append));
+		// 	sff1_r.save(arma::hdf5_name(dir_re + info + ".hdf5", "sff_eta=0.1", arma::hdf5_opts::append));
+		// 	arma::vec({Z1_r}).save(arma::hdf5_name(dir_re + info + ".hdf5", "Z_eta=0.1", arma::hdf5_opts::append));
+		// 	sff2_r.save(arma::hdf5_name(dir_re + info + ".hdf5", "sff_eta=0.3", arma::hdf5_opts::append));
+		// 	arma::vec({Z2_r}).save(arma::hdf5_name(dir_re + info + ".hdf5", "Z_eta=0.3", arma::hdf5_opts::append));
+		// 	sff3_r.save(arma::hdf5_name(dir_re + info + ".hdf5", "sff_eta=0.5", arma::hdf5_opts::append));
+		// 	arma::vec({Z3_r}).save(arma::hdf5_name(dir_re + info + ".hdf5", "Z_eta=0.5", arma::hdf5_opts::append));
 
-			times_fold.save(arma::hdf5_name(dir_re + info + ".hdf5", "times_fold", arma::hdf5_opts::append));
-			sff_r_folded.save(arma::hdf5_name(dir_re + info + ".hdf5", "sff_fold", arma::hdf5_opts::append));
-			arma::vec({Z_r_folded}).save(arma::hdf5_name(dir_re + info + ".hdf5", "Z_fold", arma::hdf5_opts::append));
-			sff_r_raw.save(arma::hdf5_name(dir_re + info + ".hdf5", "sff_raw", arma::hdf5_opts::append));
-			arma::vec({Z_r_raw}).save(arma::hdf5_name(dir_re + info + ".hdf5", "Z_raw", arma::hdf5_opts::append));
+		// 	times_fold.save(arma::hdf5_name(dir_re + info + ".hdf5", "times_fold", arma::hdf5_opts::append));
+		// 	sff_r_folded.save(arma::hdf5_name(dir_re + info + ".hdf5", "sff_fold_eta=0.3", arma::hdf5_opts::append));
+		// 	arma::vec({Z_r_folded}).save(arma::hdf5_name(dir_re + info + ".hdf5", "Z_fold_eta=0.3", arma::hdf5_opts::append));
+		// 	sff_r_folded2.save(arma::hdf5_name(dir_re + info + ".hdf5", "sff_fold_eta=0.5", arma::hdf5_opts::append));
+		// 	arma::vec({Z_r_folded2}).save(arma::hdf5_name(dir_re + info + ".hdf5", "Z_fold_eta=0.5", arma::hdf5_opts::append));
+		// 	sff_r_raw.save(arma::hdf5_name(dir_re + info + ".hdf5", "sff_raw", arma::hdf5_opts::append));
+		// 	arma::vec({Z_r_raw}).save(arma::hdf5_name(dir_re + info + ".hdf5", "Z_raw", arma::hdf5_opts::append));
 			
-			arma::vec({r2_tmp}).save(arma::hdf5_name(dir_re + info + ".hdf5", "r_500", arma::hdf5_opts::append));
-			arma::vec({r1_tmp}).save(arma::hdf5_name(dir_re + info + ".hdf5", "r_D_2", arma::hdf5_opts::append));
-			arma::vec({wH_mean_r}).save(arma::hdf5_name(dir_re + info + ".hdf5", "wH", arma::hdf5_opts::append));
-			arma::vec({wH_typ_r}).save(arma::hdf5_name(dir_re + info + ".hdf5", "wH_typ", arma::hdf5_opts::append));
-			// save_to_file(dir_re + info + ".dat", 			times, 		sff_r, 		  Z_r, 		  r1_tmp, r2_tmp, wH_mean_r, wH_typ_r);
-			// save_to_file(dir_re + "folded" + info + ".dat", times_fold, sff_r_folded, Z_r_folded, r1_tmp, r2_tmp, wH_mean_r, wH_typ_r);
-		#endif
+		// 	arma::vec({r2_tmp}).save(arma::hdf5_name(dir_re + info + ".hdf5", "r_500", arma::hdf5_opts::append));
+		// 	arma::vec({r1_tmp}).save(arma::hdf5_name(dir_re + info + ".hdf5", "r_D_2", arma::hdf5_opts::append));
+		// 	arma::vec({wH_mean_r}).save(arma::hdf5_name(dir_re + info + ".hdf5", "wH", arma::hdf5_opts::append));
+		// 	arma::vec({wH_typ_r}).save(arma::hdf5_name(dir_re + info + ".hdf5", "wH_typ", arma::hdf5_opts::append));
+		// 	// save_to_file(dir_re + info + ".dat", 			times, 		sff_r, 		  Z_r, 		  r1_tmp, r2_tmp, wH_mean_r, wH_typ_r);
+		// 	// save_to_file(dir_re + "folded" + info + ".dat", times_fold, sff_r_folded, Z_r_folded, r1_tmp, r2_tmp, wH_mean_r, wH_typ_r);
+		// #endif
 	}
 
 	// --------------------------------------------------------------- AVERAGE CURRENT REALISATIONS
@@ -214,9 +218,9 @@ void user_interface_dis<Hamiltonian>::spectral_form_factor(){
 	sff1 = sff1 / Z1;
 	sff2 = sff2 / Z2;
 	sff3 = sff3 / Z3;
-	sff4 = sff4 / Z4;
 	sff_raw = sff_raw / Z_raw;
 	sff_fold = sff_fold / Z_fold;
+	sff_fold2 = sff_fold2 / Z_fold2;
 	wH_mean /= norm;
 	wH_typ /= norm;
 
@@ -225,15 +229,16 @@ void user_interface_dis<Hamiltonian>::spectral_form_factor(){
 	sff1.save(arma::hdf5_name(dir + info + ".hdf5", "sff_eta=0.1", arma::hdf5_opts::append));
 	sff2.save(arma::hdf5_name(dir + info + ".hdf5", "sff_eta=0.3", arma::hdf5_opts::append));
 	sff3.save(arma::hdf5_name(dir + info + ".hdf5", "sff_eta=0.5", arma::hdf5_opts::append));
-	sff4.save(arma::hdf5_name(dir + info + ".hdf5", "sff_eta=0.7", arma::hdf5_opts::append));
 	times_fold.save(arma::hdf5_name(dir + info + ".hdf5", "times_fold", arma::hdf5_opts::append));
 	sff_fold.save(arma::hdf5_name(dir + info + ".hdf5", "sff_fold", arma::hdf5_opts::append));
+	sff_fold2.save(arma::hdf5_name(dir + info + ".hdf5", "sff_fold2", arma::hdf5_opts::append));
 	sff_raw.save(arma::hdf5_name(dir + info + ".hdf5", "sff_raw", arma::hdf5_opts::append));
 	arma::vec({r2}).save(arma::hdf5_name(dir + info + ".hdf5", "r_500", arma::hdf5_opts::append));
 	arma::vec({r1}).save(arma::hdf5_name(dir + info + ".hdf5", "r_D_2", arma::hdf5_opts::append));
 	arma::uvec({dim}).save(arma::hdf5_name(dir + info + ".hdf5", "D", arma::hdf5_opts::append));
 	arma::vec({two_pi / (wH_mean)}).save(arma::hdf5_name(dir + info + ".hdf5", "tH", arma::hdf5_opts::append));
 	arma::vec({two_pi / std::exp(wH_typ)}).save(arma::hdf5_name(dir + info + ".hdf5", "tH_typ", arma::hdf5_opts::append));
+	arma::uvec({counter}).save(arma::hdf5_name(dir + info + ".hdf5", "realisations", arma::hdf5_opts::append));
 	// #endif
 	// save_to_file(dir + info + ".dat", 			 times, 	 sff, 	   1.0 / wH_mean, thouless_time, 		   r1, r2, dim, 1.0 / wH_typ);
 	// save_to_file(dir + "folded" + info + ".dat", times_fold, sff_fold, 1.0 / wH_mean, thouless_time / wH_mean, r1, r2, dim, 1.0 / wH_typ);
@@ -470,10 +475,9 @@ void user_interface_dis<Hamiltonian>::eigenstate_entanglement()
 	size_t dim = this->ptr_to_model->get_hilbert_size();
 	const size_t dim_cut = 100000;
     const size_t size = dim > dim_cut? this->l_steps : dim;
-	// const size_t size = this->l_steps;
 
 	std::string info = this->set_info();
-	std::string filename = info;// + "_subsize=" + std::to_string(LA);
+	std::string filename = info;
 
 	arma::mat entropies(size, this->L + 1, arma::fill::zeros);
 	arma::mat single_site_entropy = entropies;
@@ -484,7 +488,6 @@ void user_interface_dis<Hamiltonian>::eigenstate_entanglement()
 	auto subsystem_sizes = arma::conv_to<arma::Col<int>>::from(arma::linspace(0, this->L, this->L + 1));
 	std::cout << subsystem_sizes.t() << std::endl;
 
-	// std::vector<arma::sp_mat> permutation_matrices;
 	std::vector<QOps::genOp> permutation_op;
 	for(int LA_idx = 0; LA_idx < subsystem_sizes.size() - 1; LA_idx++)
 	{	
@@ -501,9 +504,6 @@ void user_interface_dis<Hamiltonian>::eigenstate_entanglement()
 		auto permutation = QOps::_permutation_generator(this->L, p);
 		permutation_op.push_back(permutation);
 
-		// TODO: no matrix, make it vectors as mappings and clever way to make permuted vector later or design multiplication of operator with state
-		// arma::sp_mat P = arma::real(permutation.to_matrix( ULLPOW(this->L) ));
-		// permutation_matrices.push_back(P);
 		std::cout << " - - - - - - set permutation matrix for LA = " << LA << " in : " << tim_s(start_LA) << " s - - - - - - " << std::endl;
 	}
 // #pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
@@ -519,7 +519,6 @@ void user_interface_dis<Hamiltonian>::eigenstate_entanglement()
 		else{
         	this->ptr_to_model->diagonalization();
 		}
-		// this->ptr_to_model->diag_sparse(this->l_steps, this->l_bundle, this->tol, this->seed);
 		auto H = this->ptr_to_model->get_hamiltonian();
 
 		std::cout << " - - - - - - finished diagonalization in : " << tim_s(start) << " s for realis = " << realis << " - - - - - - " << std::endl; // simulation end
@@ -534,8 +533,6 @@ void user_interface_dis<Hamiltonian>::eigenstate_entanglement()
 		omp_set_num_threads(1);
 		std::cout << outer_threads << "\t\t" << omp_get_num_threads() << std::endl;
 		
-			// auto start_LA = std::chrono::system_clock::now();
-			// start_LA = std::chrono::system_clock::now();
 	#pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
 		for(int n = 0; n < size; n++){
 			arma::Col<element_type> state = arma::normalise(this->ptr_to_model->get_eigenState(n));
@@ -548,7 +545,6 @@ void user_interface_dis<Hamiltonian>::eigenstate_entanglement()
 				}
 
 			state = this->cast_state(state);
-			// somehow needs L-LA (computer sees bit representation the opposite way, i.e. take B subsystem)
 
 			for(int LA_idx = 0; LA_idx < subsystem_sizes.size() - 1; LA_idx++)
 			{	
@@ -558,7 +554,6 @@ void user_interface_dis<Hamiltonian>::eigenstate_entanglement()
 				arma::vec permuted_state = arma::real(permutation_op[LA_idx].multiply(state2));
 				S_site(n, LA_idx) = entropy::schmidt_decomposition(permuted_state, this->L - 1, this->L);	// single site entanglement at site LA
 			}
-    		// std::cout << " - - - - - - finished entropy size LA: " << LA << " in time:" << tim_s(start_LA) << " s - - - - - - " << std::endl; // simulation end
 		}
 		// if(this->realisations > 1)
 		{
