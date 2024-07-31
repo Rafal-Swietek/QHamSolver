@@ -2,6 +2,7 @@
 
 // #define EXTRA_DEBUG
 
+#define SPIN 0.5
 
 #undef NODEBUG
 #define CONFIG 2
@@ -12,7 +13,7 @@
 
 
 #ifndef MODEL
-    #define MODEL 5
+    #define MODEL 4
 #endif
 
 //------------------- Translate Macro
@@ -23,7 +24,7 @@
     #define pprint_model(x) print_model(x)
 #elif MODEL == 1
     #define SYK
-    #define print_model(x) "Chosen SYK2 model with GOE matrix elements in " #x "-dimensions!"
+    #define print_model(x) "Chosen SYK2 model with GOE matrix elements!"
     #define pprint_model(x) print_model(x)
 #elif MODEL == 2
     #define AUBRY_ANDRE
@@ -35,11 +36,11 @@
     #define pprint_model(x) print_model(x)
 #elif MODEL == 4
     #define PLRB
-    #define print_model(x) "Chosen power-law random banded (PLRB) model with GOE matrix elements in " #x "-dimensions!"
+    #define print_model(x) "Chosen power-law random banded (PLRB) model with GOE matrix elements in!"
     #define pprint_model(x) print_model(x)
 #elif MODEL == 5
     #define RP
-    #define print_model(x) "Chosen Rozenzweig-Porter (RP) model with GOE matrix elements in " #x "-dimensions!"
+    #define print_model(x) "Chosen Rozenzweig-Porter (RP) model with GOE matrix elements!"
     #define pprint_model(x) print_model(x)
 #else
     #define print_model(x) "DEFAULT: Chosen SYK2 model with GOE matrix elements in " #x "-dimensions!"

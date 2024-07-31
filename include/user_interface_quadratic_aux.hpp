@@ -432,6 +432,168 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
     std::cout << " - - - - - - FINISHED ENTROPY CALCUVATION IN : " << tim_s(start) << " seconds - - - - - - " << std::endl; // simuVAtion end
 }
 
+
+/// @brief Calculate entanglement entropy in all eigenstates and all subsystem sizes using schmidt decomposition
+/// @tparam Hamiltonian template parameter for current used model
+template <class Hamiltonian>
+void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_manybody()
+{
+    clk::time_point start = std::chrono::system_clock::now();
+	
+	std::string dir = this->saving_dir + "Entropy" + kPSep + "ManyBody" + kPSep;
+	
+	createDirs(dir);
+	
+	std::string info = this->set_info();
+	std::string filename = info;// + "_subsize=" + std::to_string(VA);
+
+	auto dim = this->ptr_to_model->get_hilbert_size();
+	const size_t dim_cut = 100000;
+    const size_t size = dim > dim_cut? this->l_steps : dim;
+
+	// arma::Col<int> subsystem_sizes = arma::conv_to<arma::Col<int>>::from(arma::linspace(0, this->V / 2, this->V / 2 + 1));
+	arma::Col<int> subsystem_sizes = arma::linspace<arma::Col<int>>(0, this->L, this->L + 1);
+	// arma::Col<int> subsystem_sizes = arma::join_cols(small_subsystem, arma::Col<int>({this->V / 2}));
+	std::cout << subsystem_sizes(0) << "...\t" << subsystem_sizes(subsystem_sizes.size() - 1) << std::endl;
+
+	arma::vec E(size, arma::fill::zeros);
+	arma::mat entropies(size, subsystem_sizes.size(), arma::fill::zeros);
+	arma::mat single_site_entropy(size, subsystem_sizes.size(), arma::fill::zeros);
+
+	int counter = 0;
+
+	std::vector<QOps::genOp> permutation_op;
+	for(int VA_idx = 0; VA_idx < subsystem_sizes.size() - 1; VA_idx++)
+	{	
+		int VA = subsystem_sizes[VA_idx];
+		std::vector<int> p(this->L);
+		p[VA % this->L] = 0;
+		for(int l = 0; l < this->L; l++){
+			if(l != VA % this->V){
+				p[l] = (l < (VA % this->V) )? l + 1 : l;
+			}
+		}
+		auto permutation = QOps::_permutation_generator(this->L, p);
+		permutation_op.push_back(permutation);
+	}
+// #pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
+	for(int realis = 0; realis < this->realisations; realis++)
+	{
+		this->ptr_to_model->generate_hamiltonian();
+		start = std::chrono::system_clock::now();
+			
+		if(dim > dim_cut){
+			double error = this->ptr_to_model->diag_sparse(this->l_steps, this->l_bundle, this->tol, this->seed);
+            if( error > 1e-10 ) { std::cout << "POLFED FAILED: Maximal Error = " << error << std::endl; continue; }
+		}
+		else{
+        	this->ptr_to_model->diagonalization();
+		}
+		std::cout << " - - - - - - finished diagonalization in : " << tim_s(start) << " s for realis = " << realis << " - - - - - - " << std::endl; // simuVAtion end
+		
+		arma::vec energy = this->ptr_to_model->get_eigenvalues();
+		
+        //<! Make general for complex matrices
+		arma::mat S(size, subsystem_sizes.size(), arma::fill::zeros);
+		arma::mat S_site(size, subsystem_sizes.size(), arma::fill::zeros);
+
+		// for(int VA_idx = 0; VA_idx < subsystem_sizes.size(); VA_idx++)
+		// {
+		// 	auto VA = subsystem_sizes(VA_idx);
+		// 	auto start_VA = std::chrono::system_clock::now();
+			
+		// 	start_VA = std::chrono::system_clock::now();
+
+		// 	double entropy_single_site = 0;
+		// 	double entropy = 0;
+
+		// 	for(u64 n = 0; n < num_states; n++){
+		// 		auto state_n = mb_states[n];
+		// 		E(n) = 0;
+		// 		for(long i = 0; i < state_n.size(); i++){
+		// 			if(state_n[i])
+		// 				E(n) += single_particle_energy(i);
+		// 		}
+		// 		//<! Generate ope-body density matrix rho -> then do correlator J
+		// 		arma::cx_mat J_m(VA, VA, arma::fill::zeros);
+		// 		cpx lambda = 0.0;
+		// 		QHS::single_particle::correlators::one_body(orbitals, state_n, VA, J_m, lambda, 1.0);
+		// 		J_m = 2.0 * J_m - arma::eye(VA, VA);
+
+		// 		arma::vec lambdas = arma::eig_sym(J_m);
+		// 		double S_temp = QHS::single_particle::entanglement::vonNeumann(lambdas);
+				
+		// 		// #pragma omp critical
+		// 		{
+		// 			entropy 			+= S_temp;
+		// 			entropy_single_site += QHS::single_particle::entanglement::vonNeumann_helper(2.0 * std::real(lambda) - 1.0);
+
+		// 		}
+		// 		// if( std::abs(entropyyy - entropy_test) > 1e-14)
+		// 		// printSeparated(std::cout, "\t", 20, true, VA, mb_states[n], S_temp, entropy_test, entropy_test - S_temp, entropy_test / S_temp);
+		// 	}
+		// 	S(VA_idx) 		= entropy / (double)num_states;					// entanglement of subsystem VA
+		// 	S_site(VA_idx) 	= entropy_single_site / double(num_states);		// single site entanglement at site VA
+    	// 	std::cout << " - - - - - - finished entropy size VA: " << VA << " in time:" << tim_s(start_VA) << " s - - - - - - " << std::endl; // simuVAtion end
+		// }
+
+
+		// arma::mat S_mb(size, this->L + 1, arma::fill::zeros);
+		// arma::mat S_site_mb = S_mb;
+
+		#pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
+		for(int n = 0; n < size; n++){
+			arma::Col<element_type> state = arma::normalise(this->ptr_to_model->get_eigenState(n));
+			arma::Col<element_type> state2 = arma::normalise(this->ptr_to_model->get_eigenState(n));
+
+			state = this->cast_state(state);
+
+			for(int LA_idx = 0; LA_idx < subsystem_sizes.size() - 1; LA_idx++)
+			{	
+				int LA = subsystem_sizes[LA_idx];
+				S(n, LA_idx) = entropy::schmidt_decomposition(state, this->L - LA, this->L);	// bipartite entanglement at subsystem size LA
+				
+				arma::vec permuted_state = arma::real(permutation_op[LA_idx].multiply(state2));
+				S_site(n, LA_idx) = entropy::schmidt_decomposition(permuted_state, this->L - 1, this->L);	// single site entanglement at site LA
+			}
+		}
+
+		entropies += S;
+		single_site_entropy += S_site;
+		E += energy;
+
+		outer_threads = this->thread_number;
+		omp_set_num_threads(1);
+
+
+		// if(this->realisations > 1)
+		{
+			std::string dir_realis = dir + "realisation=" + std::to_string(this->jobid + realis) + kPSep;
+			createDirs(dir_realis);
+			S.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "entropy"));
+			S_site.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "single_site_entropy", arma::hdf5_opts::append));
+			subsystem_sizes.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "VA", arma::hdf5_opts::append));
+			energy.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "energy", arma::hdf5_opts::append));
+		}
+		
+		counter++;
+    	omp_set_num_threads(this->thread_number);
+
+		std::cout << " - - - - - - finished realisation realis = " << realis << " in : " << tim_s(start) << " s - - - - - - " << std::endl; // simuVAtion end
+	}
+    
+	entropies /= double(counter);
+	single_site_entropy /= double(counter);
+	
+	#ifdef MY_MAC
+		filename += "_jobid=" + std::to_string(this->jobid);
+		entropies.save(arma::hdf5_name(dir + filename + ".hdf5", "entropy"));
+		single_site_entropy.save(arma::hdf5_name(dir + filename + ".hdf5", "single_site_entropy", arma::hdf5_opts::append));
+		subsystem_sizes.save(arma::hdf5_name(dir + filename + ".hdf5", "VA", arma::hdf5_opts::append));
+	#endif
+    std::cout << " - - - - - - FINISHED ENTROPY CALCUVATION IN : " << tim_s(start) << " seconds - - - - - - " << std::endl; // simuVAtion end
+}
+
 /// @brief Calculate entanglement entropy in all eigenstates and all subsystem sizes using schmidt decomposition
 /// @tparam Hamiltonian template parameter for current used model
 template <class Hamiltonian>

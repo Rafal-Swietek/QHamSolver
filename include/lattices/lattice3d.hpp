@@ -16,7 +16,7 @@ namespace lattice
         lattice3D() = default;
         
         //<! general constructor(rectangles)
-        lattice3D(site_type _Lx, site_type _Ly, site_type _Lz, bool _bound_cond = true)
+        lattice3D(site_type _Lx, site_type _Ly, site_type _Lz, bool _bound_cond)
         {
             this->Lx = _Lx;
             this->Ly = _Ly;
@@ -26,7 +26,7 @@ namespace lattice
             this->volume = this->Lx * this->Ly * this->Lz;
         };
         //<! orthombic constructor(rectangles)
-        lattice3D(site_type _Lx, site_type _Lz, bool _bound_cond = true)
+        lattice3D(site_type _Lx, site_type _Lz, bool _bound_cond)
         {
             this->Lx = _Lx;
             this->Ly = _Lx;
@@ -37,7 +37,7 @@ namespace lattice
         };
 
         //<! cube constructor(rectangles)
-        lattice3D(site_type _L, bool _bound_cond = true)
+        lattice3D(site_type _L, bool _bound_cond)
         {
             this->Lx = _L;
             this->Ly = _L;

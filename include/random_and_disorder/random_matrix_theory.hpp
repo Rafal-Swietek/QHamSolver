@@ -34,6 +34,27 @@ public:
 template <typename _ty>
 random_matrix_theory<_ty>::~random_matrix_theory() {}
 
+/// @brief 
+class uniform_ensemble : public random_matrix_theory<double>{
+
+public:
+    uniform_ensemble(const std::uint64_t seed = std::random_device{}())
+        { this->init(seed); }
+    virtual arma::Mat<double> generate_matrix(u64 size) override
+    {
+        arma::mat matrix(size, size);
+		std::uniform_real_distribution<double> dist(-1.0, 1.0);
+		for(int n = 0; n < size; n++){
+			matrix(n, n) = dist(engine);
+			for(int m = n + 1; m < size; m++){
+				matrix(n, m) = dist(engine);
+                matrix(m, n) = dist(engine);
+            }
+        }
+		return matrix;
+    }
+};
+
 //-------------------------------------------------------------------------------------------------- GAUSSIAN ENSEMBLES
 /// @brief 
 class gaussian_orthogonal_ensemble : public random_matrix_theory<double>{

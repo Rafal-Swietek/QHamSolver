@@ -47,6 +47,7 @@ void Quadratic::create_hamiltonian()
     this->H = sparse_matrix(this->dim, this->dim);
     #ifdef ANDERSON
         this->_disorder = this->disorder_generator.uniform(this->dim, this->_w / 2.);
+        std::cout << this->_disorder.t() << std::endl;
         for(long int j = 0; j < this->dim; j++){
         
             this->H(j, j) = this->_disorder(j);
@@ -66,7 +67,7 @@ void Quadratic::create_hamiltonian()
         this->H = this->random_matrix.generate_matrix(this->dim);
         for(long int i = 0; i < this->dim; i++)
             for(long int j = 0; j < this->dim; j++)
-                this->H(i, j) = this->H(i, j) / std::pow(1 + std::abs(i - j) / this->_J, this->_g / 2.);
+                this->H(i, j) = this->H(i, j) / std::sqrt( 1 + std::pow(std::abs(i - j) / this->_J, 2 * this->_g) );
 
     #elif defined(AUBRY_ANDRE)
         double phase = this->disorder_generator.uniform_dist<double>(0, two_pi);

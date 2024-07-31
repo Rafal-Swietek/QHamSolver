@@ -18,6 +18,7 @@ class user_interface_quadratic : public user_interface_dis<Hamiltonian>{
                     "\n" BAD_INHERITANCE "\n\t base class is: hamiltonian_base<element_type, hilbert_space>");
 protected:
     int V;				// volume of system (L^d)
+	u64 dim;		    // Hilbert-space dimension of system ( L^d or 2^(L^d) )
 
 	typedef typename user_interface_dis<Hamiltonian>::model_pointer model_pointer;
     typedef typename user_interface_dis<Hamiltonian>::element_type element_type;
@@ -54,6 +55,8 @@ public:
 	// virtual void average_sff() 				override;
 	virtual void eigenstate_entanglement() 	override;
     virtual void eigenstate_entanglement_degenerate() override;
+
+	virtual void eigenstate_entanglement_manybody();
 	// virtual void analyze_spectra() 			override;
 	virtual void diagonal_matrix_elements() override;
 };

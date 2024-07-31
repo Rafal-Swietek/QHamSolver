@@ -14,7 +14,7 @@ namespace lattice{
         lattice2D() = default;
         
         //<! general constructor(rectangles)
-        lattice2D(site_type _Lx, site_type _Ly, bool _bound_cond = true)
+        lattice2D(site_type _Lx, site_type _Ly, bool _bound_cond)
         {
             this->Lx = _Lx;
             this->Ly = _Ly;
@@ -24,7 +24,7 @@ namespace lattice{
         };
 
         //<! square constructor(rectangles)
-        lattice2D(site_type _L, bool _bound_cond = true)
+        lattice2D(site_type _L, bool _bound_cond)
         {
             this->Lx = _L;
             this->Ly = _L;

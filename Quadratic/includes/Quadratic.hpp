@@ -23,7 +23,11 @@ class Quadratic :
 private:
     lattice_type _lattice;                  // lattice of system (cubic by default)
     disorder<double> disorder_generator;    // generator for random disorder and couplings
-    GOE random_matrix;                      // generator of random matrices (GOE,GUE,...)
+    #ifdef PLRB
+        rmt::uniform_ensemble random_matrix;    // generator of uniform random matrices
+    #else
+        GOE random_matrix;                      // generator of random matrices (GOE,GUE,...)
+    #endif
     //<! Add GUE case as well, change type of matrix
 
     arma::vec _disorder;                    // disorder array on Z field
@@ -43,7 +47,11 @@ private:
 
         // initialize disorder
         this->disorder_generator = disorder<double>(this->_seed);
-        this->random_matrix = GOE(this->_seed);
+        #ifdef PLRB
+            this->random_matrix = rmt::uniform_ensemble(this->_seed);
+        #else
+            this->random_matrix = GOE(this->_seed);
+        #endif
         // create hamiltonian
         this->create_hamiltonian();
     }
