@@ -52,6 +52,7 @@ namespace QSunUI{
         virtual void matrix_elements() override;
         virtual void correlators();
         void quench();
+        void agp();
     };
 }
 
