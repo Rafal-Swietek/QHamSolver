@@ -14,6 +14,8 @@ void ui::make_sim(){
 
 	this->ptr_to_model = this->create_new_model_pointer();
 	
+	
+
 	// auto Translate = QOps::__builtins::translation(this->L, 1);
 	// auto flip = QOps::__builtins::spin_flip_x(this->L);
 	// auto some_kernel = [&Translate, &flip](u64 n){
@@ -96,6 +98,9 @@ void ui::make_sim(){
 	case 8:
 		quench();
 		break;
+	case 9:
+		agp();
+		break;
 	default:
 		#define generate_scaling_array(name) arma::linspace(this->name, this->name + this->name##s * (this->name##n - 1), this->name##n);
 		
@@ -125,20 +130,77 @@ void ui::make_sim(){
 								this->gamma = gammax;
 								this->site = this->L / 2.;
 								
-								this->reset_model_pointer();
+								// this->reset_model_pointer();
 								const auto start_loop = std::chrono::system_clock::now();
 								std::cout << " - - START NEW ITERATION:\t\t par = "; // simulation end
 								printSeparated(std::cout, "\t", 16, true, this->L_loc, this->J, this->alfa, this->h, this->w, this->gamma);
+								this->reset_model_pointer();
+								agp(); continue;
 
+	const int Ll = this->L;
+
+	auto disorder_generator = disorder<double>(this->seed);
+	this->ptr_to_model.reset(new QHS::QHamSolver<QuantumSun>(this->L_loc, this->J, this->alfa, this->gamma, 0, 0, 
+																	this->seed, this->grain_size, this->zeta, this->initiate_avalanche, normalize_grain)); 
+	
+	u64 dim = this->ptr_to_model->get_hilbert_size();
+
+	auto kernel = [Ll](u64 state){ 
+			auto [val1, tmp22] = operators::sigma_z(state, Ll, Ll - 1 );
+			return std::make_pair(state, val1);
+			};
+	auto _operator = QOps::generic_operator<>(this->L, std::move(kernel), 1.0);
+	arma::sp_mat Sz = arma::real(_operator.to_matrix(dim));
+	
+	arma::mat H = this->ptr_to_model->get_dense_hamiltonian();
+	arma::vec disorder_base = disorder_generator.uniform(this->L_loc, this->h - this->w, this->h + this->w);
+	for (u64 k = 0; k < dim; k++) {
+		for (int j = this->grain_size; j < this->L; j++)  // sum over spin d.o.f
+		{
+			const int pos_in_array = j - this->grain_size;                // array index of localised spin
+			auto [val, Sz_k] = operators::sigma_z(k, this->L, j);
+			H(k, k) += disorder_base(pos_in_array) * std::real(val);
+		}
+	}
+	arma::vec E; arma::mat V;
+	arma::eig_sym(E, V, H);
+	arma::vec diag_mat_elem = arma::diagvec(V.t() * Sz * V);
+	
+	auto name = "L=" + std::to_string(this->L_loc) + ".hdf5";
+	disorder_base.save(arma::hdf5_name(name, "disorder"));
+	E.save(	  			  arma::hdf5_name(name, "E0",   arma::hdf5_opts::append));
+	diag_mat_elem.save(	  arma::hdf5_name(name, "Sz0",   arma::hdf5_opts::append));
+
+	for(int j : arma::ivec({this->grain_size, this->L / 2, this->L - 1})){
+		auto disorder = disorder_base;
+		disorder(j - this->grain_size) = -disorder(j - this->grain_size);
+		
+		arma::mat H = this->ptr_to_model->get_dense_hamiltonian();
+		for (u64 k = 0; k < dim; k++) {
+			u64 base_state = k;
+			for (int ell = this->grain_size; ell < this->L; ell++)  // sum over spin d.o.f
+			{
+				const int pos_in_array = ell - this->grain_size;                // array index of localised spin
+				auto [val, Sz_k] = operators::sigma_z(base_state, this->L, ell);
+			    H(k, k) += disorder(pos_in_array) * real(val);
+			}
+		}
+		arma::eig_sym(E, V, H);
+		arma::vec diag_mat_elem = arma::diagvec(V.t() * Sz * V);
+		E.save(	  			  arma::hdf5_name(name, "E_j=" + std::to_string(j),   arma::hdf5_opts::append));
+		diag_mat_elem.save(	  arma::hdf5_name(name, "Sz_j=" + std::to_string(j),   arma::hdf5_opts::append));
+	}
+
+	continue;
 								quench(); continue;
 
 
-								auto Hamil = this->ptr_to_model->get_hamiltonian();
-								this->l_steps = 0.1 * Hamil.n_cols;
-								if(this->l_steps > 500)
-									this->l_steps = 500;
-								auto polfed = polfed::POLFED<ui::element_type>(Hamil, this->l_steps, this->l_bundle, -1, this->tol, 0.2, this->seed, true);
-								auto [E, V] = polfed.eig();
+								// auto Hamil = this->ptr_to_model->get_hamiltonian();
+								// this->l_steps = 0.1 * Hamil.n_cols;
+								// if(this->l_steps > 500)
+								// 	this->l_steps = 500;
+								// auto polfed = polfed::POLFED<ui::element_type>(Hamil, this->l_steps, this->l_bundle, -1, this->tol, 0.2, this->seed, true);
+								// auto [E, V] = polfed.eig();
 								// eigenstate_entanglement();
 								// matrix_elements();
 								// spectral_form_factor();
@@ -156,6 +218,136 @@ void ui::make_sim(){
 
 
 // ------------------------------------------------ OVERRIDEN METHODS
+
+/// @brief Calculate AGPs from matrix elements of local operators
+void ui::agp()
+{
+	std::string dir = this->saving_dir + "AGP" + kPSep;
+	createDirs(dir);
+	
+	size_t dim = this->ptr_to_model->get_hilbert_size();
+	std::string info = this->set_info();
+
+	const size_t size = dim > 1e5? this->l_steps : dim;
+
+	arma::vec betas = arma::logspace(-4, 2, 1000);
+	betas = arma::join_cols(arma::vec({0}), betas);
+	arma::vec Z(betas.size(), arma::fill::zeros);
+	arma::vec agp_temperature(betas.size(), arma::fill::zeros);
+	arma::vec agp_temperature_regularized(betas.size(), arma::fill::zeros);
+
+	arma::vec energy_density = arma::linspace(0, 1, 100);
+	energy_density = arma::vec( {0.0, 0.1534, 0.1932, 0.2188, 0.2381, 0.2538, 0.2673, 0.279, 0.2896, 0.2992, 0.3081, 0.3163, 0.324, 0.3313, 0.3382, 0.3447, 0.351, 0.357, 0.3629, 0.3685, 0.3739, 0.3792, 0.3843, 0.3893, 0.3942, 0.3989, 0.4036, 0.4082, 0.4127, 0.4171, 0.4214, 0.4257, 0.4299, 0.4341, 0.4382, 0.4423, 0.4463, 0.4503, 0.4542, 0.4581, 0.462, 0.4659, 0.4697, 0.4736, 0.4774, 0.4812, 0.4849, 0.4887, 0.4925, 0.4962, 0.5, 0.5038, 0.5075, 0.5113, 0.5151, 0.5188, 0.5226, 0.5264, 0.5303, 0.5341, 0.538, 0.5419, 0.5458, 0.5497, 0.5537, 0.5577, 0.5618, 0.5659, 0.5701, 0.5743, 0.5786, 0.5829, 0.5873, 0.5918, 0.5964, 0.6011, 0.6058, 0.6107, 0.6157, 0.6208, 0.6261, 0.6315, 0.6371, 0.643, 0.649, 0.6553, 0.6618, 0.6687, 0.676, 0.6837, 0.6919, 0.7008, 0.7104, 0.721, 0.7327, 0.7462, 0.7619, 0.7812, 0.8068, 0.8466, 1.0} );
+	
+	arma::vec agp_energy(energy_density.size()-1, arma::fill::zeros);
+	arma::vec agp_energy_regularized(energy_density.size()-1, arma::fill::zeros);
+
+
+	arma::vec energies(size, arma::fill::zeros);
+
+	int Ll = this->L;
+	int N = this->grain_size;
+	double AGP = 0, TYP_SUSC = 0, SUSC = 0;
+	int counter = 0;
+// #pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
+	for(int realis = 0; realis < this->realisations; realis++)
+	{
+		clk::time_point start_re = std::chrono::system_clock::now();
+		if(realis > 0)
+			this->ptr_to_model->generate_hamiltonian();
+		
+		clk::time_point start = std::chrono::system_clock::now();
+		if(dim > 1e5){
+			this->ptr_to_model->diag_sparse(this->l_steps, this->l_bundle, this->tol, this->seed);	
+		}
+		else{
+        	this->ptr_to_model->diagonalization();
+		}
+		std::cout << " - - - - - - finished diagonalization in : " << tim_s(start) << " s for realis = " << realis << " - - - - - - " << std::endl; // simulation end
+		start = std::chrono::system_clock::now();
+		
+		const arma::vec E = this->ptr_to_model->get_eigenvalues();
+		const auto& V = this->ptr_to_model->get_eigenvectors();
+		double E_av = arma::trace(E) / double(dim);
+
+		auto i = min_element(begin(E), end(E), [=](double x, double y) {
+			return abs(x - E_av) < abs(y - E_av);
+		});
+		const long Eav_idx = i - begin(E);
+
+		std::string dir_realis = dir + "realisation=" + std::to_string(this->jobid + realis) + kPSep;
+		createDirs(dir_realis);
+		// E.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "energies"));
+		betas.save(	  		arma::hdf5_name(dir_realis + info + ".hdf5", "betas"));
+		energy_density.save(arma::hdf5_name(dir_realis + info + ".hdf5", "energy_density",   arma::hdf5_opts::append));
+		
+		start = std::chrono::system_clock::now();
+		// arma::Mat<element_type> mat_elem = V * Sz_ops[i] * V.t();
+		auto kernel = [Ll, N](u64 state){ 
+			auto [val1, tmp22] = operators::sigma_z(state, Ll, Ll - 1 );
+			return std::make_pair(state, val1);
+			};
+		auto _operator = QOps::generic_operator<>(this->L, std::move(kernel), 1.0);
+		arma::sp_mat op = arma::real(_operator.to_matrix(dim));
+		arma::Mat<element_type> mat_elem = V.t() * op * V;
+		auto [_Z, AGP_T, AGP_T_reg, AGP_E, AGP_E_reg] = adiabatics::gauge_potential_finite_T(mat_elem, E, betas, energy_density);
+		auto [_agp, _typ_susc, _susc, tmp] = adiabatics::gauge_potential(mat_elem, E, this->L);
+
+		std::cout << " - - - - - - finished Sz_L matrix elements in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
+		// #ifndef MY_MAC
+		{
+			_Z.save(	  	arma::hdf5_name(dir_realis + info + ".hdf5", "Z",   arma::hdf5_opts::append));
+			AGP_T.save(	  	arma::hdf5_name(dir_realis + info + ".hdf5", "agp_T",   arma::hdf5_opts::append));
+			AGP_T_reg.save(	arma::hdf5_name(dir_realis + info + ".hdf5", "agp_T_reg",   arma::hdf5_opts::append));
+			AGP_E.save(	  	arma::hdf5_name(dir_realis + info + ".hdf5", "agp_E",   arma::hdf5_opts::append));
+			AGP_E_reg.save(	arma::hdf5_name(dir_realis + info + ".hdf5", "agp_E_reg",   arma::hdf5_opts::append));
+
+			arma::vec({_agp}).save(	arma::hdf5_name(dir_realis + info + ".hdf5", "AGP",   arma::hdf5_opts::append));
+			arma::vec({_susc}).save(	arma::hdf5_name(dir_realis + info + ".hdf5", "SUSC",   arma::hdf5_opts::append));
+			arma::vec({_typ_susc}).save(	arma::hdf5_name(dir_realis + info + ".hdf5", "TYP_SUSC",   arma::hdf5_opts::append));
+		}
+		// #endif
+		Z += _Z;
+		agp_temperature += AGP_T;
+		agp_temperature_regularized += AGP_T_reg;
+		agp_energy += AGP_E;
+		agp_energy_regularized += AGP_E_reg;
+
+		AGP += _agp;
+		SUSC += _susc;
+		TYP_SUSC += _typ_susc;
+		counter++;
+		std::cout << " - - - - - - finished realisation realis = " << realis << " in : " << tim_s(start_re) << " s - - - - - - " << std::endl; // simulation end
+	}
+	if(counter == 0) return;
+	
+	#ifdef MY_MAC
+		AGP /= double(counter);
+		SUSC /= double(counter);
+		TYP_SUSC /= double(counter);
+
+		Z /= double(counter);
+		agp_temperature /= double(counter);
+		agp_temperature_regularized /= double(counter);
+		agp_energy /= double(counter);
+		agp_energy_regularized /= double(counter);
+
+		betas.save(	  		arma::hdf5_name(dir + info + ".hdf5", "betas"));
+		Z.save(	  			arma::hdf5_name(dir + info + ".hdf5", "Z",   arma::hdf5_opts::append));
+		energy_density.save(arma::hdf5_name(dir + info + ".hdf5", "energy_density",   arma::hdf5_opts::append));
+		
+		agp_temperature.save(			 arma::hdf5_name(dir + info + ".hdf5", "agp_T",   arma::hdf5_opts::append));
+		agp_temperature_regularized.save(arma::hdf5_name(dir + info + ".hdf5", "agp_T_reg",   arma::hdf5_opts::append));
+		
+		agp_energy.save(	  		arma::hdf5_name(dir + info + ".hdf5", "agp_E",   arma::hdf5_opts::append));
+		agp_energy_regularized.save(arma::hdf5_name(dir + info + ".hdf5", "agp_E_reg",   arma::hdf5_opts::append));
+
+		arma::vec({AGP}).save(	arma::hdf5_name(dir + info + ".hdf5", "AGP",   arma::hdf5_opts::append));
+		arma::vec({SUSC}).save(	arma::hdf5_name(dir + info + ".hdf5", "SUSC",   arma::hdf5_opts::append));
+		arma::vec({TYP_SUSC}).save(	arma::hdf5_name(dir + info + ".hdf5", "TYP_SUSC",   arma::hdf5_opts::append));
+	#endif
+}
+
 
 /// @brief Calculate matrix elements of local operators
 void ui::matrix_elements()
