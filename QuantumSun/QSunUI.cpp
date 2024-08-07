@@ -230,17 +230,18 @@ void ui::agp()
 
 	const size_t size = dim > 1e5? this->l_steps : dim;
 
-	arma::vec betas = arma::logspace(-4, 2, 1000);
+	arma::vec betas = arma::logspace(-3, 1, 200);
 	betas = arma::join_cols(arma::vec({0}), betas);
 	arma::vec Z(betas.size(), arma::fill::zeros);
 	arma::vec agp_temperature(betas.size(), arma::fill::zeros);
 	arma::vec agp_temperature_regularized(betas.size(), arma::fill::zeros);
 
 	arma::vec energy_density = arma::linspace(0, 1, 100);
-	energy_density = arma::vec( {0.0, 0.1534, 0.1932, 0.2188, 0.2381, 0.2538, 0.2673, 0.279, 0.2896, 0.2992, 0.3081, 0.3163, 0.324, 0.3313, 0.3382, 0.3447, 0.351, 0.357, 0.3629, 0.3685, 0.3739, 0.3792, 0.3843, 0.3893, 0.3942, 0.3989, 0.4036, 0.4082, 0.4127, 0.4171, 0.4214, 0.4257, 0.4299, 0.4341, 0.4382, 0.4423, 0.4463, 0.4503, 0.4542, 0.4581, 0.462, 0.4659, 0.4697, 0.4736, 0.4774, 0.4812, 0.4849, 0.4887, 0.4925, 0.4962, 0.5, 0.5038, 0.5075, 0.5113, 0.5151, 0.5188, 0.5226, 0.5264, 0.5303, 0.5341, 0.538, 0.5419, 0.5458, 0.5497, 0.5537, 0.5577, 0.5618, 0.5659, 0.5701, 0.5743, 0.5786, 0.5829, 0.5873, 0.5918, 0.5964, 0.6011, 0.6058, 0.6107, 0.6157, 0.6208, 0.6261, 0.6315, 0.6371, 0.643, 0.649, 0.6553, 0.6618, 0.6687, 0.676, 0.6837, 0.6919, 0.7008, 0.7104, 0.721, 0.7327, 0.7462, 0.7619, 0.7812, 0.8068, 0.8466, 1.0} );
+	energy_density = arma::vec( {0.0, 0.1932, 0.2381, 0.2673, 0.2896, 0.3081, 0.324, 0.3382, 0.351, 0.3629, 0.3739, 0.3843, 0.3942, 0.4036, 0.4127, 0.4214, 0.4299, 0.4382, 0.4463, 0.4542, 0.462, 0.4697, 0.4774, 0.4849, 0.4925, 0.5, 0.5075, 0.5151, 0.5226, 0.5303, 0.538, 0.5458, 0.5537, 0.5618, 0.5701, 0.5786, 0.5873, 0.5964, 0.6058, 0.6157, 0.6261, 0.6371, 0.649, 0.6618, 0.676, 0.6919, 0.7104, 0.7327, 0.7619, 0.8068, 1.0} );
 	
+	arma::vec count(energy_density.size()-1, arma::fill::zeros);
 	arma::vec agp_energy(energy_density.size()-1, arma::fill::zeros);
-	arma::vec agp_energy_regularized(energy_density.size()-1, arma::fill::zeros);
+	arma::vec agp_energy_typ(energy_density.size()-1, arma::fill::zeros);
 
 
 	arma::vec energies(size, arma::fill::zeros);
@@ -277,8 +278,8 @@ void ui::agp()
 
 		std::string dir_realis = dir + "realisation=" + std::to_string(this->jobid + realis) + kPSep;
 		createDirs(dir_realis);
-		// E.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "energies"));
-		betas.save(	  		arma::hdf5_name(dir_realis + info + ".hdf5", "betas"));
+		E.save(	  			arma::hdf5_name(dir_realis + info + ".hdf5", "energies"));
+		betas.save(	  		arma::hdf5_name(dir_realis + info + ".hdf5", "betas",   arma::hdf5_opts::append));
 		energy_density.save(arma::hdf5_name(dir_realis + info + ".hdf5", "energy_density",   arma::hdf5_opts::append));
 		
 		start = std::chrono::system_clock::now();
@@ -290,28 +291,34 @@ void ui::agp()
 		auto _operator = QOps::generic_operator<>(this->L, std::move(kernel), 1.0);
 		arma::sp_mat op = arma::real(_operator.to_matrix(dim));
 		arma::Mat<element_type> mat_elem = V.t() * op * V;
-		auto [_Z, AGP_T, AGP_T_reg, AGP_E, AGP_E_reg] = adiabatics::gauge_potential_finite_T(mat_elem, E, betas, energy_density);
+		auto [_Z, _count, AGP_T, AGP_T_reg, AGP_E, AGP_E_typ] = adiabatics::gauge_potential_finite_T(mat_elem, E, betas, energy_density);
 		auto [_agp, _typ_susc, _susc, tmp] = adiabatics::gauge_potential(mat_elem, E, this->L);
 
 		std::cout << " - - - - - - finished Sz_L matrix elements in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
 		// #ifndef MY_MAC
 		{
 			_Z.save(	  	arma::hdf5_name(dir_realis + info + ".hdf5", "Z",   arma::hdf5_opts::append));
+			betas.save(	  		arma::hdf5_name(dir_realis + info + ".hdf5", "betas",   arma::hdf5_opts::append));
+			
+			_count.save(arma::hdf5_name(dir_realis + info + ".hdf5", "count",   arma::hdf5_opts::append));
+			energy_density.save(arma::hdf5_name(dir_realis + info + ".hdf5", "energy_density",   arma::hdf5_opts::append));
+
 			AGP_T.save(	  	arma::hdf5_name(dir_realis + info + ".hdf5", "agp_T",   arma::hdf5_opts::append));
 			AGP_T_reg.save(	arma::hdf5_name(dir_realis + info + ".hdf5", "agp_T_reg",   arma::hdf5_opts::append));
 			AGP_E.save(	  	arma::hdf5_name(dir_realis + info + ".hdf5", "agp_E",   arma::hdf5_opts::append));
-			AGP_E_reg.save(	arma::hdf5_name(dir_realis + info + ".hdf5", "agp_E_reg",   arma::hdf5_opts::append));
+			AGP_E_typ.save(	arma::hdf5_name(dir_realis + info + ".hdf5", "agp_E_typ",   arma::hdf5_opts::append));
 
 			arma::vec({_agp}).save(	arma::hdf5_name(dir_realis + info + ".hdf5", "AGP",   arma::hdf5_opts::append));
 			arma::vec({_susc}).save(	arma::hdf5_name(dir_realis + info + ".hdf5", "SUSC",   arma::hdf5_opts::append));
 			arma::vec({_typ_susc}).save(	arma::hdf5_name(dir_realis + info + ".hdf5", "TYP_SUSC",   arma::hdf5_opts::append));
 		}
 		// #endif
+		count += _count;
 		Z += _Z;
 		agp_temperature += AGP_T;
 		agp_temperature_regularized += AGP_T_reg;
 		agp_energy += AGP_E;
-		agp_energy_regularized += AGP_E_reg;
+		agp_energy_typ += AGP_E_typ;
 
 		AGP += _agp;
 		SUSC += _susc;
@@ -330,17 +337,18 @@ void ui::agp()
 		agp_temperature /= double(counter);
 		agp_temperature_regularized /= double(counter);
 		agp_energy /= double(counter);
-		agp_energy_regularized /= double(counter);
+		agp_energy_typ = arma::exp(agp_energy_typ / count / double(counter));
 
 		betas.save(	  		arma::hdf5_name(dir + info + ".hdf5", "betas"));
 		Z.save(	  			arma::hdf5_name(dir + info + ".hdf5", "Z",   arma::hdf5_opts::append));
+		count.save(	  			arma::hdf5_name(dir + info + ".hdf5", "count",   arma::hdf5_opts::append));
 		energy_density.save(arma::hdf5_name(dir + info + ".hdf5", "energy_density",   arma::hdf5_opts::append));
 		
 		agp_temperature.save(			 arma::hdf5_name(dir + info + ".hdf5", "agp_T",   arma::hdf5_opts::append));
 		agp_temperature_regularized.save(arma::hdf5_name(dir + info + ".hdf5", "agp_T_reg",   arma::hdf5_opts::append));
 		
 		agp_energy.save(	  		arma::hdf5_name(dir + info + ".hdf5", "agp_E",   arma::hdf5_opts::append));
-		agp_energy_regularized.save(arma::hdf5_name(dir + info + ".hdf5", "agp_E_reg",   arma::hdf5_opts::append));
+		agp_energy_typ.save(arma::hdf5_name(dir + info + ".hdf5", "agp_E_typ",   arma::hdf5_opts::append));
 
 		arma::vec({AGP}).save(	arma::hdf5_name(dir + info + ".hdf5", "AGP",   arma::hdf5_opts::append));
 		arma::vec({SUSC}).save(	arma::hdf5_name(dir + info + ".hdf5", "SUSC",   arma::hdf5_opts::append));
