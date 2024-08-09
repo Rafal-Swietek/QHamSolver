@@ -70,7 +70,7 @@ namespace adiabatics{
     	const arma::vec& eigenvalues,
 		const arma::vec& betas,
 		const arma::vec& energy_density
-    ) -> std::tuple<arma::vec, arma::vec, arma::vec, arma::vec, arma::vec, arma::vec> 
+    ) -> std::tuple<arma::vec, arma::vec, arma::vec, arma::vec, arma::vec, arma::vec, arma::vec> 
 	{
         const size_t N = eigenvalues.size();
 		const double lambda = 1 / double(N);
@@ -80,8 +80,9 @@ namespace adiabatics{
 		arma::vec AGP_T_reg(betas.size(), arma::fill::zeros);
 
 		arma::vec count(energy_density.size()-1, arma::fill::zeros);
+		arma::vec count_proj(energy_density.size()-1, arma::fill::zeros);
 		arma::vec AGP_E(energy_density.size()-1, arma::fill::zeros);
-		arma::vec AGP_E_typ(energy_density.size()-1, arma::fill::zeros);
+		arma::vec AGP_E_proj(energy_density.size()-1, arma::fill::zeros);
 
 		const double bandwidth = eigenvalues(N-1) - eigenvalues(0);
 		const double E0 = eigenvalues(0);
@@ -117,8 +118,7 @@ namespace adiabatics{
 					if(e_mean > e_lower && e_mean <= e_upper)
 					{
 						count(e) += 1;
-						AGP_E(e) 	 += (_reg);
-						AGP_E_typ(e) += std::log(_reg);
+						AGP_E(e) += _reg;
 					}
 				}
 			}
@@ -129,8 +129,19 @@ namespace adiabatics{
 				AGP_T(b) += std::exp(-beta * (Ei - E0)) * agp_tmp;
 				AGP_T_reg(b) += std::exp(-beta * (Ei - E0)) * agp_r_tmp;
 			}
+			for(int e = 0; e < energy_density.size()-1; e++)
+			{
+				double e_lower = energy_density(e);
+				double e_upper = energy_density(e+1);
+				
+				if(E_dens_i > e_lower && E_dens_i <= e_upper)
+				{
+					count_proj(e) += 1;
+					AGP_E_proj(e) += agp_r_tmp;
+				}
+			}
 		}
-        return std::make_tuple(Z, count, AGP_T, AGP_T_reg, (AGP_E), (AGP_E_typ));
+        return std::make_tuple(Z, count, count_proj, AGP_T / Z, AGP_T_reg / Z, (AGP_E), (AGP_E_proj));
     }
 
 
