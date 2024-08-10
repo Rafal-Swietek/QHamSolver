@@ -223,11 +223,21 @@ void ui::make_sim(){
 void ui::agp()
 {
 	std::string dir = this->saving_dir + "AGP" + kPSep;
+	// if(this->op > 0) dir += "OtherObservables" + kPSep;
 	createDirs(dir);
 	
 	size_t dim = this->ptr_to_model->get_hilbert_size();
 	std::string info = this->set_info();
-
+	std::string name = "";
+	switch(this->op){
+		case 1: name = "Sx_dot_Sx_last"; break;
+		case 2: name = "Sz_dot_Sz_last"; break;
+		case 3: name = "SzSz_last"; break;
+		default: name = ""; break;
+	}
+	if(this->op > 0){
+		info = name + info;
+	}
 	const size_t size = dim > 1e5? this->l_steps : dim;
 
 	arma::vec betas = arma::regspace(0.0, 0.01, 10);
@@ -250,6 +260,8 @@ void ui::agp()
 	int N = this->grain_size;
 	double AGP = 0, TYP_SUSC = 0, SUSC = 0;
 	int counter = 0;
+
+	auto neighbor_generator = disorder<int>(this->seed);
 // #pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
 	for(int realis = 0; realis < this->realisations; realis++)
 	{
@@ -284,12 +296,51 @@ void ui::agp()
 		
 		start = std::chrono::system_clock::now();
 		// arma::Mat<element_type> mat_elem = V * Sz_ops[i] * V.t();
-		auto kernel = [Ll, N](u64 state){ 
-			auto [val1, tmp22] = operators::sigma_z(state, Ll, Ll - 1 );
-			return std::make_pair(state, val1);
-			};
-		auto _operator = QOps::generic_operator<>(this->L, std::move(kernel), 1.0);
+		auto _operator = QOps::generic_operator<>();
+		switch(this->op){
+			case 1:
+			{
+					auto kernel = [Ll, N, &neighbor_generator](u64 state){ 
+						int nei = neighbor_generator.uniform_dist<int>(0, N-1);
+						auto [val1, state_out1] = operators::sigma_x(state, Ll, nei );
+						auto [val2, state_out2] = operators::sigma_x(state_out1, Ll, Ll - 1 );
+						return std::make_pair(state_out2, val1 * val2);
+					};
+					_operator = QOps::generic_operator<>(this->L, std::move(kernel), 1.0);
+			}
+				break;
+			case 2:
+			{
+				auto kernel = [Ll, N, &neighbor_generator](u64 state){ 
+						int nei = neighbor_generator.uniform_dist<int>(0, N-1);
+						auto [val1, state_out1] = operators::sigma_z(state, Ll, nei );
+						auto [val2, state_out2] = operators::sigma_z(state_out1, Ll, Ll - 1 );
+						return std::make_pair(state_out2, val1 * val2);
+				};
+				_operator = QOps::generic_operator<>(this->L, std::move(kernel), 1.0);
+			}
+				break;
+			case 3:
+			{
+				auto kernel = [Ll, N](u64 state){ 
+					auto [val1, state_out1] = operators::sigma_z(state, Ll, Ll - 2 );
+					auto [val2, state_out2] = operators::sigma_z(state_out1, Ll, Ll - 1 );
+					return std::make_pair(state_out2, val1 * val2);
+				};
+				_operator = QOps::generic_operator<>(this->L, std::move(kernel), 1.0);
+			}
+				break;
+			default:
+			{
+				auto kernel_def = [Ll, N](u64 state){ 
+					auto [val1, tmp22] = operators::sigma_z(state, Ll, Ll - 1 );
+					return std::make_pair(state, val1);
+					};
+				_operator = QOps::generic_operator<>(this->L, std::move(kernel_def), 1.0);
+			}
+		}
 		arma::sp_mat op = arma::real(_operator.to_matrix(dim));
+		
 		arma::Mat<element_type> mat_elem = V.t() * op * V;
 		auto [_Z, _count, _count_proj,AGP_T, AGP_T_reg, AGP_E, AGP_E_proj] = adiabatics::gauge_potential_finite_T(mat_elem, E, betas, energy_density);
 		auto [_agp, _typ_susc, _susc, tmp] = adiabatics::gauge_potential(mat_elem, E, this->L);
