@@ -233,6 +233,7 @@ void ui::agp()
 		case 1: name = "Sx_dot_Sx_last"; break;
 		case 2: name = "Sz_dot_Sz_last"; break;
 		case 3: name = "SzSz_last"; break;
+		case 4: name = "SxSx_last"; break;
 		default: name = ""; break;
 	}
 	if(this->op > 0){
@@ -325,6 +326,16 @@ void ui::agp()
 				auto kernel = [Ll, N](u64 state){ 
 					auto [val1, state_out1] = operators::sigma_z(state, Ll, Ll - 2 );
 					auto [val2, state_out2] = operators::sigma_z(state_out1, Ll, Ll - 1 );
+					return std::make_pair(state_out2, val1 * val2);
+				};
+				_operator = QOps::generic_operator<>(this->L, std::move(kernel), 1.0);
+			}
+				break;
+			case 4:
+			{
+				auto kernel = [Ll, N](u64 state){ 
+					auto [val1, state_out1] = operators::sigma_x(state, Ll, Ll - 2 );
+					auto [val2, state_out2] = operators::sigma_x(state_out1, Ll, Ll - 1 );
 					return std::make_pair(state_out2, val1 * val2);
 				};
 				_operator = QOps::generic_operator<>(this->L, std::move(kernel), 1.0);
