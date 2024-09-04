@@ -386,7 +386,6 @@ void ui::agp()
 		}
 		
 		arma::Mat<element_type> mat_elem = V.t() * oper * V;
-		mat_elem.save(	  		arma::hdf5_name(dir_realis + info + ".hdf5", "matelem",   arma::hdf5_opts::append));
 		auto [_Z, _count, _count_proj,AGP_T, AGP_T_reg, AGP_E, AGP_E_proj] = adiabatics::gauge_potential_finite_T(mat_elem, E, betas, energy_density);
 		auto [_agp, _typ_susc, _susc, tmp] = adiabatics::gauge_potential(mat_elem, E, this->L);
 
