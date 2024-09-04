@@ -528,8 +528,8 @@ void ui::agp_save()
 		energies /= double(counter);
 
 		energies.save(arma::hdf5_name(dir + info + ".hdf5", "energies"));
-		susc.save(    arma::hdf5_name(dir + info + ".hdf5", "susc"));
-		susc_r.save(  arma::hdf5_name(dir + info + ".hdf5", "susc_reg"));
+		susc.save(    arma::hdf5_name(dir + info + ".hdf5", "susc", arma::hdf5_opts::append));
+		susc_r.save(  arma::hdf5_name(dir + info + ".hdf5", "susc_reg", arma::hdf5_opts::append));
 	#endif
 }
 
