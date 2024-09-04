@@ -101,6 +101,9 @@ void ui::make_sim(){
 	case 9:
 		agp();
 		break;
+	case 10:
+		agp_save();
+		break;
 	default:
 		#define generate_scaling_array(name) arma::linspace(this->name, this->name + this->name##s * (this->name##n - 1), this->name##n);
 		
@@ -234,6 +237,7 @@ void ui::agp()
 		case 2: name = "Sz_dot_Sz_last"; break;
 		case 3: name = "SzSz_last"; break;
 		case 4: name = "SxSx_last"; break;
+		case 5: name = "Sz_tot"; break;
 		default: name = ""; break;
 	}
 	if(this->op > 0){
@@ -249,7 +253,15 @@ void ui::agp()
 
 	arma::vec energy_density = arma::linspace(0, 1, 100);
 	energy_density = arma::vec( {0.0, 0.038, 0.0676, 0.0921, 0.1132, 0.1319, 0.1488, 0.1641, 0.1783, 0.1916, 0.204, 0.2157, 0.2269, 0.2375, 0.2476, 0.2574, 0.2668, 0.2759, 0.2847, 0.2932, 0.3015, 0.3096, 0.3175, 0.3253, 0.3328, 0.3402, 0.3475, 0.3546, 0.3617, 0.3686, 0.3754, 0.3821, 0.3888, 0.3953, 0.4018, 0.4083, 0.4146, 0.4209, 0.4272, 0.4334, 0.4396, 0.4457, 0.4519, 0.4579, 0.464, 0.47, 0.476, 0.482, 0.488, 0.494, 0.5, 0.506, 0.512, 0.518, 0.524, 0.53, 0.536, 0.5421, 0.5481, 0.5543, 0.5604, 0.5666, 0.5728, 0.5791, 0.5854, 0.5917, 0.5982, 0.6047, 0.6112, 0.6179, 0.6246, 0.6314, 0.6383, 0.6454, 0.6525, 0.6598, 0.6672, 0.6747, 0.6825, 0.6904, 0.6985, 0.7068, 0.7153, 0.7241, 0.7332, 0.7426, 0.7524, 0.7625, 0.7731, 0.7843, 0.796, 0.8084, 0.8217, 0.8359, 0.8512, 0.8681, 0.8868, 0.9079, 0.9324, 0.962, 1.0} );
-	
+	// energy_density	=	arma::vec( {0.   , 0.184, 0.219, 0.241, 0.259, 0.273, 0.285, 0.296, 0.305, 0.314, 0.323, 0.33,
+	// 								0.338, 0.344, 0.351, 0.357, 0.363, 0.369, 0.374, 0.38 , 0.385, 0.39 , 0.395, 0.4,
+	// 								0.404, 0.409, 0.413, 0.418, 0.422, 0.426, 0.431, 0.435, 0.439, 0.443, 0.447, 0.451,
+	// 								0.455, 0.459, 0.462, 0.466, 0.47 , 0.474, 0.477, 0.481, 0.485, 0.488, 0.492, 0.496,
+	// 								0.499, 0.503, 0.507, 0.51 , 0.514, 0.518, 0.521, 0.525, 0.529, 0.532, 0.536, 0.54,
+	// 								0.543, 0.547, 0.551, 0.555, 0.559, 0.563, 0.566, 0.57 , 0.574, 0.578, 0.582, 0.587,
+	// 								0.591, 0.595, 0.599, 0.604, 0.608, 0.613, 0.618, 0.622, 0.627, 0.633, 0.638, 0.643,
+	// 								0.649, 0.655, 0.661, 0.667, 0.674, 0.681, 0.688, 0.697, 0.705, 0.715, 0.725, 0.737,
+	// 								0.751, 0.768, 0.79 , 0.823, 1});
 	arma::vec count(energy_density.size()-1, arma::fill::zeros);
 	arma::vec count_proj(energy_density.size()-1, arma::fill::zeros);
 	arma::vec agp_energy(energy_density.size()-1, arma::fill::zeros);
@@ -283,7 +295,7 @@ void ui::agp()
 		const arma::vec E = this->ptr_to_model->get_eigenvalues();
 		const auto& V = this->ptr_to_model->get_eigenvectors();
 		double E_av = arma::trace(E) / double(dim);
-
+		
 		auto i = min_element(begin(E), end(E), [=](double x, double y) {
 			return abs(x - E_av) < abs(y - E_av);
 		});
@@ -299,6 +311,14 @@ void ui::agp()
 		// arma::Mat<element_type> mat_elem = V * Sz_ops[i] * V.t();
 		auto _operator = QOps::generic_operator<>();
 		switch(this->op){
+			case 0:
+			{
+				auto kernel_def = [Ll, N](u64 state){ 
+					auto [val1, tmp22] = operators::sigma_z(state, Ll, Ll - 1 );
+					return std::make_pair(state, val1);
+					};
+				_operator = QOps::generic_operator<>(this->L, std::move(kernel_def), 1.0);
+			}
 			case 1:
 			{
 					auto kernel = [Ll, N, &neighbor_generator](u64 state){ 
@@ -350,9 +370,23 @@ void ui::agp()
 				_operator = QOps::generic_operator<>(this->L, std::move(kernel_def), 1.0);
 			}
 		}
-		arma::sp_mat op = arma::real(_operator.to_matrix(dim));
+		arma::sp_mat oper(dim, dim);
+		if(this->op == 5){
+			for(int j = N; j < this->L; j++){
+				auto kernel_def = [Ll, j](u64 state){ 
+					auto [val1, tmp22] = operators::sigma_z(state, Ll, j );
+					return std::make_pair(state, val1);
+					};
+				_operator = QOps::generic_operator<>(this->L, std::move(kernel_def), 1.0);
+				oper += arma::real(_operator.to_matrix(dim));
+			}
+			oper = oper / std::sqrt(this->L_loc);
+		} else {
+			oper = arma::real(_operator.to_matrix(dim));
+		}
 		
-		arma::Mat<element_type> mat_elem = V.t() * op * V;
+		arma::Mat<element_type> mat_elem = V.t() * oper * V;
+		mat_elem.save(	  		arma::hdf5_name(dir_realis + info + ".hdf5", "matelem",   arma::hdf5_opts::append));
 		auto [_Z, _count, _count_proj,AGP_T, AGP_T_reg, AGP_E, AGP_E_proj] = adiabatics::gauge_potential_finite_T(mat_elem, E, betas, energy_density);
 		auto [_agp, _typ_susc, _susc, tmp] = adiabatics::gauge_potential(mat_elem, E, this->L);
 
@@ -400,12 +434,11 @@ void ui::agp()
 		Z /= double(counter);
 		agp_temperature /= double(counter);
 		agp_temperature_regularized /= double(counter);
-		agp_energy = agp_energy / count / double(counter);
-		agp_energy_proj = agp_energy_proj / count_proj / double(counter);
 
 		betas.save(	  		arma::hdf5_name(dir + info + ".hdf5", "betas"));
 		Z.save(	  			arma::hdf5_name(dir + info + ".hdf5", "Z",   arma::hdf5_opts::append));
-		count.save(	  			arma::hdf5_name(dir + info + ".hdf5", "count",   arma::hdf5_opts::append));
+		count.save(	  		arma::hdf5_name(dir + info + ".hdf5", "count",   arma::hdf5_opts::append));
+		count_proj.save(	arma::hdf5_name(dir + info + ".hdf5", "count_proj",   arma::hdf5_opts::append));
 		energy_density.save(arma::hdf5_name(dir + info + ".hdf5", "energy_density",   arma::hdf5_opts::append));
 		
 		agp_temperature.save(			 arma::hdf5_name(dir + info + ".hdf5", "agp_T",   arma::hdf5_opts::append));
@@ -417,6 +450,86 @@ void ui::agp()
 		arma::vec({AGP}).save(	arma::hdf5_name(dir + info + ".hdf5", "AGP",   arma::hdf5_opts::append));
 		arma::vec({SUSC}).save(	arma::hdf5_name(dir + info + ".hdf5", "SUSC",   arma::hdf5_opts::append));
 		arma::vec({TYP_SUSC}).save(	arma::hdf5_name(dir + info + ".hdf5", "TYP_SUSC",   arma::hdf5_opts::append));
+	#endif
+}
+
+/// @brief Calculate AGPs from matrix elements of local operators
+void ui::agp_save()
+{
+	std::string dir = this->saving_dir + "AGP_SAVE" + kPSep;
+	// if(this->op > 0) dir += "OtherObservables" + kPSep;
+	createDirs(dir);
+	
+	size_t dim = this->ptr_to_model->get_hilbert_size();
+	std::string info = this->set_info();
+	const size_t size = dim > 1e5? this->l_steps : dim;
+
+	arma::vec energies(size, arma::fill::zeros);
+	arma::vec susc(    size, arma::fill::zeros);
+	arma::vec susc_r(  size, arma::fill::zeros);
+
+	int Ll = this->L;
+	int N = this->grain_size;
+	int counter = 0;
+
+// #pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
+	for(int realis = 0; realis < this->realisations; realis++)
+	{
+		clk::time_point start_re = std::chrono::system_clock::now();
+		if(realis > 0)
+			this->ptr_to_model->generate_hamiltonian();
+		
+		clk::time_point start = std::chrono::system_clock::now();
+		if(dim > 1e5){
+			this->ptr_to_model->diag_sparse(this->l_steps, this->l_bundle, this->tol, this->seed);	
+		}
+		else{
+        	this->ptr_to_model->diagonalization();
+		}
+		std::cout << " - - - - - - finished diagonalization in : " << tim_s(start) << " s for realis = " << realis << " - - - - - - " << std::endl; // simulation end
+		start = std::chrono::system_clock::now();
+		
+		const arma::vec E = this->ptr_to_model->get_eigenvalues();
+		const auto& V = this->ptr_to_model->get_eigenvectors();
+		
+		std::string dir_realis = dir + "realisation=" + std::to_string(this->jobid + realis) + kPSep;
+		createDirs(dir_realis);
+		E.save(arma::hdf5_name(dir_realis + info + ".hdf5", "energies"));
+		energies += E;
+
+		start = std::chrono::system_clock::now();
+		auto kernel_def = [Ll, N](u64 state){ 
+					auto [val1, tmp22] = operators::sigma_z(state, Ll, Ll - 1 );
+					return std::make_pair(state, val1);
+					};
+		auto _operator = QOps::generic_operator<>(this->L, std::move(kernel_def), 1.0);
+		arma::sp_mat oper = arma::real(_operator.to_matrix(dim));
+		
+		arma::Mat<element_type> mat_elem = V.t() * oper * V;
+		auto [_susc, _susc_r] = adiabatics::gauge_potential_save(mat_elem, E);
+
+		std::cout << " - - - - - - finished Sz_L matrix elements in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
+		// #ifndef MY_MAC
+		{
+			_susc.save(	 arma::hdf5_name(dir_realis + info + ".hdf5", "susc",     arma::hdf5_opts::append));
+			_susc_r.save(arma::hdf5_name(dir_realis + info + ".hdf5", "susc_reg", arma::hdf5_opts::append));
+		}
+		// #endif
+		susc += _susc;
+		susc_r += _susc_r;
+		counter++;
+		std::cout << " - - - - - - finished realisation realis = " << realis << " in : " << tim_s(start_re) << " s - - - - - - " << std::endl; // simulation end
+	}
+	if(counter == 0) return;
+	
+	#ifdef MY_MAC
+		susc /= double(counter);
+		susc_r /= double(counter);
+		energies /= double(counter);
+
+		energies.save(arma::hdf5_name(dir + info + ".hdf5", "energies"));
+		susc.save(    arma::hdf5_name(dir + info + ".hdf5", "susc"));
+		susc_r.save(  arma::hdf5_name(dir + info + ".hdf5", "susc_reg"));
 	#endif
 }
 

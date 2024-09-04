@@ -55,6 +55,43 @@ namespace adiabatics{
         return std::make_tuple(AGP / double(N), std::exp(typ_susc / double(mu)), susc / double(mu), susc_vec);
     }
 
+	/// @brief 
+	/// @tparam _ty 
+	/// @param mat_elem 
+	/// @param eigenvalues 
+	/// @param L 
+	/// @return 
+	template <typename _ty>
+	inline
+	auto 
+	gauge_potential_save(
+    	const arma::Mat<_ty>& mat_elem,
+    	const arma::vec& eigenvalues
+    ) -> std::tuple<arma::vec, arma::vec> 
+	{
+		const long N = eigenvalues.size();
+		double lambda = 1 / double(N);
+		arma::vec susc_vec(N, arma::fill::zeros);
+		arma::vec susc_vec_r(N, arma::fill::zeros);
+    #pragma omp parallel for
+		for (long int i = 0; i < N; i++)
+		{
+			double susc_tmp = 0;
+			double susc_r_tmp = 0;
+			for (long int j = 0; j < i; j++)
+			{
+				const double nominator = 2 * std::abs(mat_elem(i, j) * std::conj(mat_elem(i, j)));
+				const double omega_ij = eigenvalues(j) - eigenvalues(i);
+				const double denominator = omega_ij * omega_ij + lambda * lambda;
+				const double value = omega_ij * omega_ij * nominator / (denominator * denominator);
+				susc_tmp   += nominator / (omega_ij * omega_ij);
+				susc_r_tmp += value;
+			}
+			susc_vec(i) = susc_tmp;
+			susc_vec_r(i) = susc_r_tmp;
+		}
+        return std::make_tuple(susc_vec, susc_vec_r);
+    }
 	/// @brief Calculate Adiabatic Gauge Potential at finite temperature
 	/// @tparam _ty 
 	/// @param mat_elem 
