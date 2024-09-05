@@ -25,8 +25,8 @@ namespace adiabatics{
 			return abs(x - E_av) < abs(y - E_av);
 		});
 		const long E_av_idx = i - begin(eigenvalues);
-		long int E_min = E_av_idx - long(mu / 2);
-		long int E_max = E_av_idx + long(mu / 2);
+		long int E_min = N > 1e5? 0 : E_av_idx - long(mu / 2);
+		long int E_max = N > 1e5? N : E_av_idx + long(mu / 2);
 
         double AGP = 0.0;
 		double typ_susc = 0.0;
@@ -92,6 +92,57 @@ namespace adiabatics{
 		}
         return std::make_tuple(susc_vec, susc_vec_r);
     }
+
+	/// @brief 
+	/// @tparam _ty 
+	/// @param mat_elem 
+	/// @param eigenvalues 
+	/// @param L 
+	/// @return 
+	template <typename _ty>
+	inline
+	auto 
+	gauge_potential_mu(
+    	const arma::Mat<_ty>& mat_elem,
+    	const arma::vec& eigenvalues,
+		const arma::vec& mus
+    ) -> std::tuple<arma::vec, arma::vec>
+	{
+		const long N = eigenvalues.size();
+
+		double E_av = arma::trace(eigenvalues) / double(N);
+		auto i = min_element(begin(eigenvalues), end(eigenvalues), [=](double x, double y) {
+			return abs(x - E_av) < abs(y - E_av);
+		});
+		const long E_av_idx = i - begin(eigenvalues);
+		long int E_min = N > 1e5? 0 : E_av_idx - long(N / 4);
+		long int E_max = N > 1e5? N : E_av_idx + long(N / 4);
+
+		arma::vec susc_vec(mus.size(), arma::fill::zeros);
+		arma::vec susc_vec_typ(mus.size(), arma::fill::zeros);
+    #pragma omp parallel for
+		for (long int i = E_min; i < E_max; i++)
+		{
+			arma::vec susc_vec_tmp(mus.size(), arma::fill::zeros);
+			for (long int j = 0; j < N && j != i; j++)
+			{
+				const double nominator = std::abs(mat_elem(i, j) * std::conj(mat_elem(i, j)));
+				const double omega_ij = eigenvalues(j) - eigenvalues(i);
+				
+				for(long int k = 0; k < mus.size(); k++)
+				{
+					double lambda = mus(k);
+					const double denominator = omega_ij * omega_ij + lambda * lambda;
+					susc_vec_tmp(k) += omega_ij * omega_ij * nominator / (denominator * denominator);
+				}
+			}
+			susc_vec += susc_vec_tmp;
+			susc_vec_typ += arma::log(susc_vec_tmp);
+		}
+        return std::make_tuple(susc_vec / double(E_max - E_min), arma::exp(susc_vec_typ / double(E_max - E_min)));
+    }
+
+
 	/// @brief Calculate Adiabatic Gauge Potential at finite temperature
 	/// @tparam _ty 
 	/// @param mat_elem 

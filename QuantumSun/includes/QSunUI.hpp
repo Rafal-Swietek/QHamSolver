@@ -53,6 +53,7 @@ namespace QSunUI{
         virtual void correlators();
         void quench();
         void agp();
+        void agp_mu();
         void agp_save();
     };
 }
