@@ -1133,6 +1133,7 @@ void ui::spectral_function()
 	arma::vec energy_density = arma::regspace(0.05, 0.02, 0.95);
 
 	arma::Mat<element_type> spectral_fun(omegax.size()-1, energy_density.size(), arma::fill::zeros);
+	arma::Mat<element_type> spectral_fun_typ(omegax.size()-1, energy_density.size(), arma::fill::zeros);
 	arma::Mat<element_type> element_count(omegax.size()-1, energy_density.size(), arma::fill::zeros);
 	double window_width = 0.1;
 // #pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
@@ -1177,6 +1178,7 @@ void ui::spectral_function()
 		std::cout << " - - - - - - finished matrix elements in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
 		
 		arma::Mat<element_type> _spectral_fun(omegax.size()-1, energy_density.size(), arma::fill::zeros);
+		arma::Mat<element_type> _spectral_fun_typ(omegax.size()-1, energy_density.size(), arma::fill::zeros);
 		arma::Mat<element_type> _element_count(omegax.size()-1, energy_density.size(), arma::fill::zeros);
 		
 		const double bandwidth = E(E.size() - 1) - E(0);	
@@ -1188,8 +1190,9 @@ void ui::spectral_function()
 
 			for(int k = 0; k < omegax.size() - 1; k++){
 				arma::uvec indices = arma::find(omegas_i >= omegax[k] && omegas_i < omegax[k+1]);
-				_spectral_fun(k, ii) = arma::accu( matter.rows(indices));
 				_element_count(k, ii) = indices.size();
+				_spectral_fun(k, ii) = arma::accu( matter.rows(indices));
+				_spectral_fun_typ(k, ii) = arma::accu( arma::log(matter.rows(indices)) );
 			}
 		}
 		std::cout << " - - - - - - finished Sz_L matrix elements in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
@@ -1197,10 +1200,12 @@ void ui::spectral_function()
 		{
 			omegax.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "omegas",   arma::hdf5_opts::append));
 			_spectral_fun.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "spectral_fun",   arma::hdf5_opts::append));
+			_spectral_fun_typ.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "log(_spectral_fun_typ)",   arma::hdf5_opts::append));
 			_element_count.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "element_count",   arma::hdf5_opts::append));
 		}
 		spectral_fun += _spectral_fun;
 		element_count += _element_count;
+		spectral_fun_typ += _spectral_fun_typ;
 		// #endif
 		
 		energies += E;
@@ -1211,13 +1216,15 @@ void ui::spectral_function()
 	
 	#ifdef MY_MAC
 		energies /= double(counter);
-		spectral_fun /= double(counter);
-		element_count /= double(counter);
+		spectral_fun = spectral_fun / element_count;
+		spectral_fun_typ = arma::exp(spectral_fun_typ / element_count);
 
 		energies.save(		arma::hdf5_name(dir + info + ".hdf5", "energies"));
 		spectral_fun.save(	arma::hdf5_name(dir + info + ".hdf5", "spectral_fun",   arma::hdf5_opts::append));
+		spectral_fun_typ.save(	arma::hdf5_name(dir + info + ".hdf5", "spectral_fun_typ",   arma::hdf5_opts::append));
 		element_count.save(	arma::hdf5_name(dir + info + ".hdf5", "element_count",   arma::hdf5_opts::append));
 		omegax.save(   		arma::hdf5_name(dir + info + ".hdf5", "omegax",   arma::hdf5_opts::append));
+		arma::vec({(double)counter}).save(	arma::hdf5_name(dir + info + ".hdf5", "realisations",   arma::hdf5_opts::append));
 	#endif
 }
 
