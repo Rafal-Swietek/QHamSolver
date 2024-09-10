@@ -52,6 +52,8 @@ namespace QSunUI{
         virtual void matrix_elements() override;
         virtual void correlators();
         void quench();
+
+        void spectral_function();
         void agp();
         void agp_mu();
         void agp_save();
