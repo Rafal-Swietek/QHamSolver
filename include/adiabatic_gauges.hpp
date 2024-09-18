@@ -66,11 +66,12 @@ namespace adiabatics{
 	auto 
 	gauge_potential_save(
     	const arma::Mat<_ty>& mat_elem,
-    	const arma::vec& eigenvalues
+    	const arma::vec& eigenvalues,
+		int L = 1
     ) -> std::tuple<arma::vec, arma::vec> 
 	{
 		const long N = eigenvalues.size();
-		double lambda = 1 / double(N);
+		double lambda = L / double(N);
 		arma::vec susc_vec(N, arma::fill::zeros);
 		arma::vec susc_vec_r(N, arma::fill::zeros);
     #pragma omp parallel for

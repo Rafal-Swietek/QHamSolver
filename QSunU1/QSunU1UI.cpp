@@ -36,6 +36,9 @@ void ui::make_sim(){
 	case 6:
 		matrix_elements();
 		break;
+	case 7:
+		agp_save();
+		break;
 	default:
 		#define generate_scaling_array(name) arma::linspace(this->name, this->name + this->name##s * (this->name##n - 1), this->name##n);
 		
@@ -286,6 +289,86 @@ void ui::matrix_elements()
 		diag_mat_elem_Sz.save(   arma::hdf5_name(dir + info + ".hdf5", "DIAG_MAT/Sz",   arma::hdf5_opts::append));
 		diag_mat_elem_SzSz.save( arma::hdf5_name(dir + info + ".hdf5", "DIAG_MAT/SzSz", arma::hdf5_opts::append));
 		diag_mat_elem_kin.save(  arma::hdf5_name(dir + info + ".hdf5", "DIAG_MAT/kin",  arma::hdf5_opts::append));
+	#endif
+}
+
+/// @brief Calculate AGPs from matrix elements of local operators
+void ui::agp_save()
+{
+	std::string dir = this->saving_dir + "AGP_SAVE" + kPSep;
+	// if(this->op > 0) dir += "OtherObservables" + kPSep;
+	createDirs(dir);
+	
+	size_t dim = this->ptr_to_model->get_hilbert_size();
+	std::string info = this->set_info();
+	const size_t size = dim > 1e5? this->l_steps : dim;
+
+	arma::vec energies(size, arma::fill::zeros);
+	arma::vec susc(    size, arma::fill::zeros);
+	arma::vec susc_r(  size, arma::fill::zeros);
+
+	int Ll = this->L;
+	int N = this->grain_size;
+	int counter = 0;
+
+// #pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
+	for(int realis = 0; realis < this->realisations; realis++)
+	{
+		clk::time_point start_re = std::chrono::system_clock::now();
+		if(realis > 0)
+			this->ptr_to_model->generate_hamiltonian();
+		
+		clk::time_point start = std::chrono::system_clock::now();
+		if(dim > 1e5){
+			this->ptr_to_model->diag_sparse(this->l_steps, this->l_bundle, this->tol, this->seed);	
+		}
+		else{
+        	this->ptr_to_model->diagonalization();
+		}
+		std::cout << " - - - - - - finished diagonalization in : " << tim_s(start) << " s for realis = " << realis << " - - - - - - " << std::endl; // simulation end
+		start = std::chrono::system_clock::now();
+		
+		const arma::vec E = this->ptr_to_model->get_eigenvalues();
+		const auto& V = this->ptr_to_model->get_eigenvectors();
+		
+		std::string dir_realis = dir + "realisation=" + std::to_string(this->jobid + realis) + kPSep;
+		createDirs(dir_realis);
+		E.save(arma::hdf5_name(dir_realis + info + ".hdf5", "energies"));
+		energies += E;
+
+		start = std::chrono::system_clock::now();
+		auto kernel_def = [Ll, N](u64 state){ 
+					auto [val1, tmp22] = operators::sigma_z(state, Ll, Ll - 1 );
+					return std::make_pair(state, val1);
+					};
+		auto _operator = QOps::generic_operator<>(this->L, std::move(kernel_def), 1.0);
+		arma::sp_mat oper = arma::real(_operator.to_matrix(dim));
+		
+		arma::Mat<element_type> mat_elem = V.t() * oper * V;
+		auto [_susc, _susc_r] = adiabatics::gauge_potential_save(mat_elem, E, this->L);
+
+		std::cout << " - - - - - - finished Sz_L matrix elements in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
+		// #ifndef MY_MAC
+		{
+			_susc.save(	 arma::hdf5_name(dir_realis + info + ".hdf5", "susc",     arma::hdf5_opts::append));
+			_susc_r.save(arma::hdf5_name(dir_realis + info + ".hdf5", "susc_reg", arma::hdf5_opts::append));
+		}
+		// #endif
+		susc += _susc;
+		susc_r += _susc_r;
+		counter++;
+		std::cout << " - - - - - - finished realisation realis = " << realis << " in : " << tim_s(start_re) << " s - - - - - - " << std::endl; // simulation end
+	}
+	if(counter == 0) return;
+	
+	#ifdef MY_MAC
+		susc /= double(counter);
+		susc_r /= double(counter);
+		energies /= double(counter);
+
+		energies.save(arma::hdf5_name(dir + info + ".hdf5", "energies"));
+		susc.save(    arma::hdf5_name(dir + info + ".hdf5", "susc", arma::hdf5_opts::append));
+		susc_r.save(  arma::hdf5_name(dir + info + ".hdf5", "susc_reg", arma::hdf5_opts::append));
 	#endif
 }
 
