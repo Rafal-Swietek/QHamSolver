@@ -536,7 +536,7 @@ void user_interface_dis<Hamiltonian>::eigenstate_entanglement()
 	#pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
 		for(int n = 0; n < size; n++){
 			arma::Col<element_type> state = arma::normalise(this->ptr_to_model->get_eigenState(n));
-			arma::Col<element_type> state2 = arma::normalise(this->ptr_to_model->get_eigenState(n));
+			// arma::Col<element_type> state2 = arma::normalise(this->ptr_to_model->get_eigenState(n));
 			
 			#pragma omp parallel for
 				for(int k = 0; k < dim; k++){
@@ -551,7 +551,7 @@ void user_interface_dis<Hamiltonian>::eigenstate_entanglement()
 				int LA = subsystem_sizes[LA_idx];
 				S(n, LA_idx) = entropy::schmidt_decomposition(state, this->L - LA, this->L);	// bipartite entanglement at subsystem size LA
 				
-				arma::vec permuted_state = arma::real(permutation_op[LA_idx].multiply(state2));
+				arma::vec permuted_state = arma::real(permutation_op[LA_idx].multiply(state));
 				S_site(n, LA_idx) = entropy::schmidt_decomposition(permuted_state, this->L - 1, this->L);	// single site entanglement at site LA
 			}
 		}
