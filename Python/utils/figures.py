@@ -103,4 +103,4 @@ def set_legend(axis, fontsize = 16, loc = 'best', anchor = None, **kwargs):
         else:
             axis.legend(frameon=0, fontsize=fontsize, loc=loc, handletextpad=0.25, handlelength = 1.25, **kwargs)
             return;
-    axis.legend(frameon=0, fontsize=fontsize, loc=loc, handletextpad=0.25, handlelength = 1.25, bbox_to_anchor=anchor, **kwargs)
+    return axis.legend(frameon=0, fontsize=fontsize, loc=loc, handletextpad=0.25, handlelength = 1.5, bbox_to_anchor=anchor, **kwargs)

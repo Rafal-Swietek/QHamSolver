@@ -8,15 +8,6 @@
 		}
 	],
 	"settings": {
-		"files.exclude": {
-			"**/.git": true,
-			"**/.svn": true,
-			"**/.hg": true,
-			"**/CVS": true,
-			"**/.DS_Store": true,
-			"**/Thumbs.db": true,
-			"results/": true
-		},
 		"files.associations": {
 			"*.txt": "swift",
 			"*.plt": "gnuplot",
@@ -102,16 +93,7 @@
 			"utility": "cpp",
 			"stop_token": "cpp",
 			"thread": "cpp",
-			"cinttypes": "cpp",
-			"armadillo": "cpp",
-			"filesystem": "cpp",
-			"__verbose_abort": "cpp",
-			"typeindex": "cpp",
-			"list": "cpp",
-			"set": "cpp",
-			"span": "cpp",
-			"valarray": "cpp",
-			"format": "cpp"
+			"cinttypes": "cpp"
 		}
 	}
 }

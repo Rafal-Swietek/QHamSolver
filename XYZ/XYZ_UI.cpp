@@ -22,14 +22,14 @@ void ui::make_sim(){
 
     this->ptr_to_model = create_new_model_pointer();
 
-    compare_energies();
-    return;
+    // compare_energies();
+    // return;
     // // std::cout << arma::linspace(0, ULLPOW(this->L)-1, ULLPOW(this->L)).t() << std::endl;
 	// // std::cout << arma::mat(this->energy_current()) << std::endl;
     // // return;
 
     // this->ptr_to_model->diagonalization();
-    auto H = this->ptr_to_model->get_hamiltonian();
+    // auto H = this->ptr_to_model->get_hamiltonian();
 
     // auto lancz = lanczos::Lanczos<ui::element_type>(H, this->l_steps, this->l_realis, this->seed, this->reorthogonalize);
     // lancz.convergence(this->saving_dir, this->set_info());
@@ -49,7 +49,7 @@ void ui::make_sim(){
     
     
     
-    return;
+    // return;
 
 	clk::time_point start = std::chrono::system_clock::now();
     switch (this->fun)
@@ -116,8 +116,15 @@ void ui::make_sim(){
             loopSymmetrySectors(kernel); continue;
             this->reset_model_pointer();
 
-            this->eigenstate_entanglement_degenerate(); 
-            continue;
+            // auto Hamil = this->ptr_to_model->get_hamiltonian();
+            // this->l_steps = 0.05 * Hamil.n_cols;
+            // if(this->l_steps > 200)
+            //     this->l_steps = 200;
+            // auto polfed = polfed::POLFED<ui::element_type>(Hamil, this->l_steps, this->l_bundle, -1, this->tol, 0.2, this->seed, true);
+            // auto [E, V] = polfed.eig();
+            // continue;
+            // this->eigenstate_entanglement_degenerate(); 
+            // continue;
 
             diagonal_matrix_elements();
             std::cout << "\t\t - - - - - - FINISHED ITERATION IN : " << tim_s(start_loop) << " seconds\n\t\t\t Total time : " << tim_s(start) << " s - - - - - - " << std::endl; // simulation end

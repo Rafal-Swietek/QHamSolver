@@ -46,6 +46,7 @@ scale_ansatz_label = {
     'FGR':      lambda vs_str : "(" + vs_str + " - " + vs_str + "_c) \\cdot D^{1/\\nu}",
     'KT':       lambda vs_str : "L / \\xi_{KT}\ \ \ \ \\xi_{KT}^{-1}=exp(\\nu\\cdot|" + vs_str + " - " + vs_str + "_c|^{-1/2})",
     'RG':       lambda vs_str: "L / \\xi_0\ \ \ \ \\xi_0^{-1}=|" + vs_str + " - " + vs_str + "_c|^{\\nu}",
+    'RGcorr':   lambda vs_str: "L / \\xi_0\ \ \ \ \\xi_0^{-1}=|" + vs_str + " - " + vs_str + "_c|^{\\nu}[1+c(" + vs_str + " - " + vs_str + "_c)]",
     'classic':  lambda vs_str: "(" + vs_str + " - " + vs_str + "_c) \\cdot L^{1/\\nu}",
     'exp':      lambda vs_str : "exp(\\nu\\cdot|" + vs_str + " - " + vs_str + "_c|) \\cdot e^{\\frac{ln2}{2}L}",
 }
@@ -64,7 +65,8 @@ def calculate_cost_function(data):
 
 
 # FUNCTION TO BE MINIMIZED
-def minimization_function(params, xvals, y, sizes, scaling_ansatz, crit_function, wH = None):
+def minimization_function(params, xvals, y, sizes, scaling_ansatz, crit_function, wH = None, 
+                          two_parameter_ansatz = False, use_input_criticals = False, _crit_in = None):
     """
     General function to used in minimization scheme
     Collects all data to a 1D array and sorts it according to non-decreasing values of the scaling ansatz
@@ -100,24 +102,32 @@ def minimization_function(params, xvals, y, sizes, scaling_ansatz, crit_function
 
     rescale_fun = resc_functions_dict[scaling_ansatz]
     crit_fun = crit_functions_dict[crit_function]
-
-    crit_pars=np.array(params[1:]) # critical parameters to find given in critical point scaling
-
+    
     xdata = []
     fulldata = []
     final_func = None
-    if scaling_ansatz == 'spacing':   
-        final_func = lambda params, ii, j : rescale_fun(xvals[i][j], sizes, ii, crit_fun, *crit_pars) * wH[i][j]**(-1. / params[0])
-    else:                               
-        final_func = lambda params, ii, j : rescale_fun(xvals[i][j], sizes, ii, crit_fun, params[0], *crit_pars)
+    if use_input_criticals:
+        if scaling_ansatz == 'spacing':   
+            final_func = lambda params, ii, j : rescale_fun(xvals[i][j], sizes, ii, crit_fun, *_crit_in) * wH[i][j]**(-1. / params[0])
+        elif scaling_ansatz == 'RGcorr':
+            final_func = lambda params, ii, j : rescale_fun(xvals[i][j], sizes, ii, crit_fun, params[0], params[1], *_crit_in)
+        else:                               
+            final_func = lambda params, ii, j : rescale_fun(xvals[i][j], sizes, ii, crit_fun, params[0], *_crit_in)
+    else:
+        crit_pars = np.array(params[3:]) if two_parameter_ansatz else np.array(params[1:])# critical parameters to find given in critical point scaling
+        if scaling_ansatz == 'spacing':   
+            final_func = lambda params, ii, j : rescale_fun(xvals[i][j], sizes, ii, crit_fun, *crit_pars) * wH[i][j]**(-1. / params[0])
+        else:                               
+            final_func = lambda params, ii, j : rescale_fun(xvals[i][j], sizes, ii, crit_fun, params[0], *crit_pars)
 
     center_of_range = []
-    for i in range(0, len(sizes)):
-        center_of_range.append( final_func(params, i, int(len(xvals[i]) / 2)) )
+    for i, L in enumerate(sizes):
+        # center_of_range.append( final_func(params, i, int(len(xvals[i]) / 2)) )
         for j in range(0, len(xvals[i])):
             xvalue = final_func(params, i, j)
             xdata.append( xvalue )
-            fulldata.append(y[i][j])
+            if two_parameter_ansatz: fulldata.append(y[i][j] - params[2] * L**(-params[1]))
+            else:                    fulldata.append(y[i][j])
     
     fulldata = np.array(fulldata)
     permut = np.argsort(xdata)
@@ -130,12 +140,11 @@ def minimization_function(params, xvals, y, sizes, scaling_ansatz, crit_function
     """
     constraint_satisfied = True
     
-    for center in center_of_range:
-        for i in range(len(sizes)):
-            if center < final_func(params, i, 0) or center > final_func(params, i, len(xvals[i])-1):
-                constraint_satisfied = False
-                break
-
+    # for center in center_of_range:
+    #     for i in range(len(sizes)):
+    #         if center < final_func(params, i, 0) or center > final_func(params, i, len(xvals[i])-1):
+    #             constraint_satisfied = False
+    #             break
 
     cost_fun = calculate_cost_function(fulldata)
     #if cost_fun < 1.: print(cost_fun)
@@ -146,7 +155,8 @@ def minimization_function(params, xvals, y, sizes, scaling_ansatz, crit_function
 def cost_func_minization(x, y, sizes, bnds, 
                             scale_func, crit_func, 
                             population_size=1e2, maxiterarions=1e3, 
-                            workers=1, seed = None, wH = None):
+                            workers=1, seed = None, wH = None, two_parameter_ansatz = False, 
+                            use_input_criticals = False, _crit_in = None):
     """
     Main function returning optimal parameters for given scaling ansatz
 
@@ -172,6 +182,14 @@ def cost_func_minization(x, y, sizes, bnds,
         String to specify which scaling solution should be chosen
         (gives ValueError when is not amongst existing ones)
 
+    two_parameter_ansatz:   'bool'
+        use two-parameter ansatz as in P. Sierant et. al. SciPost Phys. 15, 045 (2023) -> Eq.(10)
+        
+    use_input_criticals:   'bool'
+        use input values as critical points and fit only critical exponents
+    
+    _crit_in:   double or array
+        input values for critical points or parameters for critical points (in case of functional dependence)
     """
 
     if seed is None: seed = np.random.default_rng();
@@ -180,7 +198,8 @@ def cost_func_minization(x, y, sizes, bnds,
     result = differential_evolution(
                     minimization_function,
                     bounds=bnds,
-                    args=(x, y, sizes, scale_func, crit_func, wH),
+                    args=(x, y, sizes, scale_func, crit_func, wH, 
+                            two_parameter_ansatz, use_input_criticals, _crit_in),
                     popsize=int(population_size), 
                     maxiter=int(maxiterarions), 
                     workers=workers, atol=1e-2,
@@ -188,12 +207,13 @@ def cost_func_minization(x, y, sizes, bnds,
             )
     optimal_res = np.array(result.x)
     cost_fun = result.fun
+    print("Found:", optimal_res, "CF = ", cost_fun)
     if result.success ==  False: print('Failed convergence')
       
     return optimal_res, cost_fun, result.success
 
 
-def prepare_bounds(x, crit_fun, scaling_ansatz, vals):
+def prepare_bounds(x, crit_fun, scaling_ansatz, vals, two_parameter_ansatz = False, use_input_criticals = False):
     """
     Generate bounds for optimization procedure
     
@@ -219,29 +239,35 @@ def prepare_bounds(x, crit_fun, scaling_ansatz, vals):
             if x_max is None or _x_ > x_max:   x_max = _x_
             if x_min is None or _x_ < x_min:    x_min = _x_
             
-    bounds = [(0.2, 5.)] if scaling_ansatz == 'FGR' or scaling_ansatz == 'spacing' else [(0.0, 100.)]
+    bounds = [(0.2, 5.)] if scaling_ansatz == 'FGR' or scaling_ansatz == 'spacing' else [(0.2, 5.)]
+    if two_parameter_ansatz:
+        bounds.append( (0.0, 5.) if scaling_ansatz == 'FGR' or scaling_ansatz == 'spacing' else (0.2, 5.) )
+        bounds.append((-10000, 10000))
+    if scaling_ansatz == 'RGcorr':
+        bounds.append((-10000, 10000))
     #-- number of bounds is number of different scaling parameters
-    if crit_fun == 'free':  
-        for i in range(len(vals)):  
-            bounds.append((x_min, x_max))
-    elif crit_fun == 'free_inv':  
-        for i in range(len(vals)):  
-            bounds.append((1. / x_max, 1. / x_min))
-    #-- constant value, only one new bounds
-    elif crit_fun == 'const':   
-        bounds.append((0, x_max))
-    #-- power law and inverse function have 3 paramters
-    elif crit_fun == 'power_law' or crit_fun == 'inv':   
-        for i in range(3):
-            bounds.append((-1000., 1000.))
-    #-- logarithmic and its inverse function have 2 paramters
-    elif crit_fun == 'log' or crit_fun == 'inv_log' or crit_fun == 'lin':   
-        for i in range(2):
-            bounds.append((-1000., 1000.))
+    if not use_input_criticals:
+        if crit_fun == 'free':  
+            for i in range(len(vals)):  
+                bounds.append((x_min, x_max))
+        elif crit_fun == 'free_inv':  
+            for i in range(len(vals)):  
+                bounds.append((1. / x_max, 1. / x_min))
+        #-- constant value, only one new bounds
+        elif crit_fun == 'const':   
+            bounds.append((0, x_max))
+        #-- power law and inverse function have 3 paramters
+        elif crit_fun == 'power_law' or crit_fun == 'inv':   
+            for i in range(3):
+                bounds.append((-1000., 1000.))
+        #-- logarithmic and its inverse function have 2 paramters
+        elif crit_fun == 'log' or crit_fun == 'inv_log' or crit_fun == 'lin':   
+            for i in range(2):
+                bounds.append((-1000., 1000.))
     return bounds
 
 
-def get_crit_points(x, y, vals, crit_fun='free', scaling_ansatz = 'classic', seed = None, wH = None):
+def get_crit_points(x, y, vals, crit_fun='free', scaling_ansatz = 'classic', seed = None, wH = None, two_parameter_ansatz = False, use_input_criticals = False, _crit_in = None):
     """
     Calculating critical points for each system size
 
@@ -258,10 +284,19 @@ def get_crit_points(x, y, vals, crit_fun='free', scaling_ansatz = 'classic', see
 
         scaling_ansatz:   'string'
             scaling ansatz for collapse, classic, KT, FGR,...
+            
+        two_parameter_ansatz:   'bool'
+            use two-parameter ansatz as in P. Sierant et. al. SciPost Phys. 15, 045 (2023) -> Eq.(10)
+            
+        use_input_criticals:   'bool'
+            use input values as critical points and fit only critical exponents
+        
+        _crit_in:   double or array
+            input values for critical points or parameters for critical points (in case of functional dependence)
     """
     
     params = []
-    bounds = prepare_bounds(x, crit_fun, scaling_ansatz, vals)
+    bounds = prepare_bounds(x, crit_fun, scaling_ansatz, vals, two_parameter_ansatz, use_input_criticals)
 
     params, cost_fun, status = cost_func_minization(x=x, y=y, sizes=vals,
                                     scale_func=scaling_ansatz, 
@@ -270,9 +305,24 @@ def get_crit_points(x, y, vals, crit_fun='free', scaling_ansatz = 'classic', see
                                     population_size=1e2,
                                     maxiterarions=1e3, workers=10,
                                     seed = seed,
-                                    wH = wH
+                                    wH = wH, 
+                                    two_parameter_ansatz = two_parameter_ansatz,
+                                    use_input_criticals = use_input_criticals,
+                                    _crit_in = _crit_in
                                 )
-
-    par = params[0]
-    crit_pars = np.array(params[1:])
-    return par, crit_pars, cost_fun, status
+    
+    idx = 1
+    if two_parameter_ansatz:       idx += 2
+    crit_pars = _crit_in if use_input_criticals else np.array(params[idx:])
+    return params[:idx], crit_pars, cost_fun, status
+    
+    # if two_parameter_ansatz:
+    #     par = params[0]
+    #     omega = params[1]
+    #     const = params[2]
+    #     crit_pars = _crit_in if use_input_criticals else np.array(params[idx:])
+    #     return params[:idx], crit_pars, cost_fun, status
+    # else:
+    #     par = params[0]
+    #     crit_pars = _crit_in if use_input_criticals else np.array(params[1:])
+    #     return par, crit_pars, cost_fun, status

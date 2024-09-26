@@ -85,7 +85,7 @@ void QuantumSun::create_hamiltonian()
         this->_disorder = disorder_generator.uniform(dim_loc, this->_hz - this->_w, this->_hz + this->_w);
     else
         this->_disorder = disorder_generator.uniform(this->num_of_spins, this->_hz - this->_w, this->_hz + this->_w);
-    
+    std::cout << "AAAAA: " << this->_disorder.t() << std::endl;
 	
     /* Create random neighbours for coupling hamiltonian */
     auto random_neigh = this->neighbor_generator.uniform(this->num_of_spins, 0, this->grain_size - 1);
@@ -94,6 +94,7 @@ void QuantumSun::create_hamiltonian()
 	arma::mat H_grain = this->_gamma * this->grain.generate_matrix(dim_erg);
     // if(this->_norm_grain)
     H_grain /= std::sqrt(ULLPOW(this->grain_size) + 1);
+    // H_grain /= arma::trace(H_grain * H_grain) / double(dim_erg);
 
     /* Create random couplings */
     this->_long_range_couplings = arma::vec(this->num_of_spins, arma::fill::zeros);

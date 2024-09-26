@@ -114,7 +114,7 @@ void XYZ::create_hamiltonian()
             this->set_hamiltonian_elements(k, fieldZ * real(val), op_k);
 	    	
             std::tie(val, op_k) = operators::sigma_x(base_state, this->system_size, j);			
-            double fieldX = this->_w * std::sin(this->_disorder(j)) + this->_hx;
+            double fieldX = this->_w * 0.0 * std::sin(this->_disorder(j)) + this->_hx;
             this->set_hamiltonian_elements(k, fieldX * real(val), op_k);
 
             for(int a = 0; a < neighbor_distance.size(); a++){

@@ -24,13 +24,12 @@ def _crit_free_inv(params, idx_par, *args):
     crit = 1. / np.array(args)
     return crit[idx_par]
 
-def _crit_const(size, x0):
+def _crit_const(size, idx_par, x0):
     """
     Constant critical value
     """
 
     return x0
-
 
 def _crit_lin(params, idx_par, x0, x1):
     """

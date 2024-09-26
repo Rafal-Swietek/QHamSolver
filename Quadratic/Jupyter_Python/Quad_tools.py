@@ -3,12 +3,13 @@ Module containing tools for Quadratic models
 """
 
 import numpy as np
+from math import ceil
 
 def order_of_magnitude2(a_value):
     #return 2
     if np.abs(a_value) < 1.0 and a_value != 0:
         m = np.abs(np.log10(np.abs(a_value)))
-        return int(max(math.ceil(m) + 1., 2.))
+        return int(max(ceil(m) + 1., 2.))
     else: 
         return 2
 
@@ -25,10 +26,10 @@ def order_of_magnitude(a_value):
     
 def info_raw(L, J, w, g, model = 'Anderson', use_old = False):
     
-    names = ['J', 'w', 'g']
+    names = ['J', 'g', 'w'] if model == 'RP' or model == 'PLRB' else ['J', 'w', 'g']
     arr = [J]
     if model == 'Anderson' or model == 'AubryAndre': arr.append(w)
-    if model == 'AubryAndre': arr.append(g)
+    if model == 'AubryAndre' or model == 'RP' or model == 'PLRB': arr.append(g)
     
     info = "_L=%d"%(L)
     for i, var in enumerate(arr):
@@ -72,3 +73,15 @@ def gaussian(ff):
 def freefermions(fff, n=4):
     return np.array([ 1 - (leading_FF_terms(f=f, x=1, n=n) + FF_terms(f=f, x=1, n=n) * correction(n=n+1)) / (np.log(2)) for f in fff])
 
+
+
+
+def diff_central(x, y):
+    x0 = x[:-2]
+    x1 = x[1:-1]
+    x2 = x[2:]
+    y0 = y[:-2]
+    y1 = y[1:-1]
+    y2 = y[2:]
+    f = (x2 - x1)/(x2 - x0)
+    return (1-f)*(y2 - y1)/(x2 - x1) + f*(y1 - y0)/(x1 - x0)
