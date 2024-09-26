@@ -23,6 +23,7 @@ namespace QHS{
 		v_1d<elem_ty> _normalisation;
 		v_1d<int> _sectors;
 
+		int _trans_shift = 1;		//<! translation shift, i.e. one-, two-,.. sided translation
 		int k_sector = 0;			//<! quasimomentum symmetry ector
 		int _boundary_cond = 1;		//<! 1-OBC, 0-PBC
 		int _pos_of_parity = -1;	//<! position of parity generator in input symmetries (if not present put -1)
@@ -38,7 +39,7 @@ namespace QHS{
 		typedef std::pair<u64, elem_ty> return_type;		// return type of operator, resulting state and value
 	public:
 		point_symmetric() = default;
-		point_symmetric(unsigned int L, const v_1d<QOps::genOp>& sym_gen, int _BC = 1, int k_sector = 0, int pos_of_parity = -1);
+		point_symmetric(unsigned int L, const v_1d<QOps::genOp>& sym_gen, int _BC = 1, int k_sector = 0, int pos_of_parity = -1, int trans_shift = 1);
 		
 		virtual void create_basis() override;
 
@@ -115,10 +116,12 @@ namespace QHS{
 	/// @param k_sec quasimomentum symmetyr sector
 	/// @param pos_of_parity position of parity in sym_gen (if not present -> -1, by default -1)
 	inline
-	point_symmetric::point_symmetric(unsigned int L, const v_1d<QOps::genOp>& sym_gen, int _BC, int k_sec, int pos_of_parity)
+	point_symmetric::point_symmetric(unsigned int L, const v_1d<QOps::genOp>& sym_gen, int _BC, int k_sec, int pos_of_parity, int trans_shift)
 	{
 		this->system_size = L;
 		this->_boundary_cond = _BC;
+		this->_trans_shift = trans_shift;
+
 		if(this->_boundary_cond == 0){ // if PBC
 			this->k_sector = k_sec;
 			bool is_pi_sector = L % 2? false : this->k_sector  == int(this->system_size / 2);
@@ -175,8 +178,8 @@ namespace QHS{
 		// set combination of all syms with all translations
 		if (this->_boundary_cond == 0) {
 			v_1d<QOps::genOp> sym_group_copy = this->_symmetry_group;
-			QOps::genOp translation = QOps::_translation_symmetry(this->system_size, this->k_sector);
-			for (int l = 1; l < this->system_size; l++) 
+			QOps::genOp translation = QOps::_translation_symmetry(this->system_size, this->k_sector, false, this->_trans_shift);
+			for (int l = 1; l < this->system_size / this->_trans_shift; l++) 
 			{
 				// QOps::genOp translation = QOps::_translation_symmetry(this->system_size, this->k_sector, l);
 				for (auto& G : sym_group_copy)
