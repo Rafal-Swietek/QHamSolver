@@ -22,14 +22,29 @@ void ui::make_sim(){
 
     this->ptr_to_model = create_new_model_pointer();
 
-    // auto full_model = std::make_unique<QHS::QHamSolver<GoldenChain>>(this->boundary_conditions, this->L, this->J, this->c, 0, 0, 0, 0);
+    // auto full_model = std::make_unique<QHS::QHamSolver<GoldenChain>>(this->boundary_conditions, this->L, this->J, this->c, 0, 0, 0);
     // auto Hs = full_model->get_hamiltonian();
     // std::cout << Hs << std::endl;
     // auto H = full_model->get_dense_hamiltonian();
     // std::cout << H << std::endl;
     // arma::vec E = arma::eig_sym(H);
-    // E.save(arma::hdf5_name("fullspectrum" + this->set_info({"z1", "z2", "zz"}) + ".hdf5", "energies"));
+    // std::cout << E << std::endl;
+    // E.save(arma::hdf5_name("fullspectrum" + this->set_info({"k", "p"}) + ".hdf5", "energies"));
+    // auto model1 = std::make_unique<QHS::QHamSolver<GoldenChain>>(this->boundary_conditions, this->L, this->J, this->c, this->syms.k_sym, this->syms.p_sym);
+    // model1->diagonalization(false);
+    // arma::vec Esym = model1->get_eigenvalues();
 
+    // auto model2 = std::make_unique<QHS::QHamSolver<GoldenChain>>(this->boundary_conditions, this->L, this->J, 0, this->syms.k_sym, this->syms.p_sym);
+    // model2->diagonalization(false);
+    // arma::vec E_dis = model2->get_eigenvalues();
+    
+	// std::cout << std::endl << Esym.size() << std::endl << E_dis.size() << std::endl;
+	// printSeparated(std::cout, "\t", 20, true, "Energy c=0", "Energy c>0", "difference");
+	// for (int k = 0; k < min((int)E_dis.size(), (int)Esym.size()); k++){
+    //     // if(std::abs(Esym[k] - E_dis(k)) > 1e-17)
+	// 	    printSeparated(std::cout, "\t", 20, true, Esym[k], E_dis(k), Esym[k] - E_dis(k));
+    // }
+    // std::cout << "---------------------------------------------------------------" << std::endl;
     // return;
     // compare_energies(); return;
     
@@ -104,8 +119,8 @@ std::string ui::set_info(std::vector<std::string> skip, std::string sep) const
             ",J=" + to_string_prec(this->J) + \
             ",c=" + to_string_prec(this->c);
         // #ifdef USE_SYMMETRIES
-            // if(this->boundary_conditions == 0)      name += ",k=" + std::to_string(this->syms.k_sym);
-            // if(this->k_real_sec(this->syms.k_sym))  name += ",p=" + std::to_string(this->syms.p_sym);
+        if(this->boundary_conditions == 0)                      name += ",k=" + std::to_string(this->syms.k_sym);
+        if(this->k_real_sec(this->syms.k_sym) && this->c == 0)  name += ",p=" + std::to_string(this->syms.p_sym);
         // #else
         //     name += ",w=" + to_string_prec(this->w) + \
         //             ",edge=" + std::to_string((int)this->add_edge_fields) + \
@@ -131,33 +146,34 @@ std::string ui::set_info(std::vector<std::string> skip, std::string sep) const
 /// @brief Compare energie spactra for full model and all symmetry sectors combined
 void ui::compare_energies()
 {                
-    // v_1d<double> Esym;
-	// v_1d<std::string> symms;
-    // auto kernel = [&](int k, int p)
-    // {
-    //     auto symmetric_model = std::make_unique<QHS::QHamSolver<GoldenChain>>(this->boundary_conditions, this->L, this->J, this->c, this->syms.p_sym);
-    //     symmetric_model->diagonalization(false);
-    //     arma::vec E = symmetric_model->get_eigenvalues();
+    v_1d<double> Esym;
+	v_1d<std::string> symms;
+    auto kernel = [&Esym, &symms, this](int k, int p)
+    {
+        auto symmetric_model = std::make_unique<QHS::QHamSolver<GoldenChain>>(this->boundary_conditions, this->L, this->J, this->c, k, p, true);
+        symmetric_model->diagonalization(false);
+        arma::vec E = symmetric_model->get_eigenvalues();
         
-    //     Esym.insert(Esym.end(), std::make_move_iterator(E.begin()), std::make_move_iterator(E.end()));
-    //     v_1d<std::string> temp_str = v_1d<std::string>(E.size(), "k=" + std::to_string(k) + ",p=" + to_string(p));
-	// 	symms.insert(symms.end(), std::make_move_iterator(temp_str.begin()), std::make_move_iterator(temp_str.end()));
-    // };
-    // loopSymmetrySectors(kernel);
+        Esym.insert(Esym.end(), std::make_move_iterator(E.begin()), std::make_move_iterator(E.end()));
+        v_1d<std::string> temp_str = v_1d<std::string>(E.size(), "k=" + std::to_string(k) + ",p=" + to_string(p));
+		symms.insert(symms.end(), std::make_move_iterator(temp_str.begin()), std::make_move_iterator(temp_str.end()));
+    };
+    loopSymmetrySectors(kernel);
 
-    // auto full_model = std::make_unique<QHS::QHamSolver<GoldenChain>>(this->boundary_conditions, this->L, this->J, this->c, this->syms.p_sym, false);
-    // full_model->diagonalization(false);
-    // arma::vec E_dis = full_model->get_eigenvalues();// + this->J1 * (this->L - int(this->boundary_conditions)) * (3 + this->eta1 * this->eta1) / 8.;
+    auto full_model = std::make_unique<QHS::QHamSolver<GoldenChain>>(this->boundary_conditions, this->L, this->J, this->c, this->syms.k_sym, this->syms.p_sym, false);
+    full_model->diagonalization(false);
+    arma::vec E_dis = full_model->get_eigenvalues();// + this->J1 * (this->L - int(this->boundary_conditions)) * (3 + this->eta1 * this->eta1) / 8.;
     
-    // auto permut = sort_permutation(Esym, [](const double a, const double b)
-	// 							   { return a < b; });
-	// apply_permutation(Esym, permut);
-	// apply_permutation(symms, permut);
-	// std::cout << std::endl << Esym.size() << std::endl << E_dis.size() << std::endl;
-	// printSeparated(std::cout, "\t", 20, true, "symmetry sector", "Energy sym", "Energy total", "difference");
-	// for (int k = 0; k < min((int)E_dis.size(), (int)Esym.size()); k++)
-    //     if(std::abs(Esym[k] - E_dis(k)) > 1e-17)
-	// 	    printSeparated(std::cout, "\t", 20, true, symms[k], Esym[k], E_dis(k), Esym[k] - E_dis(k));
+    auto permut = sort_permutation(Esym, [](const double a, const double b)
+								   { return a < b; });
+	apply_permutation(Esym, permut);
+	apply_permutation(symms, permut);
+	std::cout << std::endl << Esym.size() << std::endl << E_dis.size() << std::endl;
+	printSeparated(std::cout, "\t", 20, true, "symmetry sector", "Energy sym", "Energy total", "difference");
+	for (int k = 0; k < min((int)E_dis.size(), (int)Esym.size()); k++){
+        // if(std::abs(Esym[k] - E_dis(k)) > 1e-17)
+		    printSeparated(std::cout, "\t", 20, true, symms[k], Esym[k], E_dis(k), Esym[k] - E_dis(k));
+    }
 }
 
 /// @brief Compaer full hamiltonian to the reconstructed one from symmetry sectors
@@ -239,12 +255,12 @@ ui::jE_mat_elem_kernel(
 
 /// @brief Create unique pointer to model with current parameters in class
 typename ui::model_pointer ui::create_new_model_pointer(){
-    return std::make_unique<QHS::QHamSolver<GoldenChain>>(this->boundary_conditions, this->L, this->J, this->c, this->syms.p_sym);
+    return std::make_unique<QHS::QHamSolver<GoldenChain>>(this->boundary_conditions, this->L, this->J, this->c, this->syms.k_sym, this->syms.p_sym);
 }
 
 /// @brief Reset member unique pointer to model with current parameters in class
 void ui::reset_model_pointer(){
-    this->ptr_to_model.reset(new QHS::QHamSolver<GoldenChain>(this->boundary_conditions, this->L, this->J, this->c, this->syms.p_sym) );
+    this->ptr_to_model.reset(new QHS::QHamSolver<GoldenChain>(this->boundary_conditions, this->L, this->J, this->c, this->syms.k_sym, this->syms.p_sym) );
 }
 
 /// @brief 
@@ -286,8 +302,8 @@ void ui::parse_cmd_options(int argc, std::vector<std::string> argv)
     set_param(c);
 
     //<! SYMMETRIES
-    // choosen_option = "-k";
-    // this->set_option(this->syms.k_sym, argv, choosen_option);
+    choosen_option = "-k";
+    this->set_option(this->syms.k_sym, argv, choosen_option);
 
     choosen_option = "-p";
     this->set_option(this->syms.p_sym, argv, choosen_option);
@@ -324,7 +340,7 @@ void ui::set_default(){
 	this->cs = 0.0;
 	this->cn = 1;
 
-    // this->syms.k_sym = 0;
+    this->syms.k_sym = 0;
     this->syms.p_sym = 1;
     // this->syms.zz_sym = 1;
 }
@@ -372,7 +388,7 @@ void ui::printAllOptions() const{
 		  << "cn = " << this->cn << std::endl
 		  << "cs = " << this->cs << std::endl;
 
-    // std::cout << "k  = " << this->syms.k_sym << std::endl;
+    std::cout << "k  = " << this->syms.k_sym << std::endl;
     std::cout << "p  = " << this->syms.p_sym << std::endl;
 		                                            
         std::cout << std::endl;

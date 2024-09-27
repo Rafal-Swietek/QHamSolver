@@ -28,6 +28,7 @@ private:
 
     //<! Symmetry contained in struct
     struct {
+        int k_sym;
         int p_sym;
     } syms;
 
@@ -44,7 +45,7 @@ public:
     //<! ----------------------------------------------------- CONSTRUCTORS
     GoldenChain() = default;
     GoldenChain(std::istream& os);
-    GoldenChain(int _BC, unsigned int L, double J, double c, int psym, bool use_syms = true);
+    GoldenChain(int _BC, unsigned int L, double J, double c, int ksym, int psym, bool use_syms = true);
 
     //<! ----------------------------------------------------- HAMILTONIAN BUILDERS
     virtual void create_hamiltonian() override;

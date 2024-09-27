@@ -21,11 +21,16 @@ void GoldenChain::init()
         n = std::get<0>(flip(n));
         return !( (n) & std::get<0>( Translate(n) ) );
     };
+
+    int parity_pos = (std::abs(this->_c) > 1e-14)? -1 : 0;
+    std::cout << "Number of generators:\t" << this->symmetry_generators.size() << "\tc=\t" << this->_c << std::endl;
+
     auto _hilbert_GoldenChain = QHS::constrained_hilbert_space(this->system_size, std::move(some_kernel));
-    auto _second_hilbert = this->_use_symmetries? QHS::point_symmetric( this->system_size, this->symmetry_generators, 1, 0, -1) :\
-                                                    QHS::point_symmetric( this->system_size, v_1d<QOps::genOp>(), 1, 0, 0);
+    auto _second_hilbert = this->_use_symmetries? QHS::point_symmetric( this->system_size, this->symmetry_generators, this->_boundary_condition, this->syms.k_sym, parity_pos) :\
+                                                    QHS::point_symmetric( this->system_size, v_1d<QOps::genOp>(), 1, 0, parity_pos);
     
-    this->_hilbert_space = tensor(_second_hilbert, _hilbert_GoldenChain);
+    // this->_hilbert_space = tensor(_second_hilbert, _hilbert_GoldenChain);
+    this->_hilbert_space = _second_hilbert;
     this->dim = this->_hilbert_space.get_hilbert_space_size();
     
     // create hamiltonian
@@ -41,7 +46,7 @@ void GoldenChain::init()
 /// @param rsym other Z_2 symmetry sector
 /// @param zzsym spin flip in Z symmetry sector
 /// @param use_syms use symmetric code?
-GoldenChain::GoldenChain(int _BC, unsigned int L, double J, double c, int psym, bool use_syms)
+GoldenChain::GoldenChain(int _BC, unsigned int L, double J, double c, int ksym, int psym, bool use_syms)
 { 
     CONSTRUCTOR_CALL;
 
@@ -53,7 +58,7 @@ GoldenChain::GoldenChain(int _BC, unsigned int L, double J, double c, int psym, 
     this->_use_symmetries = use_syms;
 
     //<! symmetries
-    // this->syms.k_sym = ksym;
+    this->syms.k_sym = ksym;
     this->syms.p_sym = psym;
     this->init(); 
 }
@@ -67,8 +72,8 @@ GoldenChain::GoldenChain(std::istream& os)
 void GoldenChain::set_symmetry_generators()
 {   
     // parity symmetry
-    // auto Translate = QOps::_translation_symmetry(this->system_size, this->syms.k_sym, false, 1);
-    // this->symmetry_generators.emplace_back(QOps::_parity_symmetry(this->system_size, this->syms.p_sym));
+    if(this->_c == 0)
+        this->symmetry_generators.emplace_back(QOps::_parity_symmetry(this->system_size, this->syms.p_sym));
 }
 
 //<! ------------------------------------------------------------------------------ HAMILTONIAN BUILDERS
@@ -84,7 +89,7 @@ void GoldenChain::set_hamiltonian_elements(u64 k, elem_ty value, u64 new_idx)
     try {
         std::tie(state, sym_eig) = this->_hilbert_space.find_matrix_element(new_idx, this->_hilbert_space.get_norm(k));
         
-        H(state, k) += value * sym_eig;
+        H(state, k) += value * std::conj(sym_eig);
     } 
     catch (const std::exception& err) {
         std::cout << "Exception:\t" << err.what() << "\n";
@@ -102,8 +107,9 @@ void GoldenChain::create_hamiltonian()
     {
         auto H_j = this->create_local_hamiltonian(j);
         auto H_j1 = this->create_local_hamiltonian(j+1);
-        this->H += -H_j + this->_c * 1i * ( H_j * H_j1 - H_j1 * H_j);
+        this->H += H_j + 1i * this->_c * ( H_j * H_j1 - H_j1 * H_j);
 	}
+    // this->H = (this->H + this->H.t()) / 2;
 }
 
 
@@ -112,7 +118,7 @@ void GoldenChain::create_hamiltonian()
 /// @return the local hamiltonian at site site
 typename GoldenChain::sparse_matrix GoldenChain::create_local_hamiltonian(int site)
 {
-    const double fi = (1 + std::sqrt(5)) / 2.0;
+    const double fi = (1.0 + std::sqrt(5.0)) / 2.0;
     const double par1 = 1. / std::sqrt(fi * fi * fi);
     const double par2 = 1. / (fi);
     const double par3 = 1. / (fi * fi);
@@ -122,38 +128,46 @@ typename GoldenChain::sparse_matrix GoldenChain::create_local_hamiltonian(int si
         u64 state;
         elem_ty sym_eig;
         std::tie(state, sym_eig) = this->_hilbert_space.find_matrix_element(new_idx, this->_hilbert_space.get_norm(k));
-        auto vec1 = boost::dynamic_bitset<>(this->system_size, new_idx);
-        auto vec2 = boost::dynamic_bitset<>(this->system_size, this->_hilbert_space(k));
+        // auto vec1 = boost::dynamic_bitset<>(this->system_size, new_idx);
+        // auto vec2 = boost::dynamic_bitset<>(this->system_size, this->_hilbert_space(k));
         // printSeparated(std::cout, "\t", 14, true, vec1, vec2,  value, sym_eig);
-        H_local(state, k) += value * sym_eig;
+        // if( std::abs(sym_eig) > 1e-10 && std::abs(value) > 1e-10 )
+        H_local(state, k) += value * std::conj(sym_eig);
     };
     if(this->_boundary_condition && site >= this->system_size - 2){
         return sparse_matrix(dim, dim);
     } else {
         for (size_t k = 0; k < this->dim; k++) {
             int base_state = this->_hilbert_space(k);
+            auto vec1 = boost::dynamic_bitset<>(this->system_size, base_state);
                 
-            double Sz_j  = -std::real( std::get<0>( Z(base_state, this->system_size, (site) % this->system_size) ) );
-            double Sz_j1 = -std::real( std::get<0>( Z(base_state, this->system_size, (site + 1) % this->system_size) ) );
-            double Sz_j2 = -std::real( std::get<0>( Z(base_state, this->system_size, (site + 2) % this->system_size) ) );
-
+            const double Sz_j  = -std::real( std::get<0>( Z(base_state, this->system_size, (site) % this->system_size) ) );
+            const double Sz_j1 = -std::real( std::get<0>( Z(base_state, this->system_size, (site + 1) % this->system_size) ) );
+            const double Sz_j2 = -std::real( std::get<0>( Z(base_state, this->system_size, (site + 2) % this->system_size) ) );
+            // const double Pj  = (1 - Sz_j) / 2.;
+            // const double Pj1 = (1 - Sz_j) / 2.;
+            // const double Pj2 = (1 - Sz_j) / 2.;
+            // const double Nj  = (1 + Sz_j) / 2.;
+            // const double Nj1 = (1 + Sz_j) / 2.;
+            // const double Nj2 = (1 + Sz_j) / 2.;
+            
             //<! first term P_j X_j+1 P_j+2
             if(Sz_j < 0 && Sz_j2 < 0){
                 auto [tmp1, X_state] = X(base_state, this->system_size, (site + 1) % this->system_size);
-                set_loc_hamiltonian_elements(k, par1, X_state);
+                set_loc_hamiltonian_elements(k, -par1 * tmp1, X_state);
             }
 
             //<! second term P_j P_j+1 P_j+2
             if(Sz_j < 0 && Sz_j1 < 0 && Sz_j2 < 0)
-                H_local(k, k) += par2;
+                H_local(k, k) -= par2;
             
-            //<! third term P_j N_j+1 P_j+2
-            if(Sz_j < 0 && Sz_j1 > 0 && Sz_j2 < 0)
-                H_local(k, k) += par3;
+            // //<! third term P_j N_j+1 P_j+2
+            // if(Sz_j < 0 && Sz_j1 > 0 && Sz_j2 < 0)
+                H_local(k, k) -= par3;
             
-            //<! fourth term N_j P_j+1 N_j+2
-            if(Sz_j > 0 && Sz_j1 < 0 && Sz_j2 > 0)
-                H_local(k, k) += 1.0;
+            // //<! fourth term N_j P_j+1 N_j+2
+            // if(Sz_j > 0 && Sz_j1 < 0 && Sz_j2 > 0)
+                H_local(k, k) -= 1.0;
         }
 
         return H_local;
@@ -184,7 +198,7 @@ std::ostream& GoldenChain::write(std::ostream& os) const
     printSeparated(os, "\t", 16, true, "J", this->_J);
     printSeparated(os, "\t", 16, true, "c", this->_c);
     
-    // printSeparated(os, "\t", 16, true, "k", this->syms.k_sym);
+    printSeparated(os, "\t", 16, true, "k", this->syms.k_sym);
     printSeparated(os, "\t", 16, true, "p", this->syms.p_sym);
 
     printSeparated(os, "\t", 16, true, "----------------------------------------------------------------------------------------------------");

@@ -19,6 +19,7 @@ namespace GoldenChain_UI{
         int Jn, cn;
         
         struct {
+            int k_sym;
             int p_sym;
         } syms;
         
@@ -73,17 +74,16 @@ namespace GoldenChain_UI{
         // #else
 		// 	for (int ks = 1; ks < k_end; ks++) {
         // #endif
-			// for (int ks = 0; ks < 1; ks++) 
-            {
-				// v_1d<int> psec = k_real_sec(ks)? v_1d<int>({1}) : v_1d<int>({1});
-                // std::cout << ks << "\t\t" << psec << std::endl;
-                // for(auto& ps : psec){
-                //     //<! create local lambda for multithreading enivorontment
-                //     auto dummy_lambda = [&lambda](int k, int p, auto... args){
-                //         lambda(k, p, args...);
-                //     };
-                //     dummy_lambda(ks, ps, args...);
-                // }
+			for (int ks = 0; ks < k_end; ks++) {
+				v_1d<int> psec = (k_real_sec(ks) && this->c == 0)? v_1d<int>({-1, 1}) : v_1d<int>({1});
+                std::cout << ks << "\t\t" << psec << std::endl;
+                for(auto& ps : psec){
+                    //<! create local lambda for multithreading enivorontment
+                    auto dummy_lambda = [&lambda](int k, int p, auto... args){
+                        lambda(k, p, args...);
+                    };
+                    dummy_lambda(ks, ps, args...);
+                }
 			}
 		}
     

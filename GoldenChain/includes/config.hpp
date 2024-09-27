@@ -11,7 +11,8 @@
     #ifndef USE_SYMMETRIES
         #define USE_SYMMETRIES
     #endif
-
+    
+    #undef USE_REAL_SECTORS
     //<! Macro to set element type to double for real momentum sectors
     // #ifndef USE_REAL_SECTORS
     //     // #define USE_REAL_SECTORS
