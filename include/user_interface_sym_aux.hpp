@@ -158,12 +158,12 @@ void user_interface_sym<Hamiltonian>::eigenstate_entanglement()
     std::cout << subsystem_sizes.t() << std::endl;
 
     arma::mat S(size, subsystem_sizes.size(), arma::fill::zeros);
-    int th_num = this->thread_number;
-    omp_set_num_threads(1);
-    std::cout << th_num << "\t\t" << omp_get_num_threads() << std::endl;
+    // outer_threads = this->thread_number;
+    // omp_set_num_threads(1);
+    // std::cout << th_num << "\t\t" << omp_get_num_threads() << std::endl;
     
         // auto start_LA = std::chrono::system_clock::now();
-#pragma omp parallel for num_threads(th_num) schedule(dynamic)
+// #pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
     for(int n = 0; n < size; n++){
         auto eigenstate = this->ptr_to_model->get_eigenState(n);
         arma::Col<element_type> state = U * eigenstate;
@@ -173,8 +173,8 @@ void user_interface_sym<Hamiltonian>::eigenstate_entanglement()
     }
     std::cout << " - - - - - - FINISHED ENTROPY CALCULATION IN : " << tim_s(start) << " seconds - - - - - - " << std::endl; // simulation end
     
-    omp_set_num_threads(this->thread_number);
-    th_num = 1;
+    // omp_set_num_threads(this->thread_number);
+    // outer_threads = 1;
     
     E.save(arma::hdf5_name(dir + filename + ".hdf5", "energies"));
 	S.save(arma::hdf5_name(dir + filename + ".hdf5", "entropy", arma::hdf5_opts::append));
