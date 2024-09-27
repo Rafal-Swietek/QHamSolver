@@ -29,8 +29,8 @@ void GoldenChain::init()
     auto _second_hilbert = this->_use_symmetries? QHS::point_symmetric( this->system_size, this->symmetry_generators, this->_boundary_condition, this->syms.k_sym, parity_pos) :\
                                                     QHS::point_symmetric( this->system_size, v_1d<QOps::genOp>(), 1, 0, parity_pos);
     
-    // this->_hilbert_space = tensor(_second_hilbert, _hilbert_GoldenChain);
-    this->_hilbert_space = _second_hilbert;
+    this->_hilbert_space = tensor(_second_hilbert, _hilbert_GoldenChain);
+    // this->_hilbert_space = _second_hilbert;
     this->dim = this->_hilbert_space.get_hilbert_space_size();
     
     // create hamiltonian
