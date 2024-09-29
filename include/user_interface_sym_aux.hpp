@@ -169,8 +169,10 @@ void user_interface_sym<Hamiltonian>::eigenstate_entanglement()
         auto eigenstate = this->ptr_to_model->get_eigenState(n);
         arma::Col<element_type> state = U * eigenstate;
         
-        for(auto& LA : subsystem_sizes)
-            S(n, LA) = entropy::schmidt_decomposition(state, LA, this->L);
+        for(int iiLA = 0; iiLA < subsystem_sizes.size(); iiLA++){
+            int LA = subsystem_sizes[iiLA];
+            S(n, iiLA) = entropy::schmidt_decomposition(state, LA, this->L);
+        }
     }
     std::cout << " - - - - - - FINISHED ENTROPY CALCULATION IN : " << tim_s(start) << " seconds - - - - - - " << std::endl; // simulation end
     
