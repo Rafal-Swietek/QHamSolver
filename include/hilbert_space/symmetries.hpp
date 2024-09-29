@@ -164,6 +164,7 @@ namespace QHS{
 			std::vector<int> bitmask(k, 1);              	// K leading 1's
 			bitmask.resize(NUM_OF_GENERATORS, 0);   	// N - K trailing 0's
 			// std:: cout << k << "\t\t" << bitmask << std::endl;
+			// std:: cout << "aa\t" << k << std::endl;
 			do {
 				QOps::genOp sym_temp(this->system_size);
 				for (int i = 0; i < NUM_OF_GENERATORS; ++i) // [0..N-1] integers
@@ -178,8 +179,8 @@ namespace QHS{
 		// set combination of all syms with all translations
 		if (this->_boundary_cond == 0) {
 			v_1d<QOps::genOp> sym_group_copy = this->_symmetry_group;
-			QOps::genOp translation = QOps::_translation_symmetry(this->system_size, this->k_sector, false, this->_trans_shift);
-			for (int l = 1; l < this->system_size / this->_trans_shift; l++) 
+			QOps::genOp translation = QOps::_translation_symmetry(this->system_size, this->k_sector);
+			for (int l = 1; l < this->system_size; l++) 
 			{
 				// QOps::genOp translation = QOps::_translation_symmetry(this->system_size, this->k_sector, l);
 				for (auto& G : sym_group_copy)
@@ -191,7 +192,7 @@ namespace QHS{
 			//<! append quasimomentum sector
 			this->_sectors.emplace_back(this->k_sector);
 		}
-		// std::cout << this->_sectors.size() << "\t\t" << this->_symmetry_group.size() << std::endl;
+		std::cout << this->_sectors.size() << "\t\t" << this->_symmetry_group.size() << std::endl;
 	}
 
 	/// @brief Find super-equivalent class (SEC) representative for given set of states related by symmetry transformations
@@ -236,6 +237,9 @@ namespace QHS{
 					normalisation += return_value;
 			#endif
 		}
+		if( std::abs(normalisation) < 1e-13 )
+			normalisation = 0;
+		
 		return std::sqrt(normalisation);
 	}
 
@@ -273,9 +277,12 @@ namespace QHS{
 	point_symmetric::return_type 
 	point_symmetric::find_matrix_element(u64 new_state, elem_ty norm) const
 	{
+		if( std::abs( get_symmetry_normalization(new_state) ) < 1e-12 )
+			return std::make_pair(0, 0.0);
+
 		//<! Look for index in reduced basis (maybe its the SEC already)
 		u64 idx = this->find(new_state);
-		if (idx < this->dim)	
+		if (idx < this->dim)
 			return std::make_pair(idx, this->_normalisation[idx] / norm);
 		
 		//<! find SEC for input state
@@ -285,9 +292,11 @@ namespace QHS{
 		#ifndef USE_REAL_SECTORS
 			sym_eig = std::conj(sym_eig);
 		#endif
-		
+		// std::cout << this->_normalisation << std::endl;
+		// printSeparated(std::cout, "\t", 16, true, sym_eig, norm, idx, this->_normalisation[idx]);
 		// input norm, cause can be used between sectors
 		//	return std::make_pair(idx, this->_normalisation[idx] / this->_normalisation[base] * sym_eig);
+		
 		if (idx < dim)	return std::make_pair(idx, this->_normalisation[idx] / norm * sym_eig);
 		else			return std::make_pair(0, 0.0);
 			
@@ -305,7 +314,7 @@ namespace QHS{
 				auto SEC = std::get<0>(find_SEC_representative(j));
 				if (SEC == j) {
 					elem_ty N = get_symmetry_normalization(j);					// normalisation condition -- check if state in basis
-					if (std::abs(N) > 1e-6) {
+					if (std::abs(N) > 1e-10) {
 						map_threaded.push_back(j);
 						norm_threaded.push_back(N);
 					}
@@ -340,8 +349,8 @@ namespace QHS{
 
 		}
 		this->dim = this->mapping.size();
-		// for(u64 idx : this->mapping)
-		// 	std::cout << idx << " ";
+		// for(cpx norm : this->_normalisation)
+		// 	std::cout << norm << std::endl;;
 		// std::cout << std::endl;
 	}
 

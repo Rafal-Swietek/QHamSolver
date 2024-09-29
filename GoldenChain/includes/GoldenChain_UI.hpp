@@ -74,7 +74,7 @@ namespace GoldenChain_UI{
         // #else
 		// 	for (int ks = 1; ks < k_end; ks++) {
         // #endif
-			for (int ks = 0; ks < k_end; ks++) {
+			for (int ks = 0; ks < this->L; ks++) {
 				v_1d<int> psec = (k_real_sec(ks) && this->c == 0)? v_1d<int>({-1, 1}) : v_1d<int>({1});
                 std::cout << ks << "\t\t" << psec << std::endl;
                 for(auto& ps : psec){

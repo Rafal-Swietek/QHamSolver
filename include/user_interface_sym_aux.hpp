@@ -154,7 +154,8 @@ void user_interface_sym<Hamiltonian>::eigenstate_entanglement()
     std::cout << " - - - - - - FINISHED CREATING SYMMETRY TRANSFORMATION IN : " << tim_s(start) << " seconds - - - - - - " << std::endl; // simulation end
     start = std::chrono::system_clock::now();
 
-    auto subsystem_sizes = arma::conv_to<arma::Col<int>>::from(arma::linspace(0, this->L / 2, this->L / 2 + 1));
+    // auto subsystem_sizes = arma::conv_to<arma::Col<int>>::from(arma::linspace(0, this->L / 2, this->L / 2 + 1));
+    auto subsystem_sizes = arma::Col<int>( { int(this->L) / 2} );
     std::cout << subsystem_sizes.t() << std::endl;
 
     arma::mat S(size, subsystem_sizes.size(), arma::fill::zeros);

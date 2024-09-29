@@ -23,11 +23,11 @@ void GoldenChain::init()
     };
 
     int parity_pos = (std::abs(this->_c) > 1e-14)? -1 : 0;
-    std::cout << "Number of generators:\t" << this->symmetry_generators.size() << "\tc=\t" << this->_c << std::endl;
+    std::cout << "Number of generators:\t" << this->symmetry_generators.size() << "\tuse syms=\t" << this->_use_symmetries << std::endl;
 
     auto _hilbert_GoldenChain = QHS::constrained_hilbert_space(this->system_size, std::move(some_kernel));
     auto _second_hilbert = this->_use_symmetries? QHS::point_symmetric( this->system_size, this->symmetry_generators, this->_boundary_condition, this->syms.k_sym, parity_pos) :\
-                                                    QHS::point_symmetric( this->system_size, v_1d<QOps::genOp>(), 1, 0, parity_pos);
+                                                    QHS::point_symmetric( this->system_size, v_1d<QOps::genOp>(), 1, 0, -1);
     
     this->_hilbert_space = tensor(_second_hilbert, _hilbert_GoldenChain);
     // this->_hilbert_space = _second_hilbert;
@@ -56,7 +56,7 @@ GoldenChain::GoldenChain(int _BC, unsigned int L, double J, double c, int ksym, 
     this->_c = c;
     
     this->_use_symmetries = use_syms;
-
+    
     //<! symmetries
     this->syms.k_sym = ksym;
     this->syms.p_sym = psym;
@@ -102,14 +102,8 @@ void GoldenChain::set_hamiltonian_elements(u64 k, elem_ty value, u64 new_idx)
 void GoldenChain::create_hamiltonian()
 {
     this->H = sparse_matrix(this->dim, this->dim);
-
 	for (int j = 0; j < this->system_size - 2 * int(this->_boundary_condition); j++) 
-    {
-        auto H_j = this->create_local_hamiltonian(j);
-        auto H_j1 = this->create_local_hamiltonian(j+1);
-        this->H += H_j + 1i * this->_c * ( H_j * H_j1 - H_j1 * H_j);
-	}
-    // this->H = (this->H + this->H.t()) / 2;
+        this->H += this->create_local_hamiltonian(j);
 }
 
 
@@ -127,7 +121,7 @@ typename GoldenChain::sparse_matrix GoldenChain::create_local_hamiltonian(int si
     auto set_loc_hamiltonian_elements = [this, &H_local](u64 k, elem_ty value, u64 new_idx){
         u64 state;
         elem_ty sym_eig;
-        std::tie(state, sym_eig) = this->_hilbert_space.find_matrix_element(new_idx, this->_hilbert_space.get_norm(k));
+        std::tie(state, sym_eig) = this->_hilbert_space.find_matrix_element(new_idx, this->_hilbert_space.get_norm(k) );
         // auto vec1 = boost::dynamic_bitset<>(this->system_size, new_idx);
         // auto vec2 = boost::dynamic_bitset<>(this->system_size, this->_hilbert_space(k));
         // printSeparated(std::cout, "\t", 14, true, vec1, vec2,  value, sym_eig);
@@ -139,35 +133,58 @@ typename GoldenChain::sparse_matrix GoldenChain::create_local_hamiltonian(int si
     } else {
         for (size_t k = 0; k < this->dim; k++) {
             int base_state = this->_hilbert_space(k);
-            auto vec1 = boost::dynamic_bitset<>(this->system_size, base_state);
+            // auto vec1 = boost::dynamic_bitset<>(this->system_size, base_state);
                 
             const double Sz_j  = -std::real( std::get<0>( Z(base_state, this->system_size, (site) % this->system_size) ) );
             const double Sz_j1 = -std::real( std::get<0>( Z(base_state, this->system_size, (site + 1) % this->system_size) ) );
             const double Sz_j2 = -std::real( std::get<0>( Z(base_state, this->system_size, (site + 2) % this->system_size) ) );
-            // const double Pj  = (1 - Sz_j) / 2.;
-            // const double Pj1 = (1 - Sz_j) / 2.;
-            // const double Pj2 = (1 - Sz_j) / 2.;
-            // const double Nj  = (1 + Sz_j) / 2.;
-            // const double Nj1 = (1 + Sz_j) / 2.;
-            // const double Nj2 = (1 + Sz_j) / 2.;
+            const double Sz_j3 = -std::real( std::get<0>( Z(base_state, this->system_size, (site + 3) % this->system_size) ) );
             
+            //<! ------------------------------------------------------------------------------ h_j - local hamiltonian
             //<! first term P_j X_j+1 P_j+2
             if(Sz_j < 0 && Sz_j2 < 0){
                 auto [tmp1, X_state] = X(base_state, this->system_size, (site + 1) % this->system_size);
                 set_loc_hamiltonian_elements(k, -par1 * tmp1, X_state);
             }
-
             //<! second term P_j P_j+1 P_j+2
             if(Sz_j < 0 && Sz_j1 < 0 && Sz_j2 < 0)
                 H_local(k, k) -= par2;
             
             // //<! third term P_j N_j+1 P_j+2
-            // if(Sz_j < 0 && Sz_j1 > 0 && Sz_j2 < 0)
+            if(Sz_j < 0 && Sz_j1 > 0 && Sz_j2 < 0)
                 H_local(k, k) -= par3;
             
             // //<! fourth term N_j P_j+1 N_j+2
-            // if(Sz_j > 0 && Sz_j1 < 0 && Sz_j2 > 0)
+            if(Sz_j > 0 && Sz_j1 < 0 && Sz_j2 > 0)
                 H_local(k, k) -= 1.0;
+
+            //<! ------------------------------------------------------------------------------ q4_j - local Q4 charge
+            //<! first term P_j X_j+1 (P_j+1 + P_j+2 - 1) X_j+2 P_j+3
+            if(Sz_j < 0 && (Sz_j1 * Sz_j2 > 0) && Sz_j3 < 0){
+                auto [tmp1, X_state] = X(base_state, this->system_size, (site + 1) % this->system_size);
+                auto [tmp2, XX_state] = X(X_state, this->system_size, (site + 2) % this->system_size);
+                set_loc_hamiltonian_elements(k, 1i * this->_c * par1 * par1 * tmp1 * tmp2 * (1 - Sz_j1 - Sz_j2), XX_state);
+            }
+            //<! second term P_j X_j+1 Z_j+1 P_j+2 P_j+3
+            if(Sz_j < 0 && Sz_j2 < 0 && Sz_j3 < 0){
+                auto [tmp1, X_state] = X(base_state, this->system_size, (site + 1) % this->system_size);
+                set_loc_hamiltonian_elements(k, -1i * this->_c * par1 * par2 * tmp1 * Sz_j1, X_state);
+            }
+            //<! third term P_j X_j+1 Z_j+1 P_j+2 N_j+3
+            if(Sz_j < 0 && Sz_j2 < 0 && Sz_j3 > 0){
+                auto [tmp1, X_state] = X(base_state, this->system_size, (site + 1) % this->system_size);
+                set_loc_hamiltonian_elements(k, 1i * this->_c * par1 * tmp1 * Sz_j1, X_state);
+            }
+            //<! fourth term P_j P_j+1 X_j+2 Z_j+2 P_j+3
+            if(Sz_j < 0 && Sz_j1 < 0 && Sz_j3 < 0){
+                auto [tmp1, X_state] = X(base_state, this->system_size, (site + 2) % this->system_size);
+                set_loc_hamiltonian_elements(k, 1i * this->_c * par1 * par2 * tmp1 * Sz_j2, X_state);
+            }
+            //<! fifth term N_j P_j+1 X_j+2 Z_j+2 P_j+3
+            if(Sz_j > 0 && Sz_j1 < 0 && Sz_j3 < 0){
+                auto [tmp1, X_state] = X(base_state, this->system_size, (site + 2) % this->system_size);
+                set_loc_hamiltonian_elements(k, -1i * this->_c * par1 * tmp1 * Sz_j2, X_state);
+            }
         }
 
         return H_local;

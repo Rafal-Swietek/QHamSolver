@@ -19,9 +19,7 @@ namespace GoldenChain_UI{
 
 void ui::make_sim(){
     printAllOptions();
-
-    this->ptr_to_model = create_new_model_pointer();
-
+    
     // auto full_model = std::make_unique<QHS::QHamSolver<GoldenChain>>(this->boundary_conditions, this->L, this->J, this->c, 0, 0, 0);
     // auto Hs = full_model->get_hamiltonian();
     // std::cout << Hs << std::endl;
@@ -46,6 +44,9 @@ void ui::make_sim(){
     // }
     // std::cout << "---------------------------------------------------------------" << std::endl;
     // return;
+
+    this->ptr_to_model = create_new_model_pointer();
+
     // compare_energies(); return;
     
 	clk::time_point start = std::chrono::system_clock::now();
@@ -82,14 +83,29 @@ void ui::make_sim(){
             
             auto kernel = [&](int k, int p)
                                     {
+                                        v_1d<QOps::genOp> symmetry_generators;
+                                        this->syms.k_sym = k;
                                         this->syms.p_sym = p;
+                                        auto Translate = QOps::__builtins::translation(this->L, 1);
+                                        auto flip = QOps::__builtins::spin_flip_x(this->L);
+                                        auto some_kernel = [&Translate, &flip](u64 n){
+                                            n = std::get<0>(flip(n));
+                                            return !( (n) & std::get<0>( Translate(n) ) );
+                                        };
+                                        symmetry_generators.emplace_back(QOps::_parity_symmetry(this->L, this->syms.p_sym));
+                                        auto _hilbert_GoldenChain = QHS::constrained_hilbert_space(this->L, std::move(some_kernel));
+                                        auto _second_hilbert = QHS::point_symmetric( this->L, symmetry_generators, this->boundary_conditions, this->syms.k_sym, 0);
+                                                                                        
                                         
-                                        this->reset_model_pointer();
+                                        auto _hilbert_space = tensor(_second_hilbert, _hilbert_GoldenChain);
+                                        // auto _hilbert_space = _second_hilbert;
+                                        u64 dim = _hilbert_space.get_hilbert_space_size();
+                                        // this->reset_model_pointer();
                                         // this->diagonal_matrix_elements();
                                         // this->diagonalize();
-                                        this->eigenstate_entanglement();
+                                        // this->eigenstate_entanglement();
                                         // this->eigenstate_entanglement_degenerate();
-
+                                        printSeparated(std::cout, "\t", 16, true, this->L, k, p, dim);
                                     };
             loopSymmetrySectors(kernel); continue;
             this->reset_model_pointer();
@@ -171,7 +187,7 @@ void ui::compare_energies()
 	std::cout << std::endl << Esym.size() << std::endl << E_dis.size() << std::endl;
 	printSeparated(std::cout, "\t", 20, true, "symmetry sector", "Energy sym", "Energy total", "difference");
 	for (int k = 0; k < min((int)E_dis.size(), (int)Esym.size()); k++){
-        // if(std::abs(Esym[k] - E_dis(k)) > 1e-17)
+        // if(std::abs(Esym[k] - E_dis(k)) > 1e-13)
 		    printSeparated(std::cout, "\t", 20, true, symms[k], Esym[k], E_dis(k), Esym[k] - E_dis(k));
     }
 }
