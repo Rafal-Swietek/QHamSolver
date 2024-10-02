@@ -549,8 +549,12 @@ void ui::agp_mu()
 	const size_t size = dim > 1e5? this->l_steps : dim;
 
 	arma::vec energies(size, arma::fill::zeros);
-	
-	arma::vec cutoff = arma::logspace(-5, 0, 200);
+	arma::vec power = arma::linspace(-2, 2, 9);
+	std::cout << power << std::endl;
+	arma::vec cutoff(power.size(), arma::fill::zeros);
+	for(int ii = 0; ii < power.size(); ii++)
+		cutoff(ii) = 1.0 / double(dim) / std::pow(this->L, power(ii));
+
 	arma::vec susc(cutoff.size(), arma::fill::zeros);
 	arma::vec susc_typ(cutoff.size(), arma::fill::zeros);
 

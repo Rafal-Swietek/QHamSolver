@@ -17,7 +17,7 @@ namespace adiabatics{
     ) -> std::tuple<double, double, double, arma::vec> 
 	{
         const size_t N = eigenvalues.size();
-		const double lambda = 1 / double(N);
+		const double lambda = L / double(N);
 		const size_t mu = long(0.5 * N);
 
 		double E_av = arma::trace(eigenvalues) / double(N);
@@ -116,7 +116,8 @@ namespace adiabatics{
 			return abs(x - E_av) < abs(y - E_av);
 		});
 		const long E_av_idx = i - begin(eigenvalues);
-		long int E_min = N > 1e5? 0 : E_av_idx - long(N / 4);
+		// double nu = 0.5;
+		long int E_min = N < 0? 0 : E_av_idx - long(N / 4);
 		long int E_max = N > 1e5? N : E_av_idx + long(N / 4);
 
 		arma::vec susc_vec(mus.size(), arma::fill::zeros);
