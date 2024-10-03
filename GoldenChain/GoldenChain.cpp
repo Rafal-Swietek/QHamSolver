@@ -128,7 +128,7 @@ typename GoldenChain::sparse_matrix GoldenChain::create_local_hamiltonian(int si
         // if( std::abs(sym_eig) > 1e-10 && std::abs(value) > 1e-10 )
         H_local(state, k) += value * std::conj(sym_eig);
     };
-    if(this->_boundary_condition && site >= this->system_size - 2){
+    if(this->_boundary_condition && site >= this->system_size - 2 - (std::abs(this->_c) > 0)){
         return sparse_matrix(dim, dim);
     } else {
         for (size_t k = 0; k < this->dim; k++) {
@@ -159,11 +159,24 @@ typename GoldenChain::sparse_matrix GoldenChain::create_local_hamiltonian(int si
                 H_local(k, k) -= 1.0;
 
             //<! ------------------------------------------------------------------------------ q4_j - local Q4 charge
-            //<! first term P_j X_j+1 (P_j+1 + P_j+2 - 1) X_j+2 P_j+3
-            if(Sz_j < 0 && (Sz_j1 * Sz_j2 > 0) && Sz_j3 < 0){
+            //<! first term: P_j X_j+1 (P_j+1 + P_j+2 - 1) X_j+2 P_j+3
+                //<!  P_j X_j+1 P_j+1 X_j+2 P_j+3
+            if(Sz_j < 0 && Sz_j1 < 0 && Sz_j3 < 0){
                 auto [tmp1, X_state] = X(base_state, this->system_size, (site + 1) % this->system_size);
                 auto [tmp2, XX_state] = X(X_state, this->system_size, (site + 2) % this->system_size);
-                set_loc_hamiltonian_elements(k, 1i * this->_c * par1 * par1 * tmp1 * tmp2 * (1 - Sz_j1 - Sz_j2), XX_state);
+                set_loc_hamiltonian_elements(k, 1i * this->_c * par1 * par1 * tmp1 * tmp2, XX_state);
+            }
+                //<!  P_j X_j+1 P_j+2 X_j+2 P_j+3 = P_j X_j+1 X_j+2 N_j+2 P_j+3
+            if(Sz_j < 0 && Sz_j2 > 0 && Sz_j3 < 0){
+                auto [tmp1, X_state] = X(base_state, this->system_size, (site + 1) % this->system_size);
+                auto [tmp2, XX_state] = X(X_state, this->system_size, (site + 2) % this->system_size);
+                set_loc_hamiltonian_elements(k, 1i * this->_c * par1 * par1 * tmp1 * tmp2, XX_state);
+            }
+                //<!  P_j X_j+1 X_j+2 P_j+3
+            if(Sz_j < 0 && Sz_j3 < 0){
+                auto [tmp1, X_state] = X(base_state, this->system_size, (site + 1) % this->system_size);
+                auto [tmp2, XX_state] = X(X_state, this->system_size, (site + 2) % this->system_size);
+                set_loc_hamiltonian_elements(k, -1i * this->_c * par1 * par1 * tmp1 * tmp2, XX_state);
             }
             //<! second term P_j X_j+1 Z_j+1 P_j+2 P_j+3
             if(Sz_j < 0 && Sz_j2 < 0 && Sz_j3 < 0){

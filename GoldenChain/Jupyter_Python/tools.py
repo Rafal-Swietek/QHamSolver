@@ -19,17 +19,17 @@ def order_of_magnitude(a_value):
     
     return _size
     
-def info_raw(L, J, c, zz, z1, z2):
-    arr = [J, c, zz, z1, z2] if L % 4 == 0 else ( [J, c, zz, z1] if L % 2 == 0 else [J, c, zz] )
-    names = ['J', 'c', 'zz', 'z1', 'z2'] if L % 4 == 0 else ( ['J', 'c', 'zz', 'z1'] if L % 2 == 0 else ['J', 'c', 'zz'] )
+def info_raw(L, J, c, k, p):
+    arr = [J, c, k, p] if c == 0 and (k == 0 or float(k) == (L/2.0)) else [J, c, k]
+    names = ['J', 'c', 'k', 'p'] if c == 0 and (k == 0 or float(k) == (L/2.0)) else ['J', 'c', 'k']
     info = "_L=%d"%(L)
     for i, var in enumerate(arr):
         n = order_of_magnitude(var)# if not use_old else order_of_magnitude2(var)
         info += str(",%s={:.%df}"%(names[i], n)).format(round(var, n))
     return info
 
-def info(L, J, c, zz, z1, z2, ext = '.dat'):
-    return info_raw(L, J, c, zz, z1, z2) + ext
+def info(L, J, c, k, p, ext = '.dat'):
+    return info_raw(L, J, c, k, p) + ext
 
 
 def legend_label(name, value):
