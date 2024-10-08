@@ -591,7 +591,7 @@ void ui::agp_mu()
 		
 		std::string dir_realis = dir + "realisation=" + std::to_string(this->jobid + realis) + kPSep;
 		createDirs(dir_realis);
-		E.save(arma::hdf5_name(dir_realis + info + ".hdf5", "energies"));
+		// E.save(arma::hdf5_name(dir_realis + info + ".hdf5", "energies"));
 		energies += E;
 
 		start = std::chrono::system_clock::now();
@@ -603,7 +603,7 @@ void ui::agp_mu()
 		std::cout << " - - - - - - finished AGP in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
 		// #ifndef MY_MAC
 		{
-			cutoff.save(arma::hdf5_name(dir_realis + info + ".hdf5", "cutoff", arma::hdf5_opts::append));
+			cutoff.save(arma::hdf5_name(dir_realis + info + ".hdf5", "cutoff"));
 			_susc.save(	arma::hdf5_name(dir_realis + info + ".hdf5", "susc", arma::hdf5_opts::append));
 			_susc_typ.save(	arma::hdf5_name(dir_realis + info + ".hdf5", "susc_typ", arma::hdf5_opts::append));
 		}
@@ -1203,6 +1203,7 @@ void ui::spectral_function()
 		// #ifndef MY_MAC
 		{
 			omegax.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "omegas",   arma::hdf5_opts::append));
+			energy_density.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "energy_density",   arma::hdf5_opts::append));
 			_spectral_fun.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "spectral_fun",   arma::hdf5_opts::append));
 			_spectral_fun_typ.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "log(_spectral_fun_typ)",   arma::hdf5_opts::append));
 			_element_count.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "element_count",   arma::hdf5_opts::append));
@@ -1224,6 +1225,7 @@ void ui::spectral_function()
 		spectral_fun_typ = arma::exp(spectral_fun_typ / element_count);
 
 		energies.save(		arma::hdf5_name(dir + info + ".hdf5", "energies"));
+		energy_density.save(   arma::hdf5_name(dir + info + ".hdf5", "energy_density",   arma::hdf5_opts::append));
 		spectral_fun.save(	arma::hdf5_name(dir + info + ".hdf5", "spectral_fun",   arma::hdf5_opts::append));
 		spectral_fun_typ.save(	arma::hdf5_name(dir + info + ".hdf5", "spectral_fun_typ",   arma::hdf5_opts::append));
 		element_count.save(	arma::hdf5_name(dir + info + ".hdf5", "element_count",   arma::hdf5_opts::append));

@@ -37,3 +37,14 @@ def info(L, N, J, gamma, zeta, alfa, h, w, ini_ave = 0, use_old = False, scaled_
 def legend_label(name, value):
     n = order_of_magnitude(value)
     return str("$%s={:.%df}$"%(name, n)).format(round(value, n))
+
+
+def diff_central(x, y):
+    x0 = x[:-2]
+    x1 = x[1:-1]
+    x2 = x[2:]
+    y0 = y[:-2]
+    y1 = y[1:-1]
+    y2 = y[2:]
+    f = (x2 - x1)/(x2 - x0)
+    return (1-f)*(y2 - y1)/(x2 - x1) + f*(y1 - y0)/(x1 - x0)

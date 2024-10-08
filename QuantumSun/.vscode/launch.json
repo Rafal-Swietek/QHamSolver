@@ -11,7 +11,7 @@
             "program": "${workspaceFolder}/QSun.o",
             "args": [
 				"-std=c++2b", "-stdlib=libc++",
-				"-Xpreprocessor", "-fopenmp",
+				"-Xpreprocessor", "-fopenmp", "-lomp",
 				"${workspaceFolder}/main.cpp",
 				"${workspaceFolder}/QSunUI.cpp",
 				"${workspaceFolder}/QuantumSun.cpp",
@@ -20,7 +20,7 @@
 				"-larmadillo", "-lsuperlu",
 				"-lpthread", "-lm", "-lhdf5",
 				"-fomit-frame-pointer", "-O3",
-				"-fdiagnostics-color=always", "-lomp",
+				"-fdiagnostics-color=always",
 				"-DMY_MAC"],
             "stopAtEntry": false,
             "cwd": "${fileDirname}",

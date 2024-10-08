@@ -108,7 +108,15 @@
 			"semaphore": "cpp",
 			"shared_mutex": "cpp",
 			"stop_token": "cpp",
-			"typeindex": "cpp"
+			"typeindex": "cpp",
+			"*.ipp": "cpp",
+			"any": "cpp",
+			"csignal": "cpp",
+			"execution": "cpp",
+			"queue": "cpp",
+			"forward_list": "cpp",
+			"text_encoding": "cpp",
+			"print": "cpp"
 		}
 	}
 }

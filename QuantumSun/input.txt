@@ -1,1 +1,1 @@
--N 3 -L 7 -Ln 1 -Ls 2 -J 1.0 -Js 0.5 -Jn 1 -gamma 1.0 -zeta 0.2 -alfa 1.00 -h 0.0 -hs 0.2 -hn 1 -w 15.0 -wn 1 -ws 0.05 -th 10 -r 10 -fun 2 -num_of_points 50 -jobid 0 -ini_ave 1
+-N 3 -L 7 -Ln 5 -Ls 1 -J 1.0 -Js 0.5 -Jn 1 -gamma 1.0 -zeta 0.2 -alfa 0.9 -alfan 1 -alfas 0.01 -h 1.0 -hs 0.2 -hn 1 -w 0.5 -wn 1 -ws 0.05 -th 10 -r 20 -fun 12 -num_of_points 5000 -jobid 0 -ini_ave 1 -ch 0 -op 0 -l_steps 500 -l_bundle 20 -seed 234
