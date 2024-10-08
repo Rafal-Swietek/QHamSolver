@@ -75,20 +75,31 @@ void ui::make_sim(){
 // ---------------------------------------------------------------------------------------------------------------- USER DEFINED ROUTINES
 void ui::spectrals()
 {
-	std::string dir = this->saving_dir + "Spectrals" + kPSep;
+	std::string dir = this->saving_dir + "SpectralFunctions" + kPSep;
 	createDirs(dir);
 	
-	const int Lhalf = this->L / 2;
-	const int Ll = this->L;
-	size_t dim = ULLPOW(Ll);
+	size_t dim = this->ptr_to_model->get_hilbert_size();
 	std::string info = this->set_info();
-	this->ptr_to_model.reset(new QHS::QHamSolver<Quadratic>(dim, this->J, this->w, this->seed, this->g, this->boundary_conditions)); 
 
 	const size_t size = dim > 1e5? this->l_steps : dim;
 
-	auto disorder_generator = disorder<double>(this->seed);
-	std::cout << disorder_generator.uniform(dim, 0.5).t() << std::endl;
+	arma::vec energies(size, arma::fill::zeros);
+
+	int Ll = this->L;
 	int counter = 0;
+	
+	const double _bandwidth_def = RP_data::default_pars::getBandwidth(this->g, this->L);
+	
+	const arma::vec betas = arma::regspace(0.0, 0.01, 10);
+	const arma::vec omegax = arma::logspace(int(std::log10(0.1/dim)), int(std::log10( _bandwidth_def )), 20 * this->L);
+	const arma::vec energy_density = arma::regspace(0.05, 0.02, 0.95);
+
+	arma::Mat<element_type> spectral_fun(omegax.size()-1, energy_density.size(), arma::fill::zeros);
+	arma::Mat<element_type> spectral_fun_typ(omegax.size()-1, energy_density.size(), arma::fill::zeros);
+	arma::Mat<element_type> element_count(omegax.size()-1, energy_density.size(), arma::fill::zeros);
+	
+	double window_width = 0.04;
+
 // #pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
 	for(int realis = 0; realis < this->realisations; realis++)
 	{
@@ -101,131 +112,94 @@ void ui::spectrals()
 			this->ptr_to_model->diag_sparse(this->l_steps, this->l_bundle, this->tol, this->seed);	
 		}
 		else{
-        	// this->ptr_to_model->diagonalization();
+        	this->ptr_to_model->diagonalization();
 		}
 		std::cout << " - - - - - - finished diagonalization in : " << tim_s(start) << " s for realis = " << realis << " - - - - - - " << std::endl; // simulation end
 		start = std::chrono::system_clock::now();
 		
-		// const arma::vec E = this->ptr_to_model->get_eigenvalues();
-		// const auto& V = this->ptr_to_model->get_eigenvectors();
-		// double E_av = arma::trace(E) / double(dim);
-		// auto i = min_element(begin(E), end(E), [=](double x, double y) {
-		// 	return abs(x - E_av) < abs(y - E_av);
-		// });
-		// const long Eav_idx = i - begin(E);
+		const arma::vec E = this->ptr_to_model->get_eigenvalues();
+		const auto& V = this->ptr_to_model->get_eigenvectors();
+		double E_av = arma::trace(E) / double(dim);
 
-		// std::string dir_realis = dir + "realisation=" + std::to_string(this->jobid + realis) + kPSep;
-		// createDirs(dir_realis);
-		// E.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "energies"));
+		auto i = min_element(begin(E), end(E), [=](double x, double y) {
+			return abs(x - E_av) < abs(y - E_av);
+		});
+		const long Eav_idx = i - begin(E);
+
+		std::string dir_realis = dir + "realisation=" + std::to_string(this->jobid + realis) + kPSep;
+		createDirs(dir_realis);
+		E.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "energies"));
+
+		start = std::chrono::system_clock::now();
+		// arma::Mat<element_type> mat_elem = V * Sz_ops[i] * V.t();
+		auto kernel = [Ll](u64 state){ 
+			auto [val1, tmp22] = operators::sigma_z(state, Ll, Ll - 1 );
+			return std::make_pair(state, val1);
+			};
+		auto _operator = QOps::generic_operator<>(this->L, std::move(kernel), 1.0);
+		arma::sp_mat opmat = arma::real(_operator.to_matrix(dim));
+		arma::Mat<element_type> mat_elem = V.t() * opmat * V;
+		std::cout << " - - - - - - finished matrix elements in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
+		start = std::chrono::system_clock::now();
+
+		// auto [_Z, _count, _count_proj,AGP_T, AGP_T_reg, AGP_E, AGP_E_proj] = adiabatics::gauge_potential_finite_T(mat_elem, E, betas, energy_density);
+		auto [_susc, _susc_r] = adiabatics::gauge_potential_save(mat_elem, E);
+
+		std::cout << " - - - - - - finished AGP in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
+		arma::Mat<element_type> _spectral_fun(omegax.size()-1, energy_density.size(), arma::fill::zeros);
+		arma::Mat<element_type> _spectral_fun_typ(omegax.size()-1, energy_density.size(), arma::fill::zeros);
+		arma::Mat<element_type> _element_count(omegax.size()-1, energy_density.size(), arma::fill::zeros);
 		
+		const double bandwidth = E(E.size() - 1) - E(0);
+		for(int ii = 0; ii < energy_density.size(); ii++){
+			const double eps = energy_density(ii);
+			const double energyx = eps * bandwidth + E(0);
+			spectrals::preset_omega set_omega(E, window_width, energyx);
+			auto [omegas_i, matter] = set_omega.get_matrix_elements(mat_elem);
 
-		arma::vec LTA_r(4, arma::fill::zeros);
-		arma::vec agp_norm_r(4, arma::fill::zeros);
-		arma::vec typ_susc_r(4, arma::fill::zeros);
-
-		// const double window_width = 0.0001 * ( E(dim-1) - E(0) );
-		// spectrals::preset_omega set_omega(E, window_width, E(Eav_idx));
-		// arma::vec omegas(set_omega.num_of_omegas, arma::fill::zeros);
-		// arma::Col<element_type> (set_omega.num_of_omegas, arma::fill::zeros);
-
-		arma::sp_mat Sz, Sq(dim, dim), nq(dim, dim), nr(dim, dim);
-
-		std::cout << " - - - - - - CREATING MANY-BODY OPERATORS" << std::endl;
-		{
-			start = std::chrono::system_clock::now();
-			auto kernel = [Ll, Lhalf](u64 state){ 
-					auto [val, temporary] = operators::sigma_z(state, Ll, Lhalf );
-					return std::make_pair(state, val);
-					};
-			auto _operator = QOps::generic_operator<>(this->L, std::move(kernel), 1.0);
-			Sz = 2 * arma::real(_operator.to_matrix(dim));
-			std::cout << " - - - - - - finished setting Sz operator with norm ||S_z||^2= " << arma::trace(Sz * Sz) / double(dim)  << "; in time: " << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
-		}
-		{
-			double q = constants<double>::two_pi / double(this->L);
-			start = std::chrono::system_clock::now();
-			for(int site = 0; site < this->L; site++){
-				auto kernel = [Ll, site, q](u64 state){ 
-						auto [val, temporary] = operators::sigma_z(state, Ll, site );
-						return std::make_pair( state, val * std::cos(q * site) );
-						};
-				auto _operator = QOps::generic_operator<>(this->L, std::move(kernel), 1.0);
-				Sq += arma::real(_operator.to_matrix(dim));
+			for(int k = 0; k < omegax.size() - 1; k++){
+				arma::uvec indices = arma::find(omegas_i >= omegax[k] && omegas_i < omegax[k+1]);
+				_element_count(k, ii) = indices.size();
+				_spectral_fun(k, ii) = arma::accu( matter.rows(indices));
+				_spectral_fun_typ(k, ii) = arma::accu( arma::log(matter.rows(indices)) );
 			}
-			Sq = 2 * std::sqrt(2 / double(this->L) ) * Sq;
-			std::cout << " - - - - - - finished setting Sq operator with norm ||S_q||^2= " << arma::trace(Sq * Sq) / double(dim) << "; in time: " << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
 		}
-		std::cout << " - - - - - -CREATING  SINGLE-PARTICLE OPERATORS" << std::endl;
+		std::cout << " - - - - - - finished Sz_L matrix elements in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
+		// #ifndef MY_MAC
 		{
-			auto disorder = disorder_generator.uniform(dim, 0.5);
-			std::cout << disorder.t() << std::endl;
-			double q = constants<double>::two_pi / double(dim);
-			for(int site = 0; site < dim; site++){
-				nq(site, site) = std::cos(q * site);
-				nr(site, site) = disorder(site);
-			}
-			nq = nq - arma::trace(nq) / dim * arma::eye<arma::sp_mat>(dim, dim);
-			nr = nr - arma::trace(nr) / dim * arma::eye<arma::sp_mat>(dim, dim);
-			// nq = nq / ( arma::trace(nq * nq) / double(dim)  - arma::trace(nq) / dim * arma::trace(nq) / dim);
-			// nr = nr / ( arma::trace(nr * nr) / double(dim)  - arma::trace(nr) / dim * arma::trace(nr) / dim);
-			std::cout << " - - - - - - finished setting Sq operator with norm ||n_q||_sp= " << arma::trace(nq * nq) / double(dim) << "; in time: " << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
-			std::cout << " - - - - - - finished setting Sq operator with norm ||n_r||_sp= " << arma::trace(nr * nr) / double(dim) << "; in time: " << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
+			omegax.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "omegas",   arma::hdf5_opts::append));
+			energy_density.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "energy_density",   arma::hdf5_opts::append));
+			_spectral_fun.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "spectral_fun",   arma::hdf5_opts::append));
+			_spectral_fun_typ.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "log(_spectral_fun_typ)",   arma::hdf5_opts::append));
+			_element_count.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "element_count",   arma::hdf5_opts::append));
+			
+			_susc.save(	 arma::hdf5_name(dir_realis + info + ".hdf5", "susc",     arma::hdf5_opts::append));
+			_susc_r.save(arma::hdf5_name(dir_realis + info + ".hdf5", "susc_reg", arma::hdf5_opts::append));
 		}
-
-		// start = std::chrono::system_clock::now();
-		// double _agp, _typ_susc, _susc;
-		// {
-		// 	arma::vec tmp;
-		// 	start = std::chrono::system_clock::now();
-		// 	// arma::Mat<element_type> mat_elem = V * Sz_ops[i] * V.t();
-		// 	auto kernel = [Ll, ](u64 state){ 
-		// 		auto [val1, tmp22] = operators::sigma_z(state, Ll, site_1 );
-		// 		auto [val2, tmp33] = operators::sigma_z(state, Ll, site_2 );
-		// 		return std::make_pair(state, val1 * val2);
-		// 		};
-		// 	auto _operator = QOps::generic_operator<>(this->L, std::move(kernel), 1.0);
-		// 	arma::sp_mat op = arma::real(_operator.to_matrix(dim));
-		// 	arma::Mat<element_type> mat_elem = V.t() * op * V;
-		// 	std::tie(_agp, _typ_susc, _susc, tmp) = adiabatics::gauge_potential(mat_elem, E, this->L);
-		// 	agp_norm_r(i) = _agp;
-		// 	typ_susc_r(i) = _typ_susc;
-		// 	diag_mat_elem_r.col(i) = arma::diagvec(mat_elem);
-			
-		// 	auto [omegas_i, matter] = set_omega.get_matrix_elements(mat_elem);
-		// 	omegas = omegas_i;
-		// 	spectral_funs.col(i) = matter;
-
-    	// 	std::cout << " - - - - - - finished matrix elements for sites: i=" << site_1 << ", j=" << site_2 << " in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
-		// }
-		// start = std::chrono::system_clock::now();
-		// // arma::Mat<element_type> mat_elem = V * Sz_ops[i] * V.t();
-		// auto kernel = [Ll, N](u64 state){ 
-		// 	auto [val1, tmp22] = operators::sigma_z(state, Ll, Ll - 1 );
-		// 	return std::make_pair(state, val1);
-		// 	};
-		// auto _operator = QOps::generic_operator<>(this->L, std::move(kernel), 1.0);
-		// arma::sp_mat op = arma::real(_operator.to_matrix(dim));
-		// arma::Mat<element_type> mat_elem = V.t() * op * V;
-		// auto [_agp, _typ_susc, _susc, tmp] = adiabatics::gauge_potential(mat_elem, E, this->L);
-		// agp_norm_r(site_pairs.size()) = _agp;
-		// typ_susc_r(site_pairs.size()) = _typ_susc;
-		// arma::vec diag_mat_elem_Sz_r = arma::diagvec(mat_elem);
-		// auto [omegas_i, matter] = set_omega.get_matrix_elements(mat_elem);
-
-		// std::cout << " - - - - - - finished Sz_L matrix elements in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
-		// {
-		// 	agp_norm_r.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "agp",   arma::hdf5_opts::append));
-		// 	typ_susc_r.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "typ_susc",   arma::hdf5_opts::append));
-		// 	diag_mat_elem_r.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "diag_mat",   arma::hdf5_opts::append));
-		// 	omegas.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "omegas",   arma::hdf5_opts::append));
-		// 	spectral_funs.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "spectral_funs",   arma::hdf5_opts::append));
-
-		// 	matter.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "spectral_Sz_L",   arma::hdf5_opts::append));
-		// 	diag_mat_elem_Sz_r.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "diag_mat_Sz_L",   arma::hdf5_opts::append));
-			
-		// }
-		// std::cout << " - - - - - - finished realisation realis = " << realis << " in : " << tim_s(start_re) << " s - - - - - - " << std::endl; // simulation end
+		spectral_fun += _spectral_fun;
+		element_count += _element_count;
+		spectral_fun_typ += _spectral_fun_typ;
+		// #endif
+		
+		energies += E;
+		counter++;
+		std::cout << " - - - - - - finished realisation realis = " << realis << " in : " << tim_s(start_re) << " s - - - - - - " << std::endl; // simulation end
 	}
+	if(counter == 0) return;
+	
+	#ifdef MY_MAC
+		energies /= double(counter);
+		spectral_fun = spectral_fun / element_count;
+		spectral_fun_typ = arma::exp(spectral_fun_typ / element_count);
+
+		energies.save(		arma::hdf5_name(dir + info + ".hdf5", "energies"));
+		energy_density.save(   arma::hdf5_name(dir + info + ".hdf5", "energy_density",   arma::hdf5_opts::append));
+		spectral_fun.save(	arma::hdf5_name(dir + info + ".hdf5", "spectral_fun",   arma::hdf5_opts::append));
+		spectral_fun_typ.save(	arma::hdf5_name(dir + info + ".hdf5", "spectral_fun_typ",   arma::hdf5_opts::append));
+		element_count.save(	arma::hdf5_name(dir + info + ".hdf5", "element_count",   arma::hdf5_opts::append));
+		omegax.save(   		arma::hdf5_name(dir + info + ".hdf5", "omegax",   arma::hdf5_opts::append));
+		arma::vec({(double)counter}).save(	arma::hdf5_name(dir + info + ".hdf5", "realisations",   arma::hdf5_opts::append));
+	#endif
 }
 
 
@@ -300,21 +274,22 @@ void ui::parse_cmd_options(int argc, std::vector<std::string> argv)
 	set_volume();
 	
     //<! FOLDER
-    std::string folder = "." + kPSep + "results" + kPSep;
+    std::string folder = "results" + kPSep;
 	
-	#if defined(ANDERSON)
-		folder += "Anderson" + kPSep;
-	#elif defined(SYK)
-		folder += "SYK2" + kPSep;
-	#elif defined(PLRB)
-		folder += "PLRB" + kPSep;
-	#elif defined(AUBRY_ANDRE)
-		folder += "AubryAndre" + kPSep;
-	#elif defined(RP)
-		folder += "RP" + kPSep;
-	#else
-		folder += "FreeFermions" + kPSep;
-	#endif
+	// #if defined(ANDERSON)
+	// 	folder += "Anderson" + kPSep;
+	// #elif defined(SYK)
+	// 	folder += "SYK2" + kPSep;
+	// #elif defined(PLRB)
+	// 	folder += "PLRB" + kPSep;
+	// #elif defined(AUBRY_ANDRE)
+	// 	folder += "AubryAndre" + kPSep;
+	// #elif defined(RP)
+	// 	folder += "RP" + kPSep;
+	// #else
+	// 	folder += "FreeFermions" + kPSep;
+	// #endif
+	folder += model + kPSep;
 	#if !defined(SYK) && !defined(PLRB) && !defined(RP)
 		folder += "dim=" + std::to_string(DIM) + kPSep;
 	#endif
@@ -448,3 +423,156 @@ std::string ui::set_info(std::vector<std::string> skip, std::string sep) const
 
 
 };
+
+
+// 	std::string dir = this->saving_dir + "Spectrals" + kPSep;
+// 	createDirs(dir);
+	
+// 	const int Lhalf = this->L / 2;
+// 	const int Ll = this->L;
+// 	size_t dim = ULLPOW(Ll);
+// 	std::string info = this->set_info();
+// 	this->ptr_to_model.reset(new QHS::QHamSolver<Quadratic>(dim, this->J, this->w, this->seed, this->g, this->boundary_conditions)); 
+
+// 	const size_t size = dim > 1e5? this->l_steps : dim;
+
+// 	auto disorder_generator = disorder<double>(this->seed);
+// 	std::cout << disorder_generator.uniform(dim, 0.5).t() << std::endl;
+// 	int counter = 0;
+// // #pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
+// 	for(int realis = 0; realis < this->realisations; realis++)
+// 	{
+// 		clk::time_point start_re = std::chrono::system_clock::now();
+// 		if(realis > 0)
+// 			this->ptr_to_model->generate_hamiltonian();
+		
+// 		clk::time_point start = std::chrono::system_clock::now();
+// 		if(dim > 1e5){
+// 			this->ptr_to_model->diag_sparse(this->l_steps, this->l_bundle, this->tol, this->seed);	
+// 		}
+// 		else{
+//         	// this->ptr_to_model->diagonalization();
+// 		}
+// 		std::cout << " - - - - - - finished diagonalization in : " << tim_s(start) << " s for realis = " << realis << " - - - - - - " << std::endl; // simulation end
+// 		start = std::chrono::system_clock::now();
+		
+// 		// const arma::vec E = this->ptr_to_model->get_eigenvalues();
+// 		// const auto& V = this->ptr_to_model->get_eigenvectors();
+// 		// double E_av = arma::trace(E) / double(dim);
+// 		// auto i = min_element(begin(E), end(E), [=](double x, double y) {
+// 		// 	return abs(x - E_av) < abs(y - E_av);
+// 		// });
+// 		// const long Eav_idx = i - begin(E);
+
+// 		// std::string dir_realis = dir + "realisation=" + std::to_string(this->jobid + realis) + kPSep;
+// 		// createDirs(dir_realis);
+// 		// E.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "energies"));
+		
+
+// 		arma::vec LTA_r(4, arma::fill::zeros);
+// 		arma::vec agp_norm_r(4, arma::fill::zeros);
+// 		arma::vec typ_susc_r(4, arma::fill::zeros);
+
+// 		// const double window_width = 0.0001 * ( E(dim-1) - E(0) );
+// 		// spectrals::preset_omega set_omega(E, window_width, E(Eav_idx));
+// 		// arma::vec omegas(set_omega.num_of_omegas, arma::fill::zeros);
+// 		// arma::Col<element_type> (set_omega.num_of_omegas, arma::fill::zeros);
+
+// 		arma::sp_mat Sz, Sq(dim, dim), nq(dim, dim), nr(dim, dim);
+
+// 		std::cout << " - - - - - - CREATING MANY-BODY OPERATORS" << std::endl;
+// 		{
+// 			start = std::chrono::system_clock::now();
+// 			auto kernel = [Ll, Lhalf](u64 state){ 
+// 					auto [val, temporary] = operators::sigma_z(state, Ll, Lhalf );
+// 					return std::make_pair(state, val);
+// 					};
+// 			auto _operator = QOps::generic_operator<>(this->L, std::move(kernel), 1.0);
+// 			Sz = 2 * arma::real(_operator.to_matrix(dim));
+// 			std::cout << " - - - - - - finished setting Sz operator with norm ||S_z||^2= " << arma::trace(Sz * Sz) / double(dim)  << "; in time: " << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
+// 		}
+// 		{
+// 			double q = constants<double>::two_pi / double(this->L);
+// 			start = std::chrono::system_clock::now();
+// 			for(int site = 0; site < this->L; site++){
+// 				auto kernel = [Ll, site, q](u64 state){ 
+// 						auto [val, temporary] = operators::sigma_z(state, Ll, site );
+// 						return std::make_pair( state, val * std::cos(q * site) );
+// 						};
+// 				auto _operator = QOps::generic_operator<>(this->L, std::move(kernel), 1.0);
+// 				Sq += arma::real(_operator.to_matrix(dim));
+// 			}
+// 			Sq = 2 * std::sqrt(2 / double(this->L) ) * Sq;
+// 			std::cout << " - - - - - - finished setting Sq operator with norm ||S_q||^2= " << arma::trace(Sq * Sq) / double(dim) << "; in time: " << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
+// 		}
+// 		std::cout << " - - - - - -CREATING  SINGLE-PARTICLE OPERATORS" << std::endl;
+// 		{
+// 			auto disorder = disorder_generator.uniform(dim, 0.5);
+// 			std::cout << disorder.t() << std::endl;
+// 			double q = constants<double>::two_pi / double(dim);
+// 			for(int site = 0; site < dim; site++){
+// 				nq(site, site) = std::cos(q * site);
+// 				nr(site, site) = disorder(site);
+// 			}
+// 			nq = nq - arma::trace(nq) / dim * arma::eye<arma::sp_mat>(dim, dim);
+// 			nr = nr - arma::trace(nr) / dim * arma::eye<arma::sp_mat>(dim, dim);
+// 			// nq = nq / ( arma::trace(nq * nq) / double(dim)  - arma::trace(nq) / dim * arma::trace(nq) / dim);
+// 			// nr = nr / ( arma::trace(nr * nr) / double(dim)  - arma::trace(nr) / dim * arma::trace(nr) / dim);
+// 			std::cout << " - - - - - - finished setting Sq operator with norm ||n_q||_sp= " << arma::trace(nq * nq) / double(dim) << "; in time: " << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
+// 			std::cout << " - - - - - - finished setting Sq operator with norm ||n_r||_sp= " << arma::trace(nr * nr) / double(dim) << "; in time: " << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
+// 		}
+
+// 		// start = std::chrono::system_clock::now();
+// 		// double _agp, _typ_susc, _susc;
+// 		// {
+// 		// 	arma::vec tmp;
+// 		// 	start = std::chrono::system_clock::now();
+// 		// 	// arma::Mat<element_type> mat_elem = V * Sz_ops[i] * V.t();
+// 		// 	auto kernel = [Ll, ](u64 state){ 
+// 		// 		auto [val1, tmp22] = operators::sigma_z(state, Ll, site_1 );
+// 		// 		auto [val2, tmp33] = operators::sigma_z(state, Ll, site_2 );
+// 		// 		return std::make_pair(state, val1 * val2);
+// 		// 		};
+// 		// 	auto _operator = QOps::generic_operator<>(this->L, std::move(kernel), 1.0);
+// 		// 	arma::sp_mat op = arma::real(_operator.to_matrix(dim));
+// 		// 	arma::Mat<element_type> mat_elem = V.t() * op * V;
+// 		// 	std::tie(_agp, _typ_susc, _susc, tmp) = adiabatics::gauge_potential(mat_elem, E, this->L);
+// 		// 	agp_norm_r(i) = _agp;
+// 		// 	typ_susc_r(i) = _typ_susc;
+// 		// 	diag_mat_elem_r.col(i) = arma::diagvec(mat_elem);
+			
+// 		// 	auto [omegas_i, matter] = set_omega.get_matrix_elements(mat_elem);
+// 		// 	omegas = omegas_i;
+// 		// 	spectral_funs.col(i) = matter;
+
+//     	// 	std::cout << " - - - - - - finished matrix elements for sites: i=" << site_1 << ", j=" << site_2 << " in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
+// 		// }
+// 		// start = std::chrono::system_clock::now();
+// 		// // arma::Mat<element_type> mat_elem = V * Sz_ops[i] * V.t();
+// 		// auto kernel = [Ll, N](u64 state){ 
+// 		// 	auto [val1, tmp22] = operators::sigma_z(state, Ll, Ll - 1 );
+// 		// 	return std::make_pair(state, val1);
+// 		// 	};
+// 		// auto _operator = QOps::generic_operator<>(this->L, std::move(kernel), 1.0);
+// 		// arma::sp_mat op = arma::real(_operator.to_matrix(dim));
+// 		// arma::Mat<element_type> mat_elem = V.t() * op * V;
+// 		// auto [_agp, _typ_susc, _susc, tmp] = adiabatics::gauge_potential(mat_elem, E, this->L);
+// 		// agp_norm_r(site_pairs.size()) = _agp;
+// 		// typ_susc_r(site_pairs.size()) = _typ_susc;
+// 		// arma::vec diag_mat_elem_Sz_r = arma::diagvec(mat_elem);
+// 		// auto [omegas_i, matter] = set_omega.get_matrix_elements(mat_elem);
+
+// 		// std::cout << " - - - - - - finished Sz_L matrix elements in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
+// 		// {
+// 		// 	agp_norm_r.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "agp",   arma::hdf5_opts::append));
+// 		// 	typ_susc_r.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "typ_susc",   arma::hdf5_opts::append));
+// 		// 	diag_mat_elem_r.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "diag_mat",   arma::hdf5_opts::append));
+// 		// 	omegas.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "omegas",   arma::hdf5_opts::append));
+// 		// 	spectral_funs.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "spectral_funs",   arma::hdf5_opts::append));
+
+// 		// 	matter.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "spectral_Sz_L",   arma::hdf5_opts::append));
+// 		// 	diag_mat_elem_Sz_r.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "diag_mat_Sz_L",   arma::hdf5_opts::append));
+			
+// 		// }
+// 		// std::cout << " - - - - - - finished realisation realis = " << realis << " in : " << tim_s(start_re) << " s - - - - - - " << std::endl; // simulation end
+	// }

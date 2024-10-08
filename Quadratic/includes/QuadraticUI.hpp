@@ -7,6 +7,10 @@
 #include "../../include/user_interface_quadratic.hpp"
 #include "Quadratic.hpp"
 
+#ifdef RP
+    #include "rp_def.hpp"
+#endif
+
 // ----------------------------------------------------------------------------- UI QUANTUM SUN -----------------------------------------------------------------------------
 
 namespace QuadraticUI{
