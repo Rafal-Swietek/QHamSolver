@@ -48,6 +48,7 @@ namespace QuadraticUI{
         void set_volume();
         // ----------------------------------- OVERLOAD UI FUNCTIONS FOR SPECIFIC MODEL
         void spectrals();
+        void quench();
     };
 }
 

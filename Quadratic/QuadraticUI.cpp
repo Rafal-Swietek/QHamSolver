@@ -35,6 +35,9 @@ void ui::make_sim(){
 	case 6:
 		eigenstate_entanglement_manybody();
 		break;
+	case 7:
+		quench();
+		break;
 	default:
 		#define generate_scaling_array(name) arma::linspace(this->name, this->name + this->name##s * (this->name##n - 1), this->name##n);
 		auto L_list = generate_scaling_array(L);
@@ -200,6 +203,113 @@ void ui::spectrals()
 		omegax.save(   		arma::hdf5_name(dir + info + ".hdf5", "omegax",   arma::hdf5_opts::append));
 		arma::vec({(double)counter}).save(	arma::hdf5_name(dir + info + ".hdf5", "realisations",   arma::hdf5_opts::append));
 	#endif
+}
+
+void ui::quench()
+{
+	std::string dir = this->saving_dir + "Quench" + kPSep;
+	createDirs(dir);
+	
+	size_t dim = this->ptr_to_model->get_hilbert_size();
+	std::string info = this->set_info();
+
+	const size_t size = dim > 1e5? this->l_steps : dim;
+	
+	double tH = dim;
+	// int time_end = (int)std::ceil(std::log10(10 * tH));
+	// time_end = (time_end / std::log10(tH) < 10 ) ? time_end + 2 : time_end;
+	arma::vec times = arma::logspace(-2, int(std::log10(10 * tH)), this->num_of_points);
+
+	int Ll = this->L;
+
+	int counter = 0;
+// #pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
+	for(int realis = 0; realis < this->realisations; realis++)
+	{
+		clk::time_point start_re = std::chrono::system_clock::now();
+		if(realis > 0)
+			this->ptr_to_model->generate_hamiltonian();
+		
+		clk::time_point start = std::chrono::system_clock::now();
+		if(dim > 1e5){
+			this->ptr_to_model->diag_sparse(this->l_steps, this->l_bundle, this->tol, this->seed);	
+		}
+		else{
+        	this->ptr_to_model->diagonalization();
+		}
+		std::cout << " - - - - - - finished diagonalization in : " << tim_s(start) << " s for realis = " << realis << " - - - - - - " << std::endl; // simulation end
+		start = std::chrono::system_clock::now();
+		
+		const arma::vec E = this->ptr_to_model->get_eigenvalues();
+		const auto& V = this->ptr_to_model->get_eigenvectors();
+		std::string dir_realis = dir + "realisation=" + std::to_string(this->jobid + realis) + kPSep;
+		createDirs(dir_realis);
+		E.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "energies"));
+		
+		arma::vec Hdiagonal = arma::diagvec( this->ptr_to_model->get_dense_hamiltonian() );
+
+		double E_av = arma::trace(E) / double(dim);
+		auto i = min_element(begin(Hdiagonal), end(Hdiagonal), [=](double x, double y) {
+			return abs(x - E_av) < abs(y - E_av);
+		});
+		const u64 idx = i - begin(Hdiagonal);
+		double quench_E = Hdiagonal(idx);
+
+		arma::vec coeff = V.row(idx).t();
+		coeff.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "coefficients", arma::hdf5_opts::append));
+
+		arma::vec quench(times.size(), arma::fill::zeros);
+		arma::cx_mat psi(dim, times.size(), arma::fill::zeros);
+
+		start = std::chrono::system_clock::now();
+		std::cout << " - - - - - - finished finding product state with energy E = " << quench_E << " compared to mean energy <H> = " << E_av << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
+
+		start = std::chrono::system_clock::now();
+	#pragma omp parallel for
+		for(long t_idx = 0; t_idx < times.size(); t_idx++)
+		{
+			double time = times(t_idx);
+			for(long alfa = 0; alfa < dim; alfa++)
+			{
+				auto state = V.col(alfa);
+				psi.col(t_idx) += std::exp(-1i * time * E(alfa)) * state * state(idx);
+			}
+		}
+
+		std::cout << " - - - - - - finished preparing initial states for all times in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
+		
+		start = std::chrono::system_clock::now();
+		auto kernel = [Ll](u64 state){ 
+			auto [val1, tmp22] = operators::sigma_z(state, Ll, Ll - 1 );
+			return std::make_pair(state, val1);
+			};
+		auto _operator = QOps::generic_operator<>(this->L, std::move(kernel), 1.0);
+		arma::sp_mat op = arma::real(_operator.to_matrix(dim));
+		arma::Mat<element_type> mat_elem = V.t() * op * V;
+		arma::vec diag_mat_elem = arma::diagvec(mat_elem);
+		std::cout << " - - - - - - finished Sz_L matrix elements in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
+
+		start = std::chrono::system_clock::now();
+	#pragma omp parallel for
+		for(long t_idx = 0; t_idx < times.size(); t_idx++)
+			quench(t_idx) = std::real( arma::cdot(psi.col(t_idx), op * psi.col(t_idx)) );
+		
+		std::cout << " - - - - - - finished time evolution for Sz_L in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
+		
+		// start = std::chrono::system_clock::now();
+		// auto [autocorr_Sz, LTA_Sz] = spectrals::autocorrelation_function(mat_elem, E, times);
+		// std::cout << " - - - - - - finished auto correlator time evolution for Sz_L in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
+		// #ifndef MY_MAC
+		{
+			diag_mat_elem.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "diag_mat",   arma::hdf5_opts::append));
+			times.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "times",   arma::hdf5_opts::append));
+			quench.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "quench",   arma::hdf5_opts::append));
+			arma::vec( {quench_E} ).save(   arma::hdf5_name(dir_realis + info + ".hdf5", "quench_energy",   arma::hdf5_opts::append));
+		}
+		// #endif
+		
+		std::cout << " - - - - - - finished realisation realis = " << realis << " in : " << tim_s(start_re) << " s - - - - - - " << std::endl; // simulation end
+	}
 }
 
 
