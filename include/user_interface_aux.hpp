@@ -165,7 +165,8 @@ void user_interface<Hamiltonian>::printAllOptions() const {
 	std::cout << "Chosen spin species is S = " << _Spin << std::endl << std::endl;
 	std::cout << "------------------------------CHOSEN OPTIONS:" << std::endl;
 	std::string opName = "";//std::get<0>(IsingModel_disorder::opName(this->op, this->site));
-	std::cout << "DIR = " << this->saving_dir << std::endl
+	std::cout << "DIR prefix = " << this->dir_prefix << std::endl
+		  << "DIR = " << this->saving_dir << std::endl
 		  << "L  = " << this->L << std::endl
 		  << "Ls = " << this->Ls << std::endl
 		  << "Ln = " << this->Ln << std::endl
@@ -335,6 +336,21 @@ arma::vec user_interface<Hamiltonian>::get_eigenvalues(std::string prefix, bool 
 		if(!loaded)
 			loaded = eigenvalues.load(arma::hdf5_name(name + ".hdf5", "eigenvalues"));
 		name = this->saving_dir + "Entropy/Eigenstate" + kPSep + prefix + this->set_info({});
+		if(!loaded)
+			loaded = eigenvalues.load(arma::hdf5_name(name + ".hdf5", "energies"));
+		name = this->saving_dir + "AGP_SAVE" + kPSep + prefix + this->set_info({});
+		if(!loaded)
+			loaded = eigenvalues.load(arma::hdf5_name(name + ".hdf5", "energies"));
+		name = this->saving_dir + "Entropy/ManyBody" + kPSep + prefix + this->set_info({});
+		if(!loaded)
+			loaded = eigenvalues.load(arma::hdf5_name(name + ".hdf5", "energies"));
+		name = this->saving_dir + "Correlators" + kPSep + prefix + this->set_info({});
+		if(!loaded)
+			loaded = eigenvalues.load(arma::hdf5_name(name + ".hdf5", "energies"));
+		name = this->saving_dir + "MatrixElements" + kPSep + prefix + this->set_info({});
+		if(!loaded)
+			loaded = eigenvalues.load(arma::hdf5_name(name + ".hdf5", "energies"));
+		name = this->saving_dir + "SpectralFunctions" + kPSep + prefix + this->set_info({});
 		if(!loaded)
 			loaded = eigenvalues.load(arma::hdf5_name(name + ".hdf5", "energies"));
 		if(!loaded){
