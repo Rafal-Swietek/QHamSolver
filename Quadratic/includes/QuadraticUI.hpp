@@ -7,9 +7,9 @@
 #include "../../include/user_interface_quadratic.hpp"
 #include "Quadratic.hpp"
 
-#ifdef RP
+// #ifdef RP
     #include "rp_def.hpp"
-#endif
+// #endif
 
 // ----------------------------------------------------------------------------- UI QUANTUM SUN -----------------------------------------------------------------------------
 
