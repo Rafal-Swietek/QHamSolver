@@ -87,7 +87,7 @@ namespace GoldenChain_UI{
 			}
 		}
     
-        
+        virtual void eigenstate_entanglement () override;
         // ----------------------------------- HELPER FUNCTIONS
         arma::SpMat<ui::element_type> create_supercharge(bool dagger = false);
         

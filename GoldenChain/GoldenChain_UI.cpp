@@ -26,7 +26,7 @@ void ui::make_sim(){
     // auto H = full_model->get_dense_hamiltonian();
     // std::cout << H << std::endl;
     // arma::vec E = arma::eig_sym(H);
-    // std::cout << E << std::endl;
+    // std::cout << E << std::endl; 
     // E.save(arma::hdf5_name("fullspectrum" + this->set_info({"k", "p"}) + ".hdf5", "energies"));
     // auto model1 = std::make_unique<QHS::QHamSolver<GoldenChain>>(this->boundary_conditions, this->L, this->J, this->c, this->syms.k_sym, this->syms.p_sym);
     // model1->diagonalization(false);
@@ -125,6 +125,89 @@ void ui::make_sim(){
 
 // -------------------------------------------------------------------------------------------------------------------------------------
 // ---------------------------------------------------------------------------------------------------------------- MODEL DEPENDENT FUNCTIONS
+
+void ui::eigenstate_entanglement(){
+    clk::time_point start = std::chrono::system_clock::now();
+	
+	std::string dir = this->saving_dir + "Entropy" + kPSep + "Eigenstate" + kPSep;
+	createDirs(dir);
+	
+	std::string info = this->set_info();
+	std::string filename = info;// + "_subsize=" + std::to_string(LA);
+    
+    int LA = this->site;
+	size_t dim = this->ptr_to_model->get_hilbert_size();
+	
+    arma::vec emtpy_vec(1);
+    if(dim == 0){
+        emtpy_vec.save(arma::hdf5_name(dir + filename + ".hdf5", "nope"));
+        return;
+    }
+    
+    #ifdef ARMA_USE_SUPERLU
+        const int size = this->ch? 500 : dim;
+        if(this->ch){
+            this->ptr_to_model->hamiltonian();
+            this->ptr_to_model->diag_sparse(true);
+        } else
+            this->ptr_to_model->diagonalization();
+    
+    #else
+        const int size = dim;
+        this->ptr_to_model->diagonalization();
+    #endif
+
+    std::cout << " - - - - - - FINISHED DIAGONALIZATION IN : " << tim_s(start) << " seconds - - - - - - " << std::endl; // simulation end
+    
+    start = std::chrono::system_clock::now();
+    const arma::vec E = this->ptr_to_model->get_eigenvalues();
+    
+    const auto U = this->ptr_to_model->get_model_ref().get_hilbert_space().symmetry_rotation();
+    
+    std::cout << " - - - - - - FINISHED CREATING SYMMETRY TRANSFORMATION IN : " << tim_s(start) << " seconds - - - - - - " << std::endl; // simulation end
+    start = std::chrono::system_clock::now();
+
+    auto subsystem_sizes = arma::conv_to<arma::Col<int>>::from(arma::linspace(0, this->L / 2, this->L / 2 + 1));
+    // auto subsystem_sizes = arma::Col<int>( { int(this->L) / 2} );
+    std::cout << subsystem_sizes.t() << std::endl;
+
+    // outer_threads = this->thread_number;
+    // omp_set_num_threads(1);
+    // std::cout << th_num << "\t\t" << omp_get_num_threads() << std::endl;
+    
+        // auto start_LA = std::chrono::system_clock::now();
+    double E_av = arma::mean(E);
+    auto i = min_element(begin(E), end(E), [=](double x, double y) {
+        return abs(x - E_av) < abs(y - E_av);
+    });
+    const long E_av_idx = i - begin(E);
+    long int E_min = dim > 1e5? 0 : E_av_idx - 5;
+    long int E_max = dim > 1e5? dim : E_av_idx + 5;
+    printSeparated(std::cout, "\t", 16, true, "Mean Energy:", E_av, E_av_idx, E_min, E_max);
+    const auto new_size = E_max - E_min;
+    arma::mat S(new_size, subsystem_sizes.size(), arma::fill::zeros);
+    arma::vec Ecut(new_size, arma::fill::zeros);
+// #pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
+    for(int n = E_min; n < E_max; n++){
+        Ecut(n - E_min) = E(n);
+        auto eigenstate = this->ptr_to_model->get_eigenState(n);
+        arma::Col<element_type> state = U * eigenstate;
+        
+        for(int iiLA = 0; iiLA < subsystem_sizes.size(); iiLA++){
+            int LA = subsystem_sizes[iiLA];
+            S(n - E_min, iiLA) = entropy::schmidt_decomposition(state, LA, this->L);
+        }
+    }
+    std::cout << " - - - - - - FINISHED ENTROPY CALCULATION IN : " << tim_s(start) << " seconds - - - - - - " << std::endl; // simulation end
+    
+    // omp_set_num_threads(this->thread_number);
+    // outer_threads = 1;
+    
+    E.save(arma::hdf5_name(dir + filename + ".hdf5", "energies"));
+    Ecut.save(arma::hdf5_name(dir + filename + ".hdf5", "energies cropped"));
+	S.save(arma::hdf5_name(dir + filename + ".hdf5", "entropy", arma::hdf5_opts::append));
+}
+
 /// @brief 
 /// @param skip 
 /// @param sep 
