@@ -343,7 +343,7 @@ arma::vec user_interface<Hamiltonian>::get_eigenvalues(std::string prefix, bool 
 			loaded = eigenvalues.load(arma::hdf5_name(name + ".hdf5", "energies"));
 		name = this->saving_dir + "Entropy/ManyBody" + kPSep + prefix + this->set_info({});
 		if(!loaded)
-			loaded = eigenvalues.load(arma::hdf5_name(name + ".hdf5", "energies"));
+			loaded = eigenvalues.load(arma::hdf5_name(name + ".hdf5", "energy"));
 		name = this->saving_dir + "Correlators" + kPSep + prefix + this->set_info({});
 		if(!loaded)
 			loaded = eigenvalues.load(arma::hdf5_name(name + ".hdf5", "energies"));
