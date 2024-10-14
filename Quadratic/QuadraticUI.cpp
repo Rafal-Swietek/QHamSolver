@@ -218,7 +218,7 @@ void ui::quench()
 	double tH = dim;
 	// int time_end = (int)std::ceil(std::log10(10 * tH));
 	// time_end = (time_end / std::log10(tH) < 10 ) ? time_end + 2 : time_end;
-	arma::vec times = arma::logspace(-2, int(std::log10(10 * tH)), this->num_of_points);
+	arma::vec times = arma::logspace(-2, (std::log10(1000 * tH)), this->num_of_points);
 
 	int Ll = this->L;
 
