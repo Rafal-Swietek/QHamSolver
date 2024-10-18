@@ -54,6 +54,7 @@ namespace QSunU1UI{
         virtual void matrix_elements() override;
         
         void agp_save();
+        void spectral_function();
 
         virtual arma::Col<element_type> cast_state(const arma::Col<element_type>& state) override;
     };
