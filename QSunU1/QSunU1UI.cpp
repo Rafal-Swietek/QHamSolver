@@ -430,11 +430,11 @@ void ui::spectral_function()
 		E.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "energies"));
 		energy_density.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "energy_density",   arma::hdf5_opts::append));
 
-		start = std::chrono::system_clock::now();
 		// arma::Mat<element_type> mat_elem = V * Sz_ops[i] * V.t();
 		
-		auto sites = std::vector<int>( {Ll / 2, Ll} );
+		auto sites = std::vector<int>( {Ll / 2, Ll - 1} );
 		for(int il = 0; il < sites.size(); il++){
+			start = std::chrono::system_clock::now();
 			int ell = sites[il];
 			auto kernel = [Ll, N, ell](u64 state){ 
 				auto [val1, tmp22] = operators::sigma_z(state, Ll, ell );
@@ -444,12 +444,14 @@ void ui::spectral_function()
 			arma::sp_mat opmat = arma::real(_operator.to_matrix(dim));
 			arma::Mat<element_type> mat_elem = V.t() * opmat * V;
 			std::cout << " - - - - - - finished matrix elements in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
-			
+			start = std::chrono::system_clock::now();
 			double cutoff = std::sqrt(Ll) / double(dim);
 			auto [_susc, _susc_r] = adiabatics::gauge_potential_save(mat_elem, E, this->L, cutoff);
 
 			std::cout << " - - - - - - finished AGP in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
-			
+			start = std::chrono::system_clock::now();
+
+			arma::Mat<element_type> _integrated_spectral_fun(omegax.size()-1, energy_density.size(), arma::fill::zeros);
 			arma::Mat<element_type> _spectral_fun(omegax.size()-1, energy_density.size(), arma::fill::zeros);
 			arma::Mat<element_type> _spectral_fun_typ(omegax.size()-1, energy_density.size(), arma::fill::zeros);
 			arma::Mat<element_type> _element_count(omegax.size()-1, energy_density.size(), arma::fill::zeros);
@@ -459,19 +461,26 @@ void ui::spectral_function()
 				const double eps = energy_density(ii);
 				const double energyx = eps * bandwidth + E(0);
 				spectrals::preset_omega set_omega(E, window_width, energyx);
-				auto [omegas_i, matter] = set_omega.get_matrix_elements(mat_elem);
-
+				arma::vec omegas_i, matter;
+				std::tie(omegas_i, matter) = set_omega.get_matrix_elements(mat_elem);
 				for(int k = 0; k < omegax.size() - 1; k++){
 					arma::uvec indices = arma::find(omegas_i >= omegax[k] && omegas_i < omegax[k+1]);
-					_element_count(k, ii) = indices.size();
-					_spectral_fun(k, ii) = arma::accu( matter.rows(indices));
-					_spectral_fun_typ(k, ii) = arma::accu( arma::log(matter.rows(indices)) );
+					if(indices.size() > 0){
+						_element_count(k, ii) = indices.size();
+						arma::vec x = arma::vec( omegas_i.elem(indices) );
+						arma::vec y = arma::vec( matter.elem(indices) );
+						_spectral_fun(k, ii) = arma::accu( y );
+						_spectral_fun_typ(k, ii) = arma::accu( arma::log(y) );
+						if(indices.size() > 1)
+							_integrated_spectral_fun(k, ii) = simpson_rule(x, y);
+					}
 				}
 			}
-			std::cout << " - - - - - - finished Sz_L matrix elements in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
+			std::cout << " - - - - - - finished Sz_ell = " << ell << " matrix elements in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
 			// #ifndef MY_MAC
 			{
 				omegax.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "omegas_l=" + std::to_string(ell),   arma::hdf5_opts::append));
+				_integrated_spectral_fun.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "integrated_spectral_fun_l=" + std::to_string(ell),   arma::hdf5_opts::append));
 				_spectral_fun.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "spectral_fun_l=" + std::to_string(ell),   arma::hdf5_opts::append));
 				_spectral_fun_typ.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "log(_spectral_fun_typ)_l=" + std::to_string(ell),   arma::hdf5_opts::append));
 				_element_count.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "element_count_l=" + std::to_string(ell),   arma::hdf5_opts::append));
