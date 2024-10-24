@@ -48,7 +48,7 @@ public:
 			matrix(n, n) = dist(engine);
 			for(int m = n + 1; m < size; m++){
 				matrix(n, m) = dist(engine);
-                matrix(m, n) = dist(engine);
+                matrix(m, n) = matrix(n, m);
             }
         }
 		return matrix;

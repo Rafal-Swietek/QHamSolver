@@ -55,8 +55,8 @@ namespace RP_data
             { 2.400, {0.941868455, 0.977220133, 0.922092231, 1.018333049, 0.988908827, 0.997883533, 1.023303370, 1.020025435, 1.014786116,  1.014294102,  1.014294102    }}};
 		
         static int getIndex(int _Ns)                               { return _Ns - minNs_; };
-        static double getBandwidth(double alpha, int _Ns)          { return bandwidth_.contains(alpha) ? bandwidth_[alpha][getIndex(_Ns)] : bandwidth_[alpha - 0.1][getIndex(_Ns)]; };
-        static double getVariance(double alpha, int _Ns)           { return variance_.contains(alpha) ? variance_[alpha][getIndex(_Ns)] : variance_[alpha - 0.1][getIndex(_Ns)]; };
+        static double getBandwidth(double gamma, int _Ns)          { return bandwidth_.contains(gamma) ? bandwidth_[gamma][getIndex(_Ns)] : 4.0 * std::sqrt(1 + std::pow(2, (1 - gamma) * _Ns)); };
+        static double getVariance(double gamma, int _Ns)           { return variance_.contains(gamma) ? variance_[gamma][getIndex(_Ns)] : 4.0 * std::sqrt(1 + std::pow(2, (1 - gamma) * _Ns)); };
 	} default_pars;
 
 
