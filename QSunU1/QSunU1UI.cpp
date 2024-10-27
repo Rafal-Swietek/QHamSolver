@@ -382,6 +382,8 @@ void ui::spectral_function()
 	createDirs(dir);
 	
 	size_t dim = this->ptr_to_model->get_hilbert_size();
+	U1Hilbert _hilbert_space = this->ptr_to_model->get_model_ref().get_hilbert_space();
+
 	std::string info = this->set_info();
 
 	const size_t size = dim > 1e5? this->l_steps : dim;
@@ -441,7 +443,10 @@ void ui::spectral_function()
 				return std::make_pair(state, val1);
 				};
 			auto _operator = QOps::generic_operator<>(this->L, std::move(kernel), 1.0);
-			arma::sp_mat opmat = arma::real(_operator.to_matrix(dim));
+			
+			// KEEP PROPER HILBERT SPACE FOR OPERATORS
+			arma::sp_mat opmat = arma::real(_operator.to_reduced_matrix(_hilbert_space));
+			
 			arma::Mat<element_type> mat_elem = V.t() * opmat * V;
 			std::cout << " - - - - - - finished matrix elements in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
 			start = std::chrono::system_clock::now();
@@ -471,8 +476,12 @@ void ui::spectral_function()
 						arma::vec y = arma::vec( matter.elem(indices) );
 						_spectral_fun(k, ii) = arma::accu( y );
 						_spectral_fun_typ(k, ii) = arma::accu( arma::log(y) );
-						if(indices.size() > 1)
-							_integrated_spectral_fun(k, ii) = simpson_rule(x, y);
+					}
+					indices = arma::find(omegas_i < omegax[k+1]);
+					if(indices.size() > 1){
+						arma::vec x = arma::vec( omegas_i.elem(indices) );
+						arma::vec y = arma::vec( matter.elem(indices) );
+						_integrated_spectral_fun(k, ii) = simpson_rule(x, y);
 					}
 				}
 			}
