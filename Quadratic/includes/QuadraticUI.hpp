@@ -46,7 +46,9 @@ namespace QuadraticUI{
         virtual std::string set_info(std::vector<std::string> skip = {}, 
 										std::string sep = "_") const override;
         void set_volume();
+        
         // ----------------------------------- OVERLOAD UI FUNCTIONS FOR SPECIFIC MODEL
+        void spectrals_other_operators();
         void spectrals();
         void quench();
     };

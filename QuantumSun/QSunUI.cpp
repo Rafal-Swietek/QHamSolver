@@ -277,22 +277,22 @@ void ui::ground_state(){
 	for(int i = 0; i < this->L; i++)
 	{
 		auto kernel_Sx = [Ll, N, i](u64 state){ 
-					auto [val1, tmp22] = operators::sigma_x(state, Ll, i );
-					return std::make_pair(state, val1);
+					auto [val1, state_X] = operators::sigma_x(state, Ll, i );
+					return std::make_pair(state_X, val1);
 					};
 		QOps::generic_operator<> _operator = QOps::generic_operator<>(this->L, std::move(kernel_Sx), 1.0);
 		Sx_list.push_back(_operator);
 
 		auto kernel_Sy = [Ll, N, i](u64 state){ 
-					auto [val1, tmp22] = operators::sigma_y(state, Ll, i );
-					return std::make_pair(state, val1);
+					auto [val1, state_Y] = operators::sigma_y(state, Ll, i );
+					return std::make_pair(state_Y, val1);
 					};
 		_operator = QOps::generic_operator<>(this->L, std::move(kernel_Sy), 1.0);
 		Sy_list.push_back(_operator);
 
 		auto kernel_Sz = [Ll, N, i](u64 state){ 
-					auto [val1, tmp22] = operators::sigma_z(state, Ll, i );
-					return std::make_pair(state, val1);
+					auto [val1, state_Z] = operators::sigma_z(state, Ll, i );
+					return std::make_pair(state_Z, val1);
 					};
 		_operator = QOps::generic_operator<>(this->L, std::move(kernel_Sz), 1.0);
 		Sz_list.push_back(_operator);
@@ -303,23 +303,23 @@ void ui::ground_state(){
 		for(int j = 0; j < this->L; j++)
 		{
 			auto kernel_SxSx = [Ll, N, i, j](u64 state){ 
-					auto [val1, tmp22] = operators::sigma_x(state, Ll, i );
-					auto [val2, tmp33] = operators::sigma_x(state, Ll, j );
-					return std::make_pair(state, val1 * val2);
+					auto [val1, state_X] = operators::sigma_x(state, Ll, i );
+					auto [val2, state_XX] = operators::sigma_x(state_X, Ll, j );
+					return std::make_pair(state_XX, val1 * val2);
 					};
 			_operator = QOps::generic_operator<>(this->L, std::move(kernel_SxSx), 1.0);
 			Sxx_list_temp.push_back(_operator);
 			auto kernel_SySy = [Ll, N, i, j](u64 state){ 
-					auto [val1, tmp22] = operators::sigma_y(state, Ll, i );
-					auto [val2, tmp33] = operators::sigma_y(state, Ll, j );
-					return std::make_pair(state, val1 * val2);
+					auto [val1, state_Y] = operators::sigma_y(state, Ll, i );
+					auto [val2, state_YY] = operators::sigma_y(state_Y, Ll, j );
+					return std::make_pair(state_YY, val1 * val2);
 					};
 			_operator = QOps::generic_operator<>(this->L, std::move(kernel_SySy), 1.0);
 			Syy_list_temp.push_back(_operator);
 			auto kernel_SzSz = [Ll, N, i, j](u64 state){ 
-					auto [val1, tmp22] = operators::sigma_z(state, Ll, i );
-					auto [val2, tmp33] = operators::sigma_z(state, Ll, j );
-					return std::make_pair(state, val1 * val2);
+					auto [val1, state_Z] = operators::sigma_z(state, Ll, i );
+					auto [val2, state_ZZ] = operators::sigma_z(state_Z, Ll, j );
+					return std::make_pair(state_ZZ, val1 * val2);
 					};
 			_operator = QOps::generic_operator<>(this->L, std::move(kernel_SzSz), 1.0);
 			Szz_list_temp.push_back(_operator);
