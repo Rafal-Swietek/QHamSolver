@@ -42,6 +42,7 @@ namespace QHS{
             void generate_hamiltonian();
             void diagonalization(bool get_eigenvectors = true, const char* method = "dc");
             double diag_sparse(int Nev, int s, double tol = 1e-14, int seed = std::random_device{}());
+            double diag_lanczos(int Nev, double tol = 1e-14, int seed = std::random_device{}());
     };
 
 
@@ -124,6 +125,35 @@ namespace QHS{
         //<! Force release of memory for dense matrix
         H_temp.reset();
     }
+
+    /// @brief Method to diagonalize large sparse matrices: get states in the centrum of the spectrum
+    /// @tparam Hamiltonian template typename for the Hamiltonian class
+    /// @param Nev number of requested eigenstates
+    /// @param tol tolerance for algorithm
+    /// @param seed input seed got random computation
+    template <class Hamiltonian>
+    double QHamSolver<Hamiltonian>::diag_lanczos(int Nev, double tol, int seed)
+    {
+        auto Hamil = this->H.get_hamiltonian();
+        auto lancz = lanczos::Lanczos<_ty, converge::states>(Hamil, 2, 10000, 1e-14, seed, 1);        
+        lancz.diagonalization();
+        this->eigenvalues = lancz.get_eigenvalues();
+        this->eigenvectors = lancz.get_eigenstates();
+        // #ifdef EXTRA_DEBUG
+            std::cout << "-------------------------------------- TEST LANCZOS SPECTRUM --------------------------------------" << std::endl;
+            double error = -100;
+            for(int n = 0; n < this->eigenvalues.size(); n++)
+            {
+                auto value = arma::cdot(this->eigenvectors.col(n), Hamil * this->eigenvectors.col(n));
+                double error_n = std::abs(value - this->eigenvalues(n));
+                if( error_n > error )   error = error_n;
+                printSeparated(std::cout, "\t", 20, true, n, this->eigenvalues(n), value, error_n);
+            }
+            std::cout << "-------------------------------------- TEST LANCZOS SPECTRUM --------------------------------------" << std::endl;
+        // #endif
+        return error;
+    }
+
 
     /// @brief Method to diagonalize large sparse matrices: get states in the centrum of the spectrum
     /// @tparam Hamiltonian template typename for the Hamiltonian class
