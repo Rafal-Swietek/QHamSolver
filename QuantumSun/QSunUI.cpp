@@ -110,6 +110,9 @@ void ui::make_sim(){
 	case 12:
 		spectral_function();
 		break;
+	case 13:
+		ground_state();
+		break;
 	default:
 		#define generate_scaling_array(name) arma::linspace(this->name, this->name + this->name##s * (this->name##n - 1), this->name##n);
 		
@@ -227,6 +230,241 @@ void ui::make_sim(){
 
 
 // ------------------------------------------------ OVERRIDEN METHODS
+/// @brief Calculate ground state properties
+void ui::ground_state(){
+	std::string dir = this->saving_dir + "GroundState" + kPSep + "TESTS" + kPSep;
+	createDirs(dir);
+	
+	size_t dim = this->ptr_to_model->get_hilbert_size();
+	std::string info = this->set_info();
+
+	u64 dim_cut = 10000;
+	const size_t size = this->l_steps;
+
+	arma::vec energies(size, arma::fill::zeros);
+
+	int Ll = this->L;
+	int N = this->grain_size;
+
+	int counter = 0;
+	
+	auto subsystem_sizes = arma::conv_to<arma::Col<int>>::from(arma::linspace(0, this->L, this->L + 1));
+	
+	std::vector<QOps::genOp> permutation_op;
+	for(int LA_idx = 0; LA_idx < subsystem_sizes.size() - 1; LA_idx++)
+	{	
+		int LA = subsystem_sizes[LA_idx];
+		auto start_LA = std::chrono::system_clock::now();
+		std::vector<int> p(this->L);
+		p[LA % this->L] = 0;
+		for(int l = 0; l < this->L; l++){
+			if(l != LA % this->L){
+				p[l] = (l < (LA % this->L) )? l + 1 : l;
+			}
+		}
+		// std::cout << LA << "\t\t" << p << "\t\t" << p2 << std::endl;
+		auto permutation = QOps::_permutation_generator(this->L, p);
+		permutation_op.push_back(permutation);
+
+		std::cout << " - - - - - - set permutation matrix for LA = " << LA << " in : " << tim_s(start_LA) << " s - - - - - - " << std::endl;
+	}
+	std::vector<QOps::genOp> Sx_list;
+	std::vector<QOps::genOp> Sy_list;
+	std::vector<QOps::genOp> Sz_list;
+	std::vector<std::vector<QOps::genOp>> SxSx_list;
+	std::vector<std::vector<QOps::genOp>> SySy_list;
+	std::vector<std::vector<QOps::genOp>> SzSz_list;
+	for(int i = 0; i < this->L; i++)
+	{
+		auto kernel_Sx = [Ll, N, i](u64 state){ 
+					auto [val1, tmp22] = operators::sigma_x(state, Ll, i );
+					return std::make_pair(state, val1);
+					};
+		QOps::generic_operator<> _operator = QOps::generic_operator<>(this->L, std::move(kernel_Sx), 1.0);
+		Sx_list.push_back(_operator);
+
+		auto kernel_Sy = [Ll, N, i](u64 state){ 
+					auto [val1, tmp22] = operators::sigma_y(state, Ll, i );
+					return std::make_pair(state, val1);
+					};
+		_operator = QOps::generic_operator<>(this->L, std::move(kernel_Sy), 1.0);
+		Sy_list.push_back(_operator);
+
+		auto kernel_Sz = [Ll, N, i](u64 state){ 
+					auto [val1, tmp22] = operators::sigma_z(state, Ll, i );
+					return std::make_pair(state, val1);
+					};
+		_operator = QOps::generic_operator<>(this->L, std::move(kernel_Sz), 1.0);
+		Sz_list.push_back(_operator);
+
+		std::vector<QOps::genOp> Sxx_list_temp;
+		std::vector<QOps::genOp> Syy_list_temp;
+		std::vector<QOps::genOp> Szz_list_temp;
+		for(int j = 0; j < this->L; j++)
+		{
+			auto kernel_SxSx = [Ll, N, i, j](u64 state){ 
+					auto [val1, tmp22] = operators::sigma_x(state, Ll, i );
+					auto [val2, tmp33] = operators::sigma_x(state, Ll, j );
+					return std::make_pair(state, val1 * val2);
+					};
+			_operator = QOps::generic_operator<>(this->L, std::move(kernel_SxSx), 1.0);
+			Sxx_list_temp.push_back(_operator);
+			auto kernel_SySy = [Ll, N, i, j](u64 state){ 
+					auto [val1, tmp22] = operators::sigma_y(state, Ll, i );
+					auto [val2, tmp33] = operators::sigma_y(state, Ll, j );
+					return std::make_pair(state, val1 * val2);
+					};
+			_operator = QOps::generic_operator<>(this->L, std::move(kernel_SySy), 1.0);
+			Syy_list_temp.push_back(_operator);
+			auto kernel_SzSz = [Ll, N, i, j](u64 state){ 
+					auto [val1, tmp22] = operators::sigma_z(state, Ll, i );
+					auto [val2, tmp33] = operators::sigma_z(state, Ll, j );
+					return std::make_pair(state, val1 * val2);
+					};
+			_operator = QOps::generic_operator<>(this->L, std::move(kernel_SzSz), 1.0);
+			Szz_list_temp.push_back(_operator);
+		}
+		SxSx_list.push_back(Sxx_list_temp);
+		SySy_list.push_back(Syy_list_temp);
+		SzSz_list.push_back(Szz_list_temp);
+	}
+	for(int realis = 0; realis < this->realisations; realis++)
+	{
+		clk::time_point start_re = std::chrono::system_clock::now();
+		if(realis > 0)
+			this->ptr_to_model->generate_hamiltonian();
+		clk::time_point start = std::chrono::system_clock::now();
+		if(dim > dim_cut){
+			double error = this->ptr_to_model->diag_lanczos(this->l_steps, this->tol, this->seed);
+			if( error > 1e-10 ) { std::cout << "POLFED FAILED: Maximal Error = " << error << std::endl; }
+		}
+		else{
+			this->ptr_to_model->diagonalization();
+		}
+
+		const arma::vec E = this->ptr_to_model->get_eigenvalues().rows(0, 1);
+		std::cout << " - - - - - - finished diagonalization in : " << tim_s(start) << " s for realis = " << realis << " - - - - - - " << std::endl; // simulation end
+		start = std::chrono::system_clock::now();
+
+		arma::vec S_GS(subsystem_sizes.size(), arma::fill::zeros);
+		arma::vec S_EX = S_GS;
+		arma::vec S_site_GS = S_GS;
+		arma::vec S_site_EX = S_GS;
+
+		outer_threads = this->thread_number;
+		omp_set_num_threads(1);
+		std::cout << outer_threads << "\t\t" << omp_get_num_threads() << std::endl;
+		
+		
+		arma::Col<element_type> state_GS = arma::normalise(this->ptr_to_model->get_eigenState(0));
+		arma::Col<element_type> state_excited = arma::normalise(this->ptr_to_model->get_eigenState(1));
+
+		for(int LA_idx = 0; LA_idx < subsystem_sizes.size() - 1; LA_idx++)
+		{	
+			auto start_LA = std::chrono::system_clock::now();
+			int LA = subsystem_sizes[LA_idx];
+			S_GS(LA_idx) = entropy::schmidt_decomposition(state_GS, this->L - LA, this->L);	// bipartite entanglement at subsystem size LA
+			S_EX(LA_idx) = entropy::schmidt_decomposition(state_excited, this->L - LA, this->L);	// bipartite entanglement at subsystem size LA
+			
+			arma::vec permuted_state = arma::real(permutation_op[LA_idx].multiply(state_GS));
+			S_site_GS(LA_idx) = entropy::schmidt_decomposition(permuted_state, this->L - 1, this->L);	// single site entanglement at site LA
+			
+			permuted_state = arma::real(permutation_op[LA_idx].multiply(state_excited));
+			S_site_EX(LA_idx) = entropy::schmidt_decomposition(permuted_state, this->L - 1, this->L);	// single site entanglement at site LA
+			
+			std::cout << " - - - - - - Finished Entropies for LA = " << LA << " in : " << tim_s(start_LA) << " s - - - - - - " << std::endl;
+		}
+		std::cout << " - - - - - - finished all entropies in : " << tim_s(start) << " s for realis = " << realis << " - - - - - - " << std::endl; // simulation end
+		start = std::chrono::system_clock::now();
+		
+		arma::vec Sx_GS(this->L, arma::fill::zeros);
+		arma::cx_vec Sy_GS(this->L, arma::fill::zeros);
+		arma::vec Sz_GS(this->L, arma::fill::zeros);
+
+		arma::mat SxSx_GS(this->L, this->L, arma::fill::value(0.25));
+		arma::mat SySy_GS(this->L, this->L, arma::fill::value(0.25));
+		arma::mat SzSz_GS(this->L, this->L, arma::fill::value(0.25));
+		
+		arma::vec Sx_EX(this->L, arma::fill::zeros);
+		arma::cx_vec Sy_EX(this->L, arma::fill::zeros);
+		arma::vec Sz_EX(this->L, arma::fill::zeros);
+
+		arma::mat SxSx_EX(this->L, this->L, arma::fill::value(0.25));
+		arma::mat SySy_EX(this->L, this->L, arma::fill::value(0.25));
+		arma::mat SzSz_EX(this->L, this->L, arma::fill::value(0.25));
+		for(int i = 0; i < this->L; i++)
+		{	
+			//<! GROUND STATE
+			arma::cx_vec new_state = Sx_list[i].multiply(state_GS);
+			Sx_GS(i) = std::real( dot_prod(state_GS, new_state) );
+			new_state = Sy_list[i].multiply(state_GS);
+			Sy_GS(i) = dot_prod(state_GS, new_state);
+			new_state = Sz_list[i].multiply(state_GS);
+			Sz_GS(i) = std::real( dot_prod(state_GS, new_state) );
+			
+			//<! EXCITED STATE
+			new_state = Sx_list[i].multiply(state_excited);
+			Sx_EX(i) = std::real( dot_prod(state_excited, new_state) );
+			new_state = Sy_list[i].multiply(state_excited);
+			Sy_EX(i) = dot_prod(state_excited, new_state);
+			new_state = Sz_list[i].multiply(state_excited);
+			Sz_EX(i) = std::real( dot_prod(state_excited, new_state) );
+
+			for(int j = i + 1; j < this->L; j++)
+			{
+				auto start_ij = std::chrono::system_clock::now();
+				
+				//<! GROUND STATE
+				new_state = SxSx_list[i][j].multiply(state_GS);
+				SxSx_GS(i, j) = std::real( dot_prod(state_GS, new_state) );	SxSx_GS(j, i) = SxSx_GS(i, j);
+				new_state = SySy_list[i][j].multiply(state_GS);
+				SySy_GS(i, j) = std::real( dot_prod(state_GS, new_state) );	SySy_GS(j, i) = SySy_GS(i, j);
+				new_state = SzSz_list[i][j].multiply(state_GS);
+				SzSz_GS(i, j) = std::real( dot_prod(state_GS, new_state) );	SzSz_GS(j, i) = SzSz_GS(i, j);
+				
+				//<! EXCITED STATE
+				new_state = SxSx_list[i][j].multiply(state_excited);
+				SxSx_EX(i, j) = std::real( dot_prod(state_excited, new_state) );	SxSx_EX(j, i) = SxSx_EX(i, j);
+				new_state = SySy_list[i][j].multiply(state_excited);
+				SySy_EX(i, j) = std::real( dot_prod(state_excited, new_state) );	SySy_EX(j, i) = SySy_EX(i, j);
+				new_state = SzSz_list[i][j].multiply(state_excited);
+				SzSz_EX(i, j) = std::real( dot_prod(state_excited, new_state) );	SzSz_EX(j, i) = SzSz_EX(i, j);
+
+				std::cout << " - - - - - - Finished correlator for i=" << i << " and j=" << j << "\tin : " << tim_s(start_ij) << " s - - - - - - " << std::endl;
+			}
+		}
+		std::cout << " - - - - - - finished correlation matrices in : " << tim_s(start) << " s for realis = " << realis << " - - - - - - " << std::endl; // simulation end
+		{
+			std::string dir_realis = dir + "realisation=" + std::to_string(this->jobid + realis) + kPSep;
+			createDirs(dir_realis);
+			E.save(arma::hdf5_name(dir_realis + info + ".hdf5", "energies"));
+			S_GS.save(arma::hdf5_name(dir_realis + info + ".hdf5", "entropy GS", arma::hdf5_opts::append));
+			S_site_GS.save(arma::hdf5_name(dir_realis + info + ".hdf5", "single_site_entropy GS", arma::hdf5_opts::append));
+			S_EX.save(arma::hdf5_name(dir_realis + info + ".hdf5", "entropy excited", arma::hdf5_opts::append));
+			S_site_EX.save(arma::hdf5_name(dir_realis + info + ".hdf5", "single_site_entropy excited", arma::hdf5_opts::append));
+			subsystem_sizes.save(arma::hdf5_name(dir_realis + info + ".hdf5", "subsystem sizes", arma::hdf5_opts::append));
+
+			Sx_GS.save(arma::hdf5_name(dir_realis + info + ".hdf5", "Sx GS", arma::hdf5_opts::append));
+			Sy_GS.save(arma::hdf5_name(dir_realis + info + ".hdf5", "Sy GS", arma::hdf5_opts::append));
+			Sz_GS.save(arma::hdf5_name(dir_realis + info + ".hdf5", "Sz GS", arma::hdf5_opts::append));
+
+			Sx_EX.save(arma::hdf5_name(dir_realis + info + ".hdf5", "Sx excited", arma::hdf5_opts::append));
+			Sy_EX.save(arma::hdf5_name(dir_realis + info + ".hdf5", "Sy excited", arma::hdf5_opts::append));
+			Sz_EX.save(arma::hdf5_name(dir_realis + info + ".hdf5", "Sz excited", arma::hdf5_opts::append));
+
+			SxSx_GS.save(arma::hdf5_name(dir_realis + info + ".hdf5", "SxSx GS", arma::hdf5_opts::append));
+			SySy_GS.save(arma::hdf5_name(dir_realis + info + ".hdf5", "SySy GS", arma::hdf5_opts::append));
+			SzSz_GS.save(arma::hdf5_name(dir_realis + info + ".hdf5", "SzSz GS", arma::hdf5_opts::append));
+
+			SxSx_EX.save(arma::hdf5_name(dir_realis + info + ".hdf5", "SxSx excited", arma::hdf5_opts::append));
+			SySy_EX.save(arma::hdf5_name(dir_realis + info + ".hdf5", "SySy excited", arma::hdf5_opts::append));
+			SzSz_EX.save(arma::hdf5_name(dir_realis + info + ".hdf5", "SzSz excited", arma::hdf5_opts::append));
+		}
+		
+		std::cout << " - - - - - - finished realisation realis = " << realis << " in : " << tim_s(start_re) << " s - - - - - - " << std::endl; // simulation end
+		
+	}
+}
 
 /// @brief Calculate AGPs from matrix elements of local operators
 void ui::agp()
@@ -1539,7 +1777,7 @@ std::string ui::set_info(std::vector<std::string> skip, std::string sep) const
             ",N=" + std::to_string(this->grain_size) + \
             ",J=" + to_string_prec(this->J) + \
             ",g=" + to_string_prec(this->gamma);
-        if(this->alfa < 1.0) name += ",zeta=" + to_string_prec(this->zeta);
+        if(std::abs(this->alfa - 1.0) > 1e-10) name += ",zeta=" + to_string_prec(this->zeta);
         
 		name += ",alfa=" + to_string_prec(this->alfa) + \
             ",h=" + to_string_prec(this->h);

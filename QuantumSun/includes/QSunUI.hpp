@@ -57,6 +57,7 @@ namespace QSunUI{
         void agp();
         void agp_mu();
         void agp_save();
+        void ground_state();
     };
 }
 

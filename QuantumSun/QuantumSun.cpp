@@ -99,21 +99,22 @@ void QuantumSun::create_hamiltonian()
     /* Create random couplings */
     this->_long_range_couplings = arma::vec(this->num_of_spins, arma::fill::zeros);
     if(this->_alfa > 0){
-        if(this->_alfa < 1.0){
-            double u_j = 1 + disorder_generator.uniform_dist<double>(-this->_zeta, this->_zeta);
-            this->_long_range_couplings(0) = this->_initiate_avalanche? 1.0 : std::pow(this->_alfa, u_j);
-            for (int j = 1; j < this->num_of_spins; j++){
-                int pos = j + 1 - (int)this->_initiate_avalanche; // if initiate avalanche next coupling alfa, not alfa^2
-                double u_j = pos + disorder_generator.uniform_dist<double>(-this->_zeta, this->_zeta);
-                this->_long_range_couplings(j) = std::pow(this->_alfa, u_j);
-            }
-        } else {
+        
+        if( std::abs(this->_alfa - 1) < 1e-10){
             this->_long_range_couplings = arma::vec(this->num_of_spins, arma::fill::ones);
             //this->_disorder = arma::sort(this->_disorder, "ascend");
             if constexpr (conf_disorder == 0){
                 auto permut = sort_permutation(this->_disorder, [](const double a, const double b)
                                     { return std::abs(a) < std::abs(b); });
                 apply_permutation(this->_disorder, permut);
+            }
+        } else {
+            double u_j = 1 + disorder_generator.uniform_dist<double>(-this->_zeta, this->_zeta);
+            this->_long_range_couplings(0) = this->_initiate_avalanche? 1.0 : std::pow(this->_alfa, u_j);
+            for (int j = 1; j < this->num_of_spins; j++){
+                int pos = j + 1 - (int)this->_initiate_avalanche; // if initiate avalanche next coupling alfa, not alfa^2
+                double u_j = pos + disorder_generator.uniform_dist<double>(-this->_zeta, this->_zeta);
+                this->_long_range_couplings(j) = std::pow(this->_alfa, u_j);
             }
         }
     }
