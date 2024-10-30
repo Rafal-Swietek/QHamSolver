@@ -238,7 +238,7 @@ void ui::ground_state(){
 	size_t dim = this->ptr_to_model->get_hilbert_size();
 	std::string info = this->set_info();
 
-	u64 dim_cut = 10000;
+	u64 dim_cut = 1000;
 	const size_t size = this->l_steps;
 
 	arma::vec energies(size, arma::fill::zeros);

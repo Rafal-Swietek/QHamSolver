@@ -21,8 +21,8 @@ def order_of_magnitude(a_value):
     
 def info_raw(L, N, J, gamma, zeta, alfa, h, w, ini_ave = 0, use_old = False, scaled_disorder = False):
     wname = "W'" if scaled_disorder else 'w'
-    arr = [J, gamma, zeta, alfa, h, w] if alfa < 1.0 else [J, gamma, alfa, h, w]
-    names = ['J', 'g', 'zeta', 'alfa', 'h', wname] if alfa < 1.0 else ['J', 'g', 'alfa', 'h', wname]
+    arr = [J, gamma, zeta, alfa, h, w] if np.abs(alfa - 1.0) > 1e-10 else [J, gamma, alfa, h, w]
+    names = ['J', 'g', 'zeta', 'alfa', 'h', wname] if np.abs(alfa - 1.0) > 1e-10 else ['J', 'g', 'alfa', 'h', wname]
     info = "_L=%d,N=%d"%(L,N)
     for i, var in enumerate(arr):
         n = order_of_magnitude2(var) if use_old else order_of_magnitude(var)
