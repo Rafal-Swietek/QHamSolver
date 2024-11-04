@@ -184,8 +184,11 @@ void ui::spectrals_other_operators()
 				opmat -= arma::diagmat(opmat);
 				opmat = (opmat + opmat.t()) / 2;
 			}
-			arma::Mat<element_type> mat_elem = V.t() * opmat * V;
-			
+			std::cout << "(Sparse) Hilbert-Schmidt norm of operator " << _op_name << " is ||O||^2=" << arma::trace(opmat * opmat) / dim << std::endl;
+			double _operator_HSnorm = arma::trace(opmat * opmat) / dim;
+			arma::Mat<element_type> mat_elem = V.t() * opmat * V / std::sqrt(_operator_HSnorm);
+			std::cout << "(Dense) Hilbert-Schmidt norm of operator " << _op_name << " is ||O||^2=" << arma::trace(mat_elem * mat_elem) / dim << std::endl;
+
 			arma::vec diag_mat_elem = arma::diagvec(mat_elem);
 
 			std::cout << " - - - - - - finished matrix elements in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
@@ -206,8 +209,9 @@ void ui::spectrals_other_operators()
 				long int E_min = fractions[ii_nu] == 1? 0 : Eav_idx - long(dim * fractions[ii_nu] / 2);
 				long int E_max = fractions[ii_nu] == 1? dim : Eav_idx + long(dim * fractions[ii_nu] / 2);
 				if(fractions[ii_nu] > 2){
-					E_min = Eav_idx - fractions[ii_nu] / 2;
-					E_max = Eav_idx + fractions[ii_nu] / 2;
+					auto xx = std::min(fractions[ii_nu], 0.1 * dim);
+					E_min = Eav_idx - xx / 2;
+					E_max = Eav_idx + xx / 2;
 				}
 				printSeparated(std::cout, "\t", 20, true, dim, fractions[ii_nu], E_min, E_max);
 				double _susc_tmp = 0, _susc_tmp_r = 0, _typ_susc_tmp = 0, cont_er = 0, _wH_tmp = 0, _wH_typ_tmp = 0;
