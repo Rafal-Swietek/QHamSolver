@@ -147,6 +147,7 @@ void ui::make_sim(){
 								std::cout << " - - START NEW ITERATION:\t\t par = "; // simulation end
 								printSeparated(std::cout, "\t", 16, true, this->L_loc, this->J, this->alfa, this->h, this->w, this->gamma);
 								this->reset_model_pointer();
+								ground_state(); continue;
 								agp(); continue;
 
 	const int Ll = this->L;
@@ -249,6 +250,7 @@ void ui::ground_state(){
 	int counter = 0;
 	
 	auto subsystem_sizes = arma::conv_to<arma::Col<int>>::from(arma::linspace(0, this->L, this->L + 1));
+	arma::vec q_ipr_list = {0.5, 1.0, 1.5, 2, 3.0};
 	
 	std::vector<QOps::genOp> permutation_op;
 	for(int LA_idx = 0; LA_idx < subsystem_sizes.size() - 1; LA_idx++)
@@ -343,9 +345,18 @@ void ui::ground_state(){
 		}
 
 		const arma::vec E = this->ptr_to_model->get_eigenvalues().rows(0, 1);
+
+		const arma::mat _grain = this->ptr_to_model->get_model_ref().get_grain();
+		const auto _neighs = this->ptr_to_model->get_model_ref().get_neighs();
+		const arma::vec _disorder = this->ptr_to_model->get_model_ref().get_disorder();
+		const arma::vec _interaction = this->ptr_to_model->get_model_ref().get_interaction();
 		std::cout << " - - - - - - finished diagonalization in : " << tim_s(start) << " s for realis = " << realis << " - - - - - - " << std::endl; // simulation end
 		start = std::chrono::system_clock::now();
 
+		arma::vec Pq_GS(q_ipr_list.size(), arma::fill::zeros);
+		arma::vec Sq_GS(q_ipr_list.size(), arma::fill::zeros);
+		arma::vec Pq_EX(q_ipr_list.size(), arma::fill::zeros);
+		arma::vec Sq_EX(q_ipr_list.size(), arma::fill::zeros);
 		arma::vec S_GS(subsystem_sizes.size(), arma::fill::zeros);
 		arma::vec S_EX = S_GS;
 		arma::vec S_site_GS = S_GS;
@@ -358,7 +369,8 @@ void ui::ground_state(){
 		
 		arma::Col<element_type> state_GS = arma::normalise(this->ptr_to_model->get_eigenState(0));
 		arma::Col<element_type> state_excited = arma::normalise(this->ptr_to_model->get_eigenState(1));
-
+	
+	#pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
 		for(int LA_idx = 0; LA_idx < subsystem_sizes.size() - 1; LA_idx++)
 		{	
 			auto start_LA = std::chrono::system_clock::now();
@@ -375,6 +387,44 @@ void ui::ground_state(){
 			std::cout << " - - - - - - Finished Entropies for LA = " << LA << " in : " << tim_s(start_LA) << " s - - - - - - " << std::endl;
 		}
 		std::cout << " - - - - - - finished all entropies in : " << tim_s(start) << " s for realis = " << realis << " - - - - - - " << std::endl; // simulation end
+		start = std::chrono::system_clock::now();
+	
+	#pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
+		for(int iq = 0; iq < q_ipr_list.size(); iq++)
+		{
+			if(q_ipr_list(iq) == 1)
+			{
+				double _pr_GS = 0, _pr_EX = 0;
+			// #pragma omp parallel for reduction(+: _pr_)
+				for (int n = 0; n < state_GS.size(); n++) {
+					double value = std::abs(std::conj(state_GS(n)) * state_GS(n));
+					_pr_GS += (std::abs(value) > 0) ? -value * std::log(value) : 0;
+
+					value = std::abs(std::conj(state_excited(n)) * state_excited(n));
+					_pr_EX += (std::abs(value) > 0) ? -value * std::log(value) : 0;
+				}
+				Pq_GS(iq) = arma::norm(state_GS);
+				Sq_GS(iq) = _pr_GS;
+
+				Pq_EX(iq) = arma::norm(state_excited);
+				Sq_EX(iq) = _pr_EX;
+			} else {
+				double _pr_GS = 0, _pr_EX = 0;
+				for (int n = 0; n < N; n++) {
+					double value = std::abs(std::conj(state_GS(n)) * state_GS(n));
+					_pr_GS += std::pow(value, q_ipr_list(iq));
+					
+					value = std::abs(std::conj(state_excited(n)) * state_excited(n));
+					_pr_EX += std::pow(value, q_ipr_list(iq));
+				}
+				Pq_GS(iq) = _pr_GS;
+				Sq_GS(iq) = -std::log(_pr_GS) / (1 - q_ipr_list(iq));
+
+				Pq_EX(iq) = _pr_EX;
+				Sq_EX(iq) = -std::log(_pr_EX) / (1 - q_ipr_list(iq));
+			}
+		}
+		std::cout << " - - - - - - finished all participation_ratios in : " << tim_s(start) << " s for realis = " << realis << " - - - - - - " << std::endl; // simulation end
 		start = std::chrono::system_clock::now();
 		
 		arma::vec Sx_GS(this->L, arma::fill::zeros);
@@ -438,27 +488,39 @@ void ui::ground_state(){
 			std::string dir_realis = dir + "realisation=" + std::to_string(this->jobid + realis) + kPSep;
 			createDirs(dir_realis);
 			E.save(arma::hdf5_name(dir_realis + info + ".hdf5", "energies"));
-			S_GS.save(arma::hdf5_name(dir_realis + info + ".hdf5", "entropy GS", arma::hdf5_opts::append));
-			S_site_GS.save(arma::hdf5_name(dir_realis + info + ".hdf5", "single_site_entropy GS", arma::hdf5_opts::append));
-			S_EX.save(arma::hdf5_name(dir_realis + info + ".hdf5", "entropy excited", arma::hdf5_opts::append));
-			S_site_EX.save(arma::hdf5_name(dir_realis + info + ".hdf5", "single_site_entropy excited", arma::hdf5_opts::append));
-			subsystem_sizes.save(arma::hdf5_name(dir_realis + info + ".hdf5", "subsystem sizes", arma::hdf5_opts::append));
 
-			Sx_GS.save(arma::hdf5_name(dir_realis + info + ".hdf5", "Sx GS", arma::hdf5_opts::append));
-			Sy_GS.save(arma::hdf5_name(dir_realis + info + ".hdf5", "Sy GS", arma::hdf5_opts::append));
-			Sz_GS.save(arma::hdf5_name(dir_realis + info + ".hdf5", "Sz GS", arma::hdf5_opts::append));
+			_grain.save(arma::hdf5_name(dir_realis + info + ".hdf5", "MODEL/grain", arma::hdf5_opts::append));
+			_neighs.save(arma::hdf5_name(dir_realis + info + ".hdf5", "MODEL/neighbours", arma::hdf5_opts::append));
+			_disorder.save(arma::hdf5_name(dir_realis + info + ".hdf5", "MODEL/disorder", arma::hdf5_opts::append));
+			_interaction.save(arma::hdf5_name(dir_realis + info + ".hdf5", "MODEL/interaction", arma::hdf5_opts::append));
 
-			Sx_EX.save(arma::hdf5_name(dir_realis + info + ".hdf5", "Sx excited", arma::hdf5_opts::append));
-			Sy_EX.save(arma::hdf5_name(dir_realis + info + ".hdf5", "Sy excited", arma::hdf5_opts::append));
-			Sz_EX.save(arma::hdf5_name(dir_realis + info + ".hdf5", "Sz excited", arma::hdf5_opts::append));
+			S_GS.save(arma::hdf5_name(dir_realis + info + ".hdf5", "ENTANGLEMENT/entropy GS", arma::hdf5_opts::append));
+			S_site_GS.save(arma::hdf5_name(dir_realis + info + ".hdf5", "ENTANGLEMENT/single_site_entropy GS", arma::hdf5_opts::append));
+			S_EX.save(arma::hdf5_name(dir_realis + info + ".hdf5", "ENTANGLEMENT/entropy excited", arma::hdf5_opts::append));
+			S_site_EX.save(arma::hdf5_name(dir_realis + info + ".hdf5", "ENTANGLEMENT/single_site_entropy excited", arma::hdf5_opts::append));
+			subsystem_sizes.save(arma::hdf5_name(dir_realis + info + ".hdf5", "ENTANGLEMENT/subsystem sizes", arma::hdf5_opts::append));
 
-			SxSx_GS.save(arma::hdf5_name(dir_realis + info + ".hdf5", "SxSx GS", arma::hdf5_opts::append));
-			SySy_GS.save(arma::hdf5_name(dir_realis + info + ".hdf5", "SySy GS", arma::hdf5_opts::append));
-			SzSz_GS.save(arma::hdf5_name(dir_realis + info + ".hdf5", "SzSz GS", arma::hdf5_opts::append));
+			Pq_GS.save(arma::hdf5_name(dir_realis + info + ".hdf5", "FRACTALITY/participation_ratio GS", arma::hdf5_opts::append));
+			Sq_GS.save(arma::hdf5_name(dir_realis + info + ".hdf5", "FRACTALITY/information_entropy GS", arma::hdf5_opts::append));
+			Pq_EX.save(arma::hdf5_name(dir_realis + info + ".hdf5", "FRACTALITY/participation_ratio excited", arma::hdf5_opts::append));
+			Sq_EX.save(arma::hdf5_name(dir_realis + info + ".hdf5", "FRACTALITY/information_entropy excited", arma::hdf5_opts::append));
+			q_ipr_list.save(arma::hdf5_name(dir_realis + info + ".hdf5", "FRACTALITY/qs", arma::hdf5_opts::append));
 
-			SxSx_EX.save(arma::hdf5_name(dir_realis + info + ".hdf5", "SxSx excited", arma::hdf5_opts::append));
-			SySy_EX.save(arma::hdf5_name(dir_realis + info + ".hdf5", "SySy excited", arma::hdf5_opts::append));
-			SzSz_EX.save(arma::hdf5_name(dir_realis + info + ".hdf5", "SzSz excited", arma::hdf5_opts::append));
+			Sx_GS.save(arma::hdf5_name(dir_realis + info + ".hdf5", "SPIN_EXP_VAL/Sx GS", arma::hdf5_opts::append));
+			Sy_GS.save(arma::hdf5_name(dir_realis + info + ".hdf5", "SPIN_EXP_VAL/Sy GS", arma::hdf5_opts::append));
+			Sz_GS.save(arma::hdf5_name(dir_realis + info + ".hdf5", "SPIN_EXP_VAL/Sz GS", arma::hdf5_opts::append));
+
+			Sx_EX.save(arma::hdf5_name(dir_realis + info + ".hdf5", "SPIN_EXP_VAL/Sx excited", arma::hdf5_opts::append));
+			Sy_EX.save(arma::hdf5_name(dir_realis + info + ".hdf5", "SPIN_EXP_VAL/Sy excited", arma::hdf5_opts::append));
+			Sz_EX.save(arma::hdf5_name(dir_realis + info + ".hdf5", "SPIN_EXP_VAL/Sz excited", arma::hdf5_opts::append));
+
+			SxSx_GS.save(arma::hdf5_name(dir_realis + info + ".hdf5", "CORRELATORS/SxSx GS", arma::hdf5_opts::append));
+			SySy_GS.save(arma::hdf5_name(dir_realis + info + ".hdf5", "CORRELATORS/SySy GS", arma::hdf5_opts::append));
+			SzSz_GS.save(arma::hdf5_name(dir_realis + info + ".hdf5", "CORRELATORS/SzSz GS", arma::hdf5_opts::append));
+
+			SxSx_EX.save(arma::hdf5_name(dir_realis + info + ".hdf5", "CORRELATORS/SxSx excited", arma::hdf5_opts::append));
+			SySy_EX.save(arma::hdf5_name(dir_realis + info + ".hdf5", "CORRELATORS/SySy excited", arma::hdf5_opts::append));
+			SzSz_EX.save(arma::hdf5_name(dir_realis + info + ".hdf5", "CORRELATORS/SzSz excited", arma::hdf5_opts::append));
 		}
 		
 		std::cout << " - - - - - - finished realisation realis = " << realis << " in : " << tim_s(start_re) << " s - - - - - - " << std::endl; // simulation end

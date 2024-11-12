@@ -312,19 +312,31 @@ _type simpson_rule(const arma::vec& x, const arma::Col<_type>& f){
 		h(i) = x(i + 1) - x(i);
 	
 	_type sum = _type(0.0);
+	for(int i = 1; i < N; i++){
+		double h0 = h(i-1), h1 = h(i);
+		double hph = h1 + h0, hdh = h1 / h0, hmh = h1 * h0;
+		sum += (hph / 6) * ( (2 - hdh) * f(i - 1) + (hph * hph / hmh) * f(i) + (2 - 1 / hdh) * f(i + 1) );
+	}
+	if( N % 2 == 1 ){
+        double h0 = h(N - 2);
+		double h1 = h(N - 1);
+        sum += f(N)     * (2 * h1 * h1 + 3 * h0 * h1) / (6 * (h0 + h1));
+        sum += f(N - 1) * (h1 * h1 + 3 * h1 * h0)     / (6 * h0);
+        sum -= f(N - 2) * h1 * h1 * h1                / (6 * h0 * (h0 + h1));
+	}
 //#pragma omp parallel for reduction(+: sum)
-	for (int i = 0; i <= N / 2 - 1; i++) {
-		_type a = 2 - h(2 * i + 1) / h(2 * i);
-		_type b = (h(2 * i) + h(2 * i + 1)) * (h(2 * i) + h(2 * i + 1)) / (h(2 * i) * h(2 * i + 1));
-		_type c = 2 - h(2 * i) / h(2 * i + 1);
-		sum += (h(2 * i) + h(2 * i + 1)) / 6.0 * (a * f(2 * i) + b * f(2 * i + 1) + c * f(2 * i + 2));
-	}
+	// for (int i = 0; i <= N / 2 - 1; i++) {
+	// 	_type a = 2 - h(2 * i + 1) / h(2 * i);
+	// 	_type b = (h(2 * i) + h(2 * i + 1)) * (h(2 * i) + h(2 * i + 1)) / (h(2 * i) * h(2 * i + 1));
+	// 	_type c = 2 - h(2 * i) / h(2 * i + 1);
+	// 	sum += (h(2 * i) + h(2 * i + 1)) / 6.0 * (a * f(2 * i) + b * f(2 * i + 1) + c * f(2 * i + 2));
+	// }
 
-	if (N % 2 == 0) {
-		_type a = (2 * h(N - 1) * h(N - 1)  + 3 * h(N - 1) * h(N - 2)) / (6 * (h(N - 2) + h(N - 1)));
-		_type b = (	h(N - 1) * h(N - 1) 	+ 3 * h(N - 1) * h(N - 2)) / (6 *  h(N - 2));
-		_type c = (	h(N - 1) * h(N - 1) * h(N - 1)				 	 ) / (6 *  h(N - 2) * (h(N - 2) + h(N - 1)));
-	}
+	// if (N % 2 == 0) {
+	// 	_type a = (2 * h(N - 1) * h(N - 1)  + 3 * h(N - 1) * h(N - 2)) / (6 * (h(N - 2) + h(N - 1)));
+	// 	_type b = (	h(N - 1) * h(N - 1) 	+ 3 * h(N - 1) * h(N - 2)) / (6 *  h(N - 2));
+	// 	_type c = (	h(N - 1) * h(N - 1) * h(N - 1)				 	 ) / (6 *  h(N - 2) * (h(N - 2) + h(N - 1)));
+	// }
 	return sum;
 }
 double binder_cumulant(const arma::vec& arr_in);														// calculate binder cumulant of dataset

@@ -135,7 +135,7 @@ namespace QHS{
     double QHamSolver<Hamiltonian>::diag_lanczos(int Nev, double tol, int seed)
     {
         auto Hamil = this->H.get_hamiltonian();
-        auto lancz = lanczos::Lanczos<_ty, converge::states>(Hamil, 2, 10000, 1e-14, seed, 1);        
+        auto lancz = lanczos::Lanczos<_ty, converge::energies>(Hamil, 2, 10000, 1e-15, seed, 1);
         lancz.diagonalization();
         this->eigenvalues = lancz.get_eigenvalues();
         this->eigenvectors = lancz.get_eigenstates();

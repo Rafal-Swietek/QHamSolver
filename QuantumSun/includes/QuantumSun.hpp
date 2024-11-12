@@ -22,6 +22,8 @@ private:
     
     arma::vec _long_range_couplings;        // random coupling, i.e. distance of spins to grain
     arma::vec _disorder;                    // disorder array on Z field
+    arma::Col<arma::s32> random_neigh;      // random neighbor
+    arma::mat H_grain;                      // hamiltonian of the grain
     
     ENSEMBLE grain;                         // ergodic grain drawn from some ensemble
 
@@ -71,6 +73,13 @@ public:
     //<! ----------------------------------------------------- OVERRIDEN OPERATORS
     virtual std::ostream& write(std::ostream&) const override;
     virtual std::istream& read(std::istream&) override;
+
+
+    //<! ----------------------------------------------------- GETTERS
+    auto get_grain()	    const { return this->H_grain; }		            // get grain matrix
+    auto get_neighs()	    const { return this->random_neigh; }		    // get random neighbours
+    auto get_disorder()	    const { return this->_disorder; }		        // get disorder array
+    auto get_interaction()	const { return this->_long_range_couplings; }   // get interaction array
 };
 
 #endif

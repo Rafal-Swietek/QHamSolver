@@ -88,13 +88,13 @@ void QuantumSun::create_hamiltonian()
     std::cout << "AAAAA: " << this->_disorder.t() << std::endl;
 	
     /* Create random neighbours for coupling hamiltonian */
-    auto random_neigh = this->neighbor_generator.uniform(this->num_of_spins, 0, this->grain_size - 1);
+    this->random_neigh = this->neighbor_generator.uniform(this->num_of_spins, 0, this->grain_size - 1);
 
 	/* Create GOE Matrix */
-	arma::mat H_grain = this->_gamma * this->grain.generate_matrix(dim_erg);
+	this->H_grain = this->_gamma * this->grain.generate_matrix(dim_erg);
     // if(this->_norm_grain)
-    H_grain /= std::sqrt(ULLPOW(this->grain_size) + 1);
-    // H_grain /= arma::trace(H_grain * H_grain) / double(dim_erg);
+    this->H_grain /= std::sqrt(ULLPOW(this->grain_size) + 1);
+    this->H_grain /= arma::trace(this->H_grain * this->H_grain) / double(dim_erg);
 
     /* Create random couplings */
     this->_long_range_couplings = arma::vec(this->num_of_spins, arma::fill::zeros);
@@ -151,7 +151,7 @@ void QuantumSun::create_hamiltonian()
         arma::sp_mat H_loc = arma::kron<arma::sp_mat>(arma::eye<arma::sp_mat>(dim_erg, dim_erg), arma::sp_mat(arma::diagmat(this->_disorder)));
         this->H = this->H + H_loc;
     }
-	this->H = this->H + arma::kron<arma::sp_mat>(arma::sp_mat(H_grain), arma::eye<arma::sp_mat>(dim_loc, dim_loc));
+	this->H = this->H + arma::kron<arma::sp_mat>(arma::sp_mat(this->H_grain), arma::eye<arma::sp_mat>(dim_loc, dim_loc));
 }
 
 
