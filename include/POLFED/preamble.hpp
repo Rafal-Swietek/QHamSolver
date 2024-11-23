@@ -16,7 +16,7 @@ namespace polfed{
         double Emin = E(0);
         double Emax = E(E.size() - 1);
 
-        return std::make_pair(Emin - 1e-14, Emax + 1e-14);
+        return std::make_pair(Emin - 1e-2, Emax + 1e-2);
 	}
 
     /// @brief Find exterior eigenenergies for class Hamiltonina to rescale
@@ -34,7 +34,7 @@ namespace polfed{
         double Emin = E(0);
         double Emax = E(E.size() - 1);
         steps = lancz.get_lanczossteps();
-        return std::make_pair(Emin - 1e-14, Emax + 1e-14);
+        return std::make_pair(Emin - 1e-2, Emax + 1e-2);
 	}
 
     /// @brief Find order of polynomial

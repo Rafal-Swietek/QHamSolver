@@ -165,7 +165,7 @@ namespace QHS{
     double QHamSolver<Hamiltonian>::diag_sparse(int Nev, int s, double tol, int seed)
     {
         auto Hamil = this->H.get_hamiltonian();
-        auto polfed = polfed::POLFED<QHamSolver::_ty>(Hamil, Nev, s, -1, tol, 0.2, seed, true);
+        auto polfed = polfed::POLFED<QHamSolver::_ty>(Hamil, Nev, s, -1, tol, 0.25, seed, true);
         auto [E, V] = polfed.eig();
         auto indices = arma::sort_index(E);
         this->eigenvalues = E( indices );

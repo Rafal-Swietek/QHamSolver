@@ -385,8 +385,9 @@ void ui::spectral_function()
 	U1Hilbert _hilbert_space = this->ptr_to_model->get_model_ref().get_hilbert_space();
 
 	std::string info = this->set_info();
-
-	const size_t size = dim > 1e5? this->l_steps : dim;
+	
+	const u64 dim_max = 1e3;
+	const size_t size = dim > dim_max? this->l_steps : dim;
 
 	arma::vec energies(size, arma::fill::zeros);
 
@@ -409,8 +410,9 @@ void ui::spectral_function()
 			this->ptr_to_model->generate_hamiltonian();
 		
 		clk::time_point start = std::chrono::system_clock::now();
-		if(dim > 1e5){
-			this->ptr_to_model->diag_sparse(this->l_steps, this->l_bundle, this->tol, this->seed);	
+		if(dim > dim_max){
+			double error = this->ptr_to_model->diag_sparse(this->l_steps, this->l_bundle, this->tol, this->seed);
+			if( error > 1e-10 ) { std::cout << "POLFED FAILED: Maximal Error = " << error << std::endl; continue; }
 		}
 		else{
         	this->ptr_to_model->diagonalization();
@@ -461,10 +463,23 @@ void ui::spectral_function()
 			arma::Mat<element_type> _spectral_fun_typ(omegax.size()-1, energy_density.size(), arma::fill::zeros);
 			arma::Mat<element_type> _element_count(omegax.size()-1, energy_density.size(), arma::fill::zeros);
 			
-			const double bandwidth = E(E.size() - 1) - E(0);	
+			double bandwidth, E0;
+			if(dim > dim_max){
+				auto Hamil = this->ptr_to_model->get_hamiltonian();
+				auto lancz = lanczos::Lanczos<element_type, converge::energies>(Hamil, 1, 10000, 1e-15, this->seed, 1);
+				lancz.diagonalization();
+				arma::vec ener = lancz.get_eigenvalues();
+				E0 = ener(0);
+				bandwidth = ener(ener.size()-1) - E0;
+			} else{
+				E0 = E(0);
+				bandwidth = E(E.size() - 1) - E(0);	
+			}
+			std::cout << " - - - - - - dE = " << bandwidth << std::endl;
 			for(int ii = 0; ii < energy_density.size(); ii++){
 				const double eps = energy_density(ii);
-				const double energyx = eps * bandwidth + E(0);
+				const double energyx = eps * bandwidth + E0;
+				std::cout << " - - - - - - E = " << energyx << std::endl;
 				spectrals::preset_omega set_omega(E, window_width, energyx);
 				arma::vec omegas_i, matter;
 				std::tie(omegas_i, matter) = set_omega.get_matrix_elements(mat_elem);
@@ -481,7 +496,7 @@ void ui::spectral_function()
 					if(indices.size() > 1){
 						arma::vec x = arma::vec( omegas_i.elem(indices) );
 						arma::vec y = arma::vec( matter.elem(indices) );
-						_integrated_spectral_fun(k, ii) = simpson_rule(x, y);
+						_integrated_spectral_fun(k, ii) = arma::accu(y);
 					}
 				}
 			}

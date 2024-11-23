@@ -149,7 +149,7 @@ void user_interface<Hamiltonian>::set_default(){
 	this->l_maxiter = 1000;
 	this->l_steps = 100;
 	this->l_realis = 1;
-	this->l_bundle = 5;
+	this->l_bundle = this->thread_number;
 	this->mem_ver_perf = false;
 	this->reorthogonalize = true;
 
