@@ -14,10 +14,10 @@ namespace lattice{
         /// @brief 
         /// @param size 
         /// @param periodic_bound_cond Use periodic boundary conditions
-        lattice1D(site_type size, bool periodic_bound_cond = false)
+        lattice1D(site_type size, bool _bound_cond)
         {
             this->L = size;
-            this->boundary_condition = !periodic_bound_cond;
+            this->boundary_condition = _bound_cond;
             this->volume = this->L;
         };
 
