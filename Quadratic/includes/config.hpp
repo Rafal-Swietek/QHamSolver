@@ -8,12 +8,12 @@
 #define CONFIG 2
 
 #ifndef DIM
-    #define DIM 1
+    #define DIM 4
 #endif
 
 
 #ifndef MODEL
-    #define MODEL 5
+    #define MODEL 0
 #endif
 
 //------------------- Translate Macro

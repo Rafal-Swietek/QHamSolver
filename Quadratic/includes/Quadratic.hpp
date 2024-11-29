@@ -21,7 +21,7 @@ class Quadratic :
 
     //<! ----------------------------------------------------- MODEL PARAMETERS
 private:
-    lattice_type _lattice;                  // lattice of system (cubic by default)
+    lattice::hypercubic _lattice;           // lattice of system (cubic by default)
     disorder<double> disorder_generator;    // generator for random disorder and couplings
     #ifdef PLRB
         rmt::uniform_ensemble random_matrix;    // generator of uniform random matrices
@@ -41,9 +41,12 @@ private:
     //<! ----------------------------------------------------- INITIALIZE MODEL
     virtual void init() override
     {   
-        // initialize lattice
-        this->_lattice = lattice_type(this->system_size, this->_boundary_condition);
-        this->dim = this->_lattice.volume;
+        this->_lattice = lattice::hypercubic(this->system_size, this->_boundary_condition, DIM);//lattice_type(this->system_size, !this->_boundary_condition);
+        #if defined(RP) || defined(SYK) || defined(PLRB)
+            this->dim = ULLPOW(this->L);
+        #else
+            this->dim = this->_lattice.volume;
+        #endif
 
         // initialize disorder
         this->disorder_generator = disorder<double>(this->_seed);
