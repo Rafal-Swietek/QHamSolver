@@ -109,7 +109,7 @@ namespace lattice
             const
         {
             std::vector<site_type> neis;
-            std::cout << coordinates.t();
+            _extra_debug(  std::cout << coordinates.t(); )
             for(int d = 0; d < this->_dim; d++)
             {
                 arma::uvec coords_neigh = coordinates;
