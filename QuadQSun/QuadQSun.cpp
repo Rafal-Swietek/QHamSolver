@@ -86,7 +86,8 @@ void QuadQSun::create_hamiltonian()
     this->_long_range_couplings = arma::vec(this->num_of_spins, arma::fill::zeros);
     if(this->_alfa > 0){
         
-        if( std::abs(this->_alfa - 0) < 1e-10){
+        if( std::abs(this->_alfa - 0) < 1e-10)
+        {
             this->_long_range_couplings = arma::vec(this->num_of_spins, arma::fill::ones);
             //this->_disorder = arma::sort(this->_disorder, "ascend");
             {
@@ -96,7 +97,8 @@ void QuadQSun::create_hamiltonian()
             }
         } else {
             double u_j = 1 + disorder_generator.uniform_dist<double>(-this->_zeta, this->_zeta);
-            this->_long_range_couplings(0) = this->_initiate_avalanche? 1.0 : std::pow(this->_alfa, u_j);
+            // this->_long_range_couplings(0) = this->_initiate_avalanche? 1.0 : std::pow(this->_alfa, u_j);
+            this->_long_range_couplings(0) = this->_initiate_avalanche? 1.0 : 1. / std::pow(u_j, this->_alfa);
             for (int j = 1; j < this->num_of_spins; j++){
                 int pos = j + 1 - (int)this->_initiate_avalanche; // if initiate avalanche next coupling alfa, not alfa^2
                 double u_j = pos + disorder_generator.uniform_dist<double>(-this->_zeta, this->_zeta);
