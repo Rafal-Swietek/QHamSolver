@@ -105,7 +105,7 @@ void user_interface_dis<Hamiltonian>::spectral_form_factor(){
 		std::string prefix = "realisation=" + std::to_string(realis + this->jobid) + kPSep;
 		// if(realis > 0)
 		// 	this->ptr_to_model->generate_hamiltonian();
-		arma::vec eigenvalues = this->get_eigenvalues(prefix, true);
+		arma::vec eigenvalues = this->get_eigenvalues(prefix, false);
 		
 		
 		if(this->fun == 1) std::cout << "\t\t	--> finished loading eigenvalues for " << prefix + info << " - in time : " << tim_s(start) << "s" << std::endl;
