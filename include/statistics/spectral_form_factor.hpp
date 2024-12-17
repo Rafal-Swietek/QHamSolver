@@ -25,21 +25,25 @@ namespace statistics{
     // }
 
     enum class filters{
-        raw,
-        gauss
+        raw, gauss
+    };
+    enum class ensemble{
+        MC, GC
     };
 
-    template <filters filter_func = filters::gauss>
+    template <filters filter_func = filters::gauss, ensemble _ensemble = ensemble::GC>
     class SFF{
     protected:
         
+        arma::vec filters;
         //<! filter options
         double eta = 0.5;           //!< gaussian filter width
         double stddev = 1.0;        //!< standard deviation of energies
         double mean = 1.0;          //!< mean energy
 
         //<! finite temperature sff
-        double beta = 0.0;          //<! inverse temperature
+        double inv_temperature = 0.0;   //<! inverse temperature
+        double energy_density = 0.0;    //<! target energy density
 
         //<! store normalizations
         double Z = 0;               //<! normalization of unconnected sff
@@ -52,7 +56,9 @@ namespace statistics{
         //<! helper functions
         void get_mean(const arma::vec& energies);
 
-        double _filter_(double E);
+        double _filter_(double E, double E0);
+        void _set_filters_(const arma::vec& energies);
+
         cpx filtered(const arma::vec& energies, double time);
         cpx raw(const arma::vec& energies, double time);
 
@@ -62,8 +68,8 @@ namespace statistics{
         /// @param _eta filter wifth
         /// @param _beta inverse temperature
         /// @param _cut_edges cut spectral edges (5-10 points) due to unfolding?
-        explicit SFF(double _eta, double _beta = 0.0, bool _cut_edges = false)
-            : eta(_eta), beta(_beta), cut_edges(_cut_edges)
+        explicit SFF(double _eta, double _beta = 0.0, double _eps = 0.5, bool _cut_edges = false)
+            : eta(_eta), inv_temperature(_beta), energy_density(_eps), cut_edges(_cut_edges)
             {};
 
         auto calculate(const arma::vec& E, const arma::vec& times) ->  arma::cx_vec;

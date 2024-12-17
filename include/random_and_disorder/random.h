@@ -94,7 +94,7 @@ public:
 	/// @param h width of distribution ( values in [-h, h] )
 	/// @return random vector uniformly distributed
 	template <typename _type>
-	arma::Col<_type> create_random_vec(const uint64_t size, double h) 
+	arma::Col<_type> create_random_vec(const uint64_t size, _type h)
 	{
 		arma::Col<_type> random_vec(size, arma::fill::zeros);
 		for (u64 j = 0; j <= size / 2.; j++) {
@@ -105,7 +105,7 @@ public:
 		}
 		return random_vec;
 	}
-
+	
 	/// @brief Generate Random vector with given distribution
 	/// @tparam _type type of random numbers
 	/// @tparam dist_type template type of distribution (uniform, normal, ...)
@@ -114,7 +114,7 @@ public:
 	/// @param arg2 second argument (max of dist, var, ...) <- distribution dependent
 	/// @return random vector distributed by template distribution
 	template <typename _type, dist dist_type> 
-	arma::Col<_type> create_random_vec(const uint64_t size, _type arg1 = _type(0), _type arg2 = _type(1)) 
+	arma::Col<_type> create_random_vec(const uint64_t size, _type arg1, _type arg2) 
 	{
 		arma::Col<_type> random_vec(size, arma::fill::zeros);
 		for (u64 j = 0; j <= size / 2.; j++) {

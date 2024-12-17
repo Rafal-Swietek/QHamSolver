@@ -50,7 +50,6 @@ void user_interface_dis<Hamiltonian>::diagonalize(){
 /// @tparam Hamiltonian template parameter for current used model
 template <class Hamiltonian>
 void user_interface_dis<Hamiltonian>::spectral_form_factor(){
-	clk::time_point start = std::chrono::system_clock::now();
 	
 	std::string dir = this->saving_dir + "SpectralFormFactor" + kPSep;
 	if(this->beta > 0){
@@ -65,16 +64,34 @@ void user_interface_dis<Hamiltonian>::spectral_form_factor(){
 
 	double r1 = 0.0, r2 = 0.0;
 
-	arma::vec times = arma::logspace(log10(1.0 / (two_pi * dim)), 0.5, this->num_of_points);
+	arma::vec times = arma::logspace(log10(1.0 / (two_pi * dim)), 1, this->num_of_points);
 	arma::vec times_fold(this->num_of_points, arma::fill::zeros);
+	
+	arma::vec etas = arma::regspace(0.1, 0.1, 0.7);
+	arma::vec betas = arma::regspace(0, 0.1, 5);
+	arma::vec energy_densities = arma::regspace(0.02, 0.02, 0.5);
+	
+	arma::mat sff_eps(energy_densities.size(), this->num_of_points, arma::fill::zeros);
+	arma::mat sff_eps_folded(energy_densities.size(), this->num_of_points, arma::fill::zeros);
+	arma::mat sff_beta(betas.size(), this->num_of_points, arma::fill::zeros);
+	arma::mat sff_beta_raw(betas.size(), this->num_of_points, arma::fill::zeros);
+	arma::mat sff_beta_folded(betas.size(), this->num_of_points, arma::fill::zeros);
 
-	arma::vec sff1(this->num_of_points, arma::fill::zeros);
-	arma::vec sff2(this->num_of_points, arma::fill::zeros);
-	arma::vec sff3(this->num_of_points, arma::fill::zeros);
-	arma::vec sff_fold(this->num_of_points, arma::fill::zeros);
-	arma::vec sff_fold2(this->num_of_points, arma::fill::zeros);
+	arma::vec Z_eps(energy_densities.size(), arma::fill::zeros);
+	arma::vec Z_eps_folded(energy_densities.size(), arma::fill::zeros);
+	arma::vec Z_beta(betas.size(), arma::fill::zeros);
+	arma::vec Z_beta_raw(betas.size(), arma::fill::zeros);
+	arma::vec Z_beta_folded(betas.size(), arma::fill::zeros);
+	
 	arma::vec sff_raw(this->num_of_points, arma::fill::zeros);
-	double Z1 = 0.0, Z2 = 0.0, Z3 = 0.0, Z_fold = 0.0, Z_fold2 = 0.0, Z_raw = 0.0;
+	arma::vec sff_raw_folded(this->num_of_points, arma::fill::zeros);
+	double Z_raw = 0.0, Z_raw_folded = 0.0;
+
+	arma::mat sff_eta(etas.size(), this->num_of_points, arma::fill::zeros);
+	arma::vec Z_eta(etas.size(), arma::fill::zeros);
+	arma::mat sff_eta_folded(etas.size(), this->num_of_points, arma::fill::zeros);
+	arma::vec Z_eta_folded(etas.size(), arma::fill::zeros);
+
 	double wH_mean = 0.0;
 	double wH_typ  = 0.0;
 	u64 counter = 0;
@@ -82,19 +99,23 @@ void user_interface_dis<Hamiltonian>::spectral_form_factor(){
 //#pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
 	for(int realis = 0; realis < this->realisations; realis++)
 	{
+		clk::time_point start = std::chrono::system_clock::now();
+		auto start_re = start;
+	
 		std::string prefix = "realisation=" + std::to_string(realis + this->jobid) + kPSep;
 		// if(realis > 0)
 		// 	this->ptr_to_model->generate_hamiltonian();
-		arma::vec eigenvalues = this->get_eigenvalues(prefix);
+		arma::vec eigenvalues = this->get_eigenvalues(prefix, true);
 		
 		
 		if(this->fun == 1) std::cout << "\t\t	--> finished loading eigenvalues for " << prefix + info << " - in time : " << tim_s(start) << "s" << std::endl;
 		if(eigenvalues.empty()) continue;
 		dim = eigenvalues.size();
+		start = std::chrono::system_clock::now();
 
 		u64 E_av_idx = spectrals::get_mean_energy_index(eigenvalues);
-		const u64 num = dim < 1000? 0.25 * dim : 0.5 * dim;
-		const u64 num2 = dim < 1000? 100 : 500;
+		const u64 num = dim / 2;
+		const u64 num2 = std::min( u64(500), dim/10);
 
 		// ------------------------------------- calculate level statistics
 			double r1_tmp = 0, r2_tmp = 0, wH_mean_r = 0, wH_typ_r = 0;
@@ -117,64 +138,106 @@ void user_interface_dis<Hamiltonian>::spectral_form_factor(){
 				count++;
 			}
 			if(this->fun == 1) std::cout << "\t\t	--> finished unfolding for " << prefix + info << " - in time : " << tim_s(start) << "s" << std::endl;
-		
+			start = std::chrono::system_clock::now();
+
 			wH_mean_r /= double(count);
-			r1_tmp /= double(count);
+			r1_tmp /= double(num);
 			r2_tmp /= double(num2);
-			if( !set_folded_times ){
+			if( !set_folded_times )
+			{
 				set_folded_times = 1;
 				double tH_typ_temp = two_pi / std::exp(wH_typ_r / count);
 				double time_end = std::log10(tH_typ_temp);
-				time_end = (time_end / std::log10(tH_typ_temp) < 1.5) ? time_end + 0.3 : time_end;
+				time_end = (time_end / std::log10(tH_typ_temp) < 1.5) ? time_end + 0.8 : time_end;
 				printSeparated(std::cout, "\t", 16, true, tH_typ_temp, time_end);
 				times_fold = arma::logspace(-2.0, time_end, this->num_of_points);
 			}
+
+
+			arma::vec eigenvalues_unfolded = statistics::unfolding(eigenvalues).rows(5, dim - 5);
+			// std::cout << eigenvalues.t();
+			// std::cout << eigenvalues_unfolded.t();
 		// ------------------------------------- calculate sff
-			// statistics::SFF<statistics::filters::raw> _sff_raw(1.0);
-			// auto sff_r_raw = _sff_raw.calculate(eigenvalues, times_fold);
-			// auto [Z_r_raw, _tmp1, _tmp2] = _sff_raw.get_norms();
-
-			// statistics::SFF<statistics::filters::gauss> _sff_filter(0.3);
-			// auto sff_r_folded = _sff_filter.calculate(eigenvalues, times_fold);
-			// auto [Z_r_folded, _tmp3, _tmp4] = _sff_filter.get_norms();
+			statistics::SFF<statistics::filters::raw, statistics::ensemble::GC> SFF_raw(1.0, 0.0);
+			arma::cx_vec x = SFF_raw.calculate(eigenvalues, times_fold);
+			sff_raw_folded += arma::abs(x) % arma::abs(x);
+			Z_raw_folded += std::get<0>(SFF_raw.get_norms());
 			
-			// eigenvalues = statistics::unfolding(eigenvalues);
-			// auto sff_r = _sff_filter.calculate(eigenvalues, times);
-			// auto [Z_r, _tmp5, _tmp6]= _sff_filter.get_norms();
+			statistics::SFF<statistics::filters::raw, statistics::ensemble::GC> SFF_raw2(1.0, 0.0);
+			x = SFF_raw2.calculate(eigenvalues_unfolded, times * two_pi);
+			sff_raw += arma::abs(x) % arma::abs(x);
+			Z_raw += std::get<0>(SFF_raw2.get_norms());
+			
+			if(this->fun == 1) std::cout << "\t\t	--> finished raw SFF for " << prefix + info << " - in time : " << tim_s(start) << "s" << std::endl;
+			start = std::chrono::system_clock::now();
 
-			auto [sff_r_raw, Z_r_raw] = statistics::spectral_form_factor(eigenvalues, times_fold, this->beta, 1.5);
+		// #pragma omp parallel for
+			for(int e_idx = 0; e_idx < etas.size(); e_idx++){
+				statistics::SFF<statistics::filters::gauss, statistics::ensemble::GC> SFF_eta( etas(e_idx) );
+				x = SFF_eta.calculate(eigenvalues_unfolded, times);
+				sff_eta.row(e_idx) += (arma::abs(x) % arma::abs(x)).t();
+				Z_eta(e_idx) += std::get<0>(SFF_eta.get_norms());
 
-			auto [sff_r_folded, Z_r_folded] = statistics::spectral_form_factor(eigenvalues, times_fold, this->beta, 0.3);
-			auto [sff_r_folded2, Z_r_folded2] = statistics::spectral_form_factor(eigenvalues, times_fold, this->beta, 0.5);
-			eigenvalues = statistics::unfolding(eigenvalues);
+				statistics::SFF<statistics::filters::gauss, statistics::ensemble::GC> SFF_eta2( etas(e_idx) );
+				x = SFF_eta2.calculate(eigenvalues, times_fold);
+				sff_eta_folded.row(e_idx) += (arma::abs(x) % arma::abs(x)).t();
+				Z_eta_folded(e_idx) += std::get<0>(SFF_eta2.get_norms());
+			}
 
-			auto [sff1_r, Z1_r] = statistics::spectral_form_factor(eigenvalues, times,this->beta, 0.1);
-			auto [sff2_r, Z2_r] = statistics::spectral_form_factor(eigenvalues, times,this->beta, 0.3);
-			auto [sff3_r, Z3_r] = statistics::spectral_form_factor(eigenvalues, times,this->beta, 0.5);
+			if(this->fun == 1) std::cout << "\t\t	--> finished filtered SFF for " << prefix + info << " - in time : " << tim_s(start) << "s" << std::endl;
+			start = std::chrono::system_clock::now();
+
+		// #pragma omp parallel for
+			for(int e_idx = 0; e_idx < energy_densities.size(); e_idx++)
+			{
+				double epsilon = energy_densities(e_idx);
+				statistics::SFF<statistics::filters::gauss, statistics::ensemble::MC> SFF_MC(0.1, 0.0, epsilon);
+				x = SFF_MC.calculate(eigenvalues_unfolded, times);
+				sff_eps.row(e_idx) += (arma::abs(x) % arma::abs(x)).t();
+				Z_eps(e_idx) += std::get<0>(SFF_MC.get_norms());
+
+				statistics::SFF<statistics::filters::gauss, statistics::ensemble::MC> SFF_MC2(0.1, 0.0, epsilon);
+				x = SFF_MC2.calculate(eigenvalues, times_fold);
+				sff_eps_folded.row(e_idx) += (arma::abs(x) % arma::abs(x)).t();
+				Z_eps_folded(e_idx) += std::get<0>(SFF_MC2.get_norms());
+			}
+
+			if(this->fun == 1) std::cout << "\t\t	--> finished microcanonical SFF for " << prefix + info << " - in time : " << tim_s(start) << "s" << std::endl;
+			start = std::chrono::system_clock::now();
+		// #pragma omp parallel for
+			for(int b_idx = 0; b_idx < betas.size(); b_idx++)
+			{
+				double inv_temp = betas(b_idx);
+				statistics::SFF<statistics::filters::raw, statistics::ensemble::GC> SFF_GC(1.0, inv_temp);
+				x = SFF_GC.calculate(eigenvalues, times_fold);
+				sff_beta_raw.row(b_idx) += (arma::abs(x) % arma::abs(x)).t();
+				Z_beta_raw(b_idx) += std::get<0>(SFF_GC.get_norms());
+
+				statistics::SFF<statistics::filters::gauss, statistics::ensemble::GC> SFF_GC2(0.1, inv_temp);
+				x = SFF_GC2.calculate(eigenvalues, times_fold);
+				sff_beta_folded.row(b_idx) += (arma::abs(x) % arma::abs(x)).t();
+				Z_beta_folded(b_idx) += std::get<0>(SFF_GC2.get_norms());
+
+				statistics::SFF<statistics::filters::gauss, statistics::ensemble::GC> SFF_GC3(0.1, inv_temp);
+				x = SFF_GC3.calculate(eigenvalues_unfolded, times);
+				sff_beta.row(b_idx) += (arma::abs(x) % arma::abs(x)).t();
+				Z_beta(b_idx) += std::get<0>(SFF_GC3.get_norms());
+			}
+			
+			if(this->fun == 1) std::cout << "\t\t	--> finished canonical SFF for " << prefix + info << " - in time : " << tim_s(start) << "s" << std::endl;
+			start = std::chrono::system_clock::now();
+
 			#pragma omp critical
 			{
 				r1 += r1_tmp;
 				r2 += r2_tmp;
 
-				sff_raw += sff_r_raw;
-				Z_raw += Z_r_raw;
-				sff1 += sff1_r;
-				sff2 += sff2_r;
-				sff3 += sff3_r;
-				Z1 += Z1_r;
-				Z2 += Z2_r;
-				Z3 += Z3_r;
-				sff_fold += sff_r_folded;
-				sff_fold2 += sff_r_folded2;
-				Z_fold += Z_r_folded;
-				Z_fold2 += Z_r_folded2;
-				
 				wH_mean += wH_mean_r;
 				wH_typ  += wH_typ_r / double(count);
 				counter++;
 			}
 			wH_typ_r = std::exp(wH_typ_r / double(count));
-		if(this->fun == 1) std::cout << "\t\t	--> finished realisation for " << prefix + info << " - in time : " << tim_s(start) << "s" << std::endl;
+		if(this->fun == 1) std::cout << "\t\t	--> finished realisation for " << prefix + info << " - in time : " << tim_s(start_re) << "s" << std::endl;
 		
 		//--------- SAVE REALISATION TO FILE
 		// #if !defined(MY_MAC)
@@ -208,31 +271,52 @@ void user_interface_dis<Hamiltonian>::spectral_form_factor(){
 	}
 
 	// --------------------------------------------------------------- AVERAGE CURRENT REALISATIONS
-	if(sff1.is_empty()) return;
-	if(sff1.is_zero()) return;
+	if(sff_beta_raw.is_empty()) return;
+	if(sff_beta_raw.is_zero()) return;
 	if(this->jobid > 0) return;
 	if(counter == 0) return;
+
 	double norm = counter;
 	r1 /= norm;
 	r2 /= norm;
-	sff1 = sff1 / Z1;
-	sff2 = sff2 / Z2;
-	sff3 = sff3 / Z3;
+	for(int e_idx = 0; e_idx < energy_densities.size(); e_idx++){
+		sff_eps.row(e_idx) = sff_eps.row(e_idx) / Z_eps(e_idx);
+		sff_eps_folded.row(e_idx) = sff_eps_folded.row(e_idx) / Z_eps_folded(e_idx);
+	}
+	for(int e_idx = 0; e_idx < etas.size(); e_idx++){
+		sff_eta.row(e_idx) = sff_eta.row(e_idx) / Z_eta(e_idx);
+		sff_eta_folded.row(e_idx) = sff_eta_folded.row(e_idx) / Z_eta_folded(e_idx);
+	}
+	for(int b_idx = 0; b_idx < betas.size(); b_idx++){
+		sff_beta.row(b_idx) = sff_beta.row(b_idx) / Z_beta(b_idx);
+		sff_beta_raw.row(b_idx) = sff_beta_raw.row(b_idx) / Z_beta_raw(b_idx);
+		sff_beta_folded.row(b_idx) = sff_beta_folded.row(b_idx) / Z_beta_folded(b_idx);
+	}
 	sff_raw = sff_raw / Z_raw;
-	sff_fold = sff_fold / Z_fold;
-	sff_fold2 = sff_fold2 / Z_fold2;
+	sff_raw_folded = sff_raw_folded / Z_raw_folded;
 	wH_mean /= norm;
 	wH_typ /= norm;
 
 	// #ifdef MY_MAC
 	times.save(arma::hdf5_name(dir + info + ".hdf5", "times"));
-	sff1.save(arma::hdf5_name(dir + info + ".hdf5", "sff_eta=0.1", arma::hdf5_opts::append));
-	sff2.save(arma::hdf5_name(dir + info + ".hdf5", "sff_eta=0.3", arma::hdf5_opts::append));
-	sff3.save(arma::hdf5_name(dir + info + ".hdf5", "sff_eta=0.5", arma::hdf5_opts::append));
 	times_fold.save(arma::hdf5_name(dir + info + ".hdf5", "times_fold", arma::hdf5_opts::append));
-	sff_fold.save(arma::hdf5_name(dir + info + ".hdf5", "sff_fold", arma::hdf5_opts::append));
-	sff_fold2.save(arma::hdf5_name(dir + info + ".hdf5", "sff_fold2", arma::hdf5_opts::append));
+
+	betas.save(arma::hdf5_name(dir + info + ".hdf5", "betas", arma::hdf5_opts::append));
+	sff_beta.save(arma::hdf5_name(dir + info + ".hdf5", "sff_beta", arma::hdf5_opts::append));
+	sff_beta_raw.save(arma::hdf5_name(dir + info + ".hdf5", "sff_beta_raw", arma::hdf5_opts::append));
+	sff_beta_folded.save(arma::hdf5_name(dir + info + ".hdf5", "sff_beta_folded", arma::hdf5_opts::append));
+
+	energy_densities.save(arma::hdf5_name(dir + info + ".hdf5", "energy_densities", arma::hdf5_opts::append));
+	sff_eps.save(arma::hdf5_name(dir + info + ".hdf5", "sff_eps", arma::hdf5_opts::append));
+	sff_eps_folded.save(arma::hdf5_name(dir + info + ".hdf5", "sff_eps_folded", arma::hdf5_opts::append));
+
+	etas.save(arma::hdf5_name(dir + info + ".hdf5", "etas", arma::hdf5_opts::append));
+	sff_eta.save(arma::hdf5_name(dir + info + ".hdf5", "sff_eta", arma::hdf5_opts::append));
+	sff_eta_folded.save(arma::hdf5_name(dir + info + ".hdf5", "sff_eta_folded", arma::hdf5_opts::append));
+
 	sff_raw.save(arma::hdf5_name(dir + info + ".hdf5", "sff_raw", arma::hdf5_opts::append));
+	sff_raw_folded.save(arma::hdf5_name(dir + info + ".hdf5", "sff_raw_folded", arma::hdf5_opts::append));
+
 	arma::vec({r2}).save(arma::hdf5_name(dir + info + ".hdf5", "r_500", arma::hdf5_opts::append));
 	arma::vec({r1}).save(arma::hdf5_name(dir + info + ".hdf5", "r_D_2", arma::hdf5_opts::append));
 	arma::uvec({dim}).save(arma::hdf5_name(dir + info + ".hdf5", "D", arma::hdf5_opts::append));

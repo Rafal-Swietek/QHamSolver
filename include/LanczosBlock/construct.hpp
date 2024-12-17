@@ -36,7 +36,7 @@ namespace lanczos {
 			this->initial_bundle = arma::Mat<_ty>(this->N, this->bundle_size);
 			for(int s = 0; s < this->bundle_size; s++){
 				// this->initial_bundle(s, s) = 1.0;
-				this->initial_bundle.col(s) = arma::normalise(this->generator.uniform(this->N, _ty(1.0)));
+				this->initial_bundle.col(s) = arma::normalise(this->generator.uniform(this->N, _ty(0.0), _ty(1.0)));
 			}
 		} else { 
 			for(int s = 0; s < this->bundle_size; s++)
@@ -45,6 +45,12 @@ namespace lanczos {
 		if(this->tolerance < 0)
 			this->tolerance = std::abs(tolerance);
 
+		// this->initial_bundle.save(arma::hdf5_name("test_shit.hdf5", "BEFORE/bundle"));
+		
+		// arma::Mat<_ty> Vk, beta;
+		// arma::qr_econ(Vk, beta, this->initial_bundle);
+		// beta.save(arma::hdf5_name("test_shit.hdf5", "BEFORE/beta", arma::hdf5_opts::append));
+		// Vk.save(arma::hdf5_name("test_shit.hdf5", "BEFORE/QR", arma::hdf5_opts::append));
 		//<! Orthogonalize input matrix
 		_extra_debug(
 			std::cout << "V1 Before orthogonalization:\n" << this->initial_bundle.t() * this->initial_bundle << std::endl;
@@ -55,6 +61,11 @@ namespace lanczos {
 		_extra_debug(
 			std::cout << "V1 After orthogonalization:\n" << this->initial_bundle.t() * this->initial_bundle << std::endl;
 		)
+		// this->initial_bundle.save(arma::hdf5_name("test_shit.hdf5", "AFTER/bundle", arma::hdf5_opts::append));
+		
+		// arma::qr_econ(Vk, beta, this->initial_bundle);
+		// beta.save(arma::hdf5_name("test_shit.hdf5", "AFTER/beta", arma::hdf5_opts::append));
+		// Vk.save(arma::hdf5_name("test_shit.hdf5", "AFTER/QR", arma::hdf5_opts::append));
 
 		// if(this->use_full_convergence)	this->matrix_size = this->bundle_size * this->maxiter;
 		// else							this->matrix_size = this->bundle_size * this->lanczos_steps;

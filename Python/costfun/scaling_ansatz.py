@@ -14,6 +14,21 @@ def _rescale_spacing(x, params, idx_par, crit_fun, *args):
     par_crit = crit_fun(params, idx_par, *args)
     return np.sign(x - par_crit) * np.abs(x - par_crit)
 
+def _rescale_fading(x, params, idx_par, crit_fun, nu, *args):
+    """Regular ansatz with power-law on L"""
+    par_crit = crit_fun(params, idx_par, *args)
+    corr_len = 1 / ( 2 * np.log(x / par_crit))
+    return params[idx_par]**(nu) / corr_len
+    # return (x - par_crit) / x * params[idx_par]**(nu)
+
+def _rescale_fading2(x, params, idx_par, crit_fun, nu, *args):
+    """Regular ansatz with power-law on L"""
+    par_crit = crit_fun(params, idx_par, *args)
+    corr_len = 1 / ( 2 * np.abs(np.log(x / par_crit)))**(1/nu) * np.sign( np.log(x / par_crit) )
+    return params[idx_par]**(nu) / corr_len
+    # return (x - par_crit) / x * params[idx_par]**(nu)
+
+
 def _rescale_classic(x, params, idx_par, crit_fun, nu, *args):
     """Regular ansatz with power-law on L"""
     par_crit = crit_fun(params, idx_par, *args)

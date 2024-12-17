@@ -39,7 +39,7 @@ public:
     /// @param _bound values contained in [- _bound, _bound]
     /// @return array with uniform random numbers
     disorder_vec uniform(u64 length, _ty _bound)
-        { return this->template create_random_vec<_ty, dist::uniform>(length, _bound); }
+        { return this->template create_random_vec<_ty>(length, _bound); }
 
     /// @brief Generate random array with uniformly distributed values
     /// @param length size of array
