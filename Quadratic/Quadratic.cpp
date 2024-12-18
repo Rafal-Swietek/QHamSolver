@@ -48,8 +48,9 @@ void Quadratic::create_hamiltonian()
     this->H = sparse_matrix(this->dim, this->dim);
     #ifdef ANDERSON
         if(std::abs(this->_w) < 1e-15) this->_disorder = arma::vec(this->dim, arma::fill::zeros);
-        else this->_disorder = this->disorder_generator.uniform(this->dim, this->_w / 2.);
-        // std::cout << this->_disorder.t() << std::endl;
+        else this->_disorder = this->disorder_generator.uniform(this->dim, -this->_w / 2., this->_w / 2.);
+        // std::cout << this->_disorder << std::endl;
+        // std::cout << "Mean Energy = " << arma::mean(this->_disorder) << std::endl;
         for(long int j = 0; j < this->dim; j++)
         {
             this->H(j, j) = this->_disorder(j);
@@ -57,6 +58,8 @@ void Quadratic::create_hamiltonian()
         
             for(auto& nei : neis){
                 if(nei > 0){
+                    if(j == nei)
+                        std::cout << "NEIGHBOUR IS SAME SITE, FFS..." << std::endl;
                     this->H(j, nei) = this->_J;
                     this->H(nei, j) = this->_J;
                 }

@@ -8,7 +8,7 @@
 #define CONFIG 2
 
 #ifndef DIM
-    #define DIM 4
+    #define DIM 3
 #endif
 
 
