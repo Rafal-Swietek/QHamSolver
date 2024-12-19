@@ -43,7 +43,7 @@ private:
     {   
         this->_lattice = lattice::hypercubic(this->system_size, this->_boundary_condition, DIM);//lattice_type(this->system_size, !this->_boundary_condition);
         #if defined(RP) || defined(SYK) || defined(PLRB)
-            this->dim = ULLPOW(this->L);
+            this->dim = ULLPOW(this->system_size);
         #else
             this->dim = this->_lattice.volume;
         #endif
