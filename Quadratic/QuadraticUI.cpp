@@ -298,7 +298,7 @@ void ui::spectrals_other_operators()
 
 void ui::spectrals()
 {
-	std::string dir = this->saving_dir + "SpectralFunctions" + kPSep;
+	std::string dir = this->saving_dir + "SpectralFunctions2" + kPSep;
 	createDirs(dir);
 	
 	size_t dim = this->ptr_to_model->get_hilbert_size();
@@ -359,6 +359,8 @@ void ui::spectrals()
 		double wH = 0;
 		for (long int i = E_min; i < E_max; i++)
 			wH += E(i+1) - E(i);
+		
+		wH /= double(E_max - E_min);
 
 		start = std::chrono::system_clock::now();
 		// arma::Mat<element_type> mat_elem = V * Sz_ops[i] * V.t();
