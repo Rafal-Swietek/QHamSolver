@@ -41,6 +41,9 @@ void ui::make_sim(){
 	case 8:
 		spectrals_other_operators();
 		break;
+	case 9:
+		total_spin();
+		break;
 	default:
 		#define generate_scaling_array(name) arma::linspace(this->name, this->name + this->name##s * (this->name##n - 1), this->name##n);
 		auto L_list = generate_scaling_array(L);
@@ -103,7 +106,8 @@ void ui::spectrals_other_operators()
 
 	double window_width = 0.04;
 	
-	auto _operator_names = std::vector<std::string>({"Sx_L2", "Sx1_SxL", "Sz1_SzL", "SzL1_SzL", "Sparse_Random"});
+	// auto _operator_names = std::vector<std::string>({"Sx_L2", "Sx1_SxL", "Sz1_SzL", "SzL1_SzL", "Sparse_Random"});
+	auto _operator_names = std::vector<std::string>({"Sx_L2", "Sx1_SxL", "Sz1_SzL", "Sparse_Random"});
 	std::vector<QOps::genOp> _operators;
 	{
 		auto kernel = [Ll](u64 state){ 
@@ -128,14 +132,14 @@ void ui::spectrals_other_operators()
 			};
 		_operators.push_back( QOps::generic_operator<>(this->L, std::move(kernel), 1.0) );
 	}
-	{
-		auto kernel = [Ll](u64 state){ 
-			auto [val1, state_Z] = operators::sigma_z(state, Ll, Ll-1 );
-			auto [val2, state_ZZ] = operators::sigma_z(state_Z, Ll, Ll-2 );
-			return std::make_pair(state_ZZ, val1 * val2);
-			};
-		_operators.push_back( QOps::generic_operator<>(this->L, std::move(kernel), 1.0) );
-	}
+	// {
+	// 	auto kernel = [Ll](u64 state){ 
+	// 		auto [val1, state_Z] = operators::sigma_z(state, Ll, Ll-1 );
+	// 		auto [val2, state_ZZ] = operators::sigma_z(state_Z, Ll, Ll-2 );
+	// 		return std::make_pair(state_ZZ, val1 * val2);
+	// 		};
+	// 	_operators.push_back( QOps::generic_operator<>(this->L, std::move(kernel), 1.0) );
+	// }
 
 // #pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
 	for(int realis = 0; realis < this->realisations; realis++)
@@ -371,6 +375,9 @@ void ui::spectrals()
 		auto _operator = QOps::generic_operator<>(this->L, std::move(kernel), 1.0);
 		arma::sp_mat opmat = arma::real(_operator.to_matrix(dim));
 		arma::Mat<element_type> mat_elem = V.t() * opmat * V;
+		// std::cout << mat_elem << std::endl;
+		// arma::mat xx = arma::abs(mat_elem);
+		// xx.save(   arma::hdf5_name("MAT_ELEM" + info + ".hdf5", "mat_elem"));
 		std::cout << " - - - - - - finished matrix elements in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
 		start = std::chrono::system_clock::now();
 
@@ -582,6 +589,9 @@ void ui::quench()
 	}
 }
 
+void ui::total_spin(){
+	
+}
 
 // -------------------------------------------------------------------------------------------------------------------------------------
 // ---------------------------------------------------------------------------------------------------------------- IMPLEMENTATION OF UI
