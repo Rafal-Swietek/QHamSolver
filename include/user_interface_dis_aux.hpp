@@ -70,7 +70,11 @@ void user_interface_dis<Hamiltonian>::spectral_form_factor(){
 	arma::vec etas = arma::regspace(0.1, 0.1, 0.7);
 	arma::vec betas = arma::regspace(0, 0.1, 5);
 	arma::vec energy_densities = arma::regspace(0.02, 0.02, 0.5);
-	
+	arma::vec gap_ratio(energy_densities.size(), arma::fill::zeros);
+	arma::vec wH_density(energy_densities.size(), arma::fill::zeros);
+	arma::vec wH_typ_density(energy_densities.size(), arma::fill::zeros);
+
+
 	arma::mat sff_eps(energy_densities.size(), this->num_of_points, arma::fill::zeros);
 	arma::mat sff_eps_folded(energy_densities.size(), this->num_of_points, arma::fill::zeros);
 	arma::mat sff_beta(betas.size(), this->num_of_points, arma::fill::zeros);
@@ -111,6 +115,11 @@ void user_interface_dis<Hamiltonian>::spectral_form_factor(){
 		if(this->fun == 1) std::cout << "\t\t	--> finished loading eigenvalues for " << prefix + info << " - in time : " << tim_s(start) << "s" << std::endl;
 		if(eigenvalues.empty()) continue;
 		dim = eigenvalues.size();
+		const double dE = eigenvalues(dim - 1) - eigenvalues(0);
+		const double E0 = eigenvalues(0);
+		const arma::vec gaps = arma::diff(eigenvalues);
+		arma::vec _gap_ratios_ = arma::min( gaps.rows(0,dim-3), gaps.rows(1,dim-2)) / arma::max( gaps.rows(0,dim-3), gaps.rows(1,dim-2));
+
 		start = std::chrono::system_clock::now();
 
 		u64 E_av_idx = spectrals::get_mean_energy_index(eigenvalues);
@@ -172,7 +181,8 @@ void user_interface_dis<Hamiltonian>::spectral_form_factor(){
 			start = std::chrono::system_clock::now();
 
 		// #pragma omp parallel for
-			for(int e_idx = 0; e_idx < etas.size(); e_idx++){
+			for(int e_idx = 0; e_idx < etas.size(); e_idx++)
+			{
 				statistics::SFF<statistics::filters::gauss, statistics::ensemble::GC> SFF_eta( etas(e_idx) );
 				x = SFF_eta.calculate(eigenvalues_unfolded, times);
 				sff_eta.row(e_idx) += (arma::abs(x) % arma::abs(x)).t();
@@ -200,6 +210,20 @@ void user_interface_dis<Hamiltonian>::spectral_form_factor(){
 				x = SFF_MC2.calculate(eigenvalues, times_fold);
 				sff_eps_folded.row(e_idx) += (arma::abs(x) % arma::abs(x)).t();
 				Z_eps_folded(e_idx) += std::get<0>(SFF_MC2.get_norms());
+				
+				u64 idx1 = arma::uvec( arma::sort_index( arma::vec(arma::abs( (eigenvalues - E0) / dE - (epsilon - 0.01))) ))(0);
+				u64 idx2 = arma::uvec( arma::sort_index( arma::vec(arma::abs( (eigenvalues - E0) / dE - (epsilon + 0.01))) ))(0);
+				if(idx2 - idx1 < 2){
+					idx1 -= 5;
+					idx2 += 5;
+				}
+				if(idx1 < 0 || idx1 > dim) idx1 = 0;
+				if(idx2 > dim-3) idx2 = dim-3;
+				// printSeparated(std::cout, "\t", 12, true, "IDX:=", idx1, idx2, dim);
+
+                gap_ratio(e_idx) += arma::mean( _gap_ratios_.rows(idx1, idx2) );
+				wH_density(e_idx) += arma::mean( gaps.rows(idx1, idx2) );
+				wH_typ_density(e_idx) += std::exp( arma::mean( arma::log(gaps.rows(idx1, idx2) )) );
 			}
 
 			if(this->fun == 1) std::cout << "\t\t	--> finished microcanonical SFF for " << prefix + info << " - in time : " << tim_s(start) << "s" << std::endl;
@@ -237,7 +261,7 @@ void user_interface_dis<Hamiltonian>::spectral_form_factor(){
 				counter++;
 			}
 			wH_typ_r = std::exp(wH_typ_r / double(count));
-		if(this->fun == 1) std::cout << "\t\t	--> finished realisation for " << prefix + info << " - in time : " << tim_s(start_re) << "s" << std::endl;
+		if(this->fun == 1) std::cout << "--> finished realisation for " << prefix + info << " - in time : " << tim_s(start_re) << "s" << std::endl << std::endl;
 		
 		//--------- SAVE REALISATION TO FILE
 		// #if !defined(MY_MAC)
@@ -279,6 +303,11 @@ void user_interface_dis<Hamiltonian>::spectral_form_factor(){
 	double norm = counter;
 	r1 /= norm;
 	r2 /= norm;
+
+	gap_ratio /= norm;
+	wH_density /= norm;
+	wH_typ_density /= norm;
+
 	for(int e_idx = 0; e_idx < energy_densities.size(); e_idx++){
 		sff_eps.row(e_idx) = sff_eps.row(e_idx) / Z_eps(e_idx);
 		sff_eps_folded.row(e_idx) = sff_eps_folded.row(e_idx) / Z_eps_folded(e_idx);
@@ -309,6 +338,9 @@ void user_interface_dis<Hamiltonian>::spectral_form_factor(){
 	energy_densities.save(arma::hdf5_name(dir + info + ".hdf5", "energy_densities", arma::hdf5_opts::append));
 	sff_eps.save(arma::hdf5_name(dir + info + ".hdf5", "sff_eps", arma::hdf5_opts::append));
 	sff_eps_folded.save(arma::hdf5_name(dir + info + ".hdf5", "sff_eps_folded", arma::hdf5_opts::append));
+	gap_ratio.save(arma::hdf5_name(dir + info + ".hdf5", "gap_ratio density", arma::hdf5_opts::append));
+	wH_density.save(arma::hdf5_name(dir + info + ".hdf5", "wH density", arma::hdf5_opts::append));
+	wH_typ_density.save(arma::hdf5_name(dir + info + ".hdf5", "wH_typ density", arma::hdf5_opts::append));
 
 	etas.save(arma::hdf5_name(dir + info + ".hdf5", "etas", arma::hdf5_opts::append));
 	sff_eta.save(arma::hdf5_name(dir + info + ".hdf5", "sff_eta", arma::hdf5_opts::append));
