@@ -79,7 +79,7 @@ void QuadQSun::create_hamiltonian()
 	this->H_grain = this->_gamma * this->grain.generate_matrix(dim_erg);
     // if(this->_norm_grain)
     // this->H_grain /= std::sqrt((this->grain_size) + 1);
-    this->H_grain /= arma::trace(this->H_grain * this->H_grain) / double(dim_erg);
+    this->H_grain /= std::sqrt( arma::trace(this->H_grain * this->H_grain) / double(dim_erg) );
     
     try_realloc_matrix(this->H_grain, dim, dim);
     /* Create random couplings */
