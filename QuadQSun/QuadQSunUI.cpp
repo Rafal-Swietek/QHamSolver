@@ -79,7 +79,7 @@ void ui::make_sim(){
 								this->reset_model_pointer();
 								// ground_state(); continue;
 								// agp(); continue;
-								this->diagonalize();
+								// this->diagonalize();
 								std::cout << "\t\t - - - - - - FINISHED ITERATION IN : " << tim_s(start_loop) << " seconds\n\t\t\t Total time : " << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
 						}}}}}}
         std::cout << "Add default function" << std::endl;

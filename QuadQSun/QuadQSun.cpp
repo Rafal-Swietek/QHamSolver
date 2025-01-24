@@ -79,9 +79,11 @@ void QuadQSun::create_hamiltonian()
 	this->H_grain = this->_gamma * this->grain.generate_matrix(dim_erg);
     // if(this->_norm_grain)
     // this->H_grain /= std::sqrt((this->grain_size) + 1);
-    this->H_grain /= std::sqrt( arma::trace(this->H_grain * this->H_grain) / double(dim_erg) );
     
     try_realloc_matrix(this->H_grain, dim, dim);
+    
+    this->H_grain /= std::sqrt( arma::trace(this->H_grain * this->H_grain) / double(dim) );
+
     /* Create random couplings */
     this->_long_range_couplings = arma::vec(this->num_of_spins, arma::fill::zeros);
     if(this->_alfa > 0){
@@ -133,7 +135,7 @@ void QuadQSun::create_hamiltonian()
     std::cout << " - - - - - - finished Hamiltonian in : " << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
     
 	this->H = this->H + arma::sp_mat(this->H_grain);
-    // std::cout << "\n" << arma::mat(this->H) << std::endl;
+    std::cout << "\n\t Norm = " << arma::trace(this->H * this->H) / double(dim) << std::endl;
 }
 
 
