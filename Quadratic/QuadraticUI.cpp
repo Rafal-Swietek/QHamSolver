@@ -166,6 +166,13 @@ void ui::spectrals_other_operators()
 			return abs(x - E_av) < abs(y - E_av);
 		});
 		const long Eav_idx = i - std::begin(E);
+		long int E_min = dim < 0? 0 : Eav_idx - long(dim / 4);
+		long int E_max = dim > 1e5? dim : Eav_idx + long(dim / 4);
+
+		double __wH = 0;
+		for (long int i = E_min; i < E_max; i++)
+			__wH += E(i+1) - E(i);
+		__wH /= double(E_max - E_min);
 
 		std::string dir_realis = dir + "realisation=" + std::to_string(this->jobid + realis) + kPSep;
 		createDirs(dir_realis);
@@ -199,7 +206,7 @@ void ui::spectrals_other_operators()
 			start = std::chrono::system_clock::now();
 
 			// auto [_Z, _count, _count_proj,AGP_T, AGP_T_reg, AGP_E, AGP_E_proj] = adiabatics::gauge_potential_finite_T(mat_elem, E, betas, energy_density);
-			auto [_susc, _susc_r] = adiabatics::gauge_potential_save(mat_elem, E, this->L, std::sqrt(this->L) / dim);
+			auto [_susc, _susc_r] = adiabatics::gauge_potential_save(mat_elem, E, this->L, __wH);
 			arma::vec state_to_state_fluct = arma::vec(fractions.size(), arma::fill::zeros);
 			arma::vec state_to_state_outlier = arma::vec(fractions.size(), arma::fill::zeros);
 
@@ -710,6 +717,10 @@ void ui::total_spin()
 		std::cout << " - - - - - - finished preparing initial states for all times in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
 		arma::Mat<element_type> mat_elem = V.t() * total_spin * V;
 		arma::vec diag_mat_elem = arma::diagvec(mat_elem);
+		// arma::mat xx = arma::abs(mat_elem);
+		// xx.save(   arma::hdf5_name("MAT_ELEM" + info + ".hdf5", "mat_elem"));
+		// xx = ( arma::mat(total_spin) );
+		// xx.save(   arma::hdf5_name("MAT_ELEM" + info + ".hdf5", "sparse", arma::hdf5_opts::append));
 
 		std::cout << " - - - - - - finished matrix elements in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
 		start = std::chrono::system_clock::now();

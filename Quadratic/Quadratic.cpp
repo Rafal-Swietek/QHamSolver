@@ -49,6 +49,14 @@ void Quadratic::create_hamiltonian()
     #ifdef ANDERSON
         if(std::abs(this->_w) < 1e-15) this->_disorder = arma::vec(this->dim, arma::fill::zeros);
         else this->_disorder = this->disorder_generator.uniform(this->dim, -this->_w / 2., this->_w / 2.);
+        
+        // std::vector <double> __disorder(this->dim);
+        // FILE* fp_dis;
+        // fp_dis = fopen("disorder_3d_And_L12.dat", "rb");
+        // fread(__disorder.data(),sizeof(double),__disorder.size(),fp_dis);
+        // fclose(fp_dis);
+
+        // this->_disorder = arma::vec(__disorder);
         // std::cout << this->_disorder << std::endl;
         // std::cout << "Mean Energy = " << arma::mean(this->_disorder) << std::endl;
         for(long int j = 0; j < this->dim; j++)
