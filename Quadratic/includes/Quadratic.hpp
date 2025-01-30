@@ -80,6 +80,7 @@ public:
     //<! ----------------------------------------------------- OTHERS
     auto& get_lattice() const { return this->_lattice; }
     auto& get_randGen() const { return this->disorder_generator; }
+    auto& get_disorder() const { return this->_disorder; }
 
 };
 

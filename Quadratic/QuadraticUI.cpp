@@ -44,6 +44,9 @@ void ui::make_sim(){
 	case 9:
 		total_spin();
 		break;
+	case 10:
+		orbital_mat_elem();
+		break;
 	default:
 		#define generate_scaling_array(name) arma::linspace(this->name, this->name + this->name##s * (this->name##n - 1), this->name##n);
 		auto L_list = generate_scaling_array(L);
@@ -82,6 +85,149 @@ void ui::make_sim(){
 
 // -------------------------------------------------------------------------------------------------------------------------------------
 // ---------------------------------------------------------------------------------------------------------------- USER DEFINED ROUTINES
+
+void ui::orbital_mat_elem()
+{
+	std::string dir = this->saving_dir + "OrbitalsMatElem" + kPSep;
+	createDirs(dir);
+	
+	size_t dim = this->ptr_to_model->get_hilbert_size();
+	std::string info = this->set_info();
+
+	const size_t size = dim > 1e5? this->l_steps : dim;
+
+	arma::vec energies(size, arma::fill::zeros);
+
+	int Ll = this->L;
+	int counter = 0;
+	
+	const double _bandwidth_def = std::sqrt(6 + this->w * this->w / 12.);
+	
+	const arma::vec omegax = arma::logspace(std::log10(1.0/dim) - 2, std::log10( _bandwidth_def ) + 1, 10 * this->L);
+	const arma::vec energy_density = arma::regspace(0.05, 0.02, 0.95);
+
+	arma::Mat<element_type> spectral_fun(omegax.size()-1, energy_density.size(), arma::fill::zeros);
+	arma::Mat<element_type> spectral_fun_typ(omegax.size()-1, energy_density.size(), arma::fill::zeros);
+	arma::Mat<element_type> element_count(omegax.size()-1, energy_density.size(), arma::fill::zeros);
+	
+	double window_width = 0.04;
+
+// #pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
+	for(int realis = 0; realis < this->realisations; realis++)
+	{
+		clk::time_point start_re = std::chrono::system_clock::now();
+		if(realis > 0)
+			this->ptr_to_model->generate_hamiltonian();
+		
+		clk::time_point start = std::chrono::system_clock::now();
+		if(dim > 1e5){
+			this->ptr_to_model->diag_sparse(this->l_steps, this->l_bundle, this->tol, this->seed);	
+		}
+		else{
+        	this->ptr_to_model->diagonalization();
+		}
+		std::cout << " - - - - - - finished diagonalization in : " << tim_s(start) << " s for realis = " << realis << " - - - - - - " << std::endl; // simulation end
+		start = std::chrono::system_clock::now();
+		
+		const arma::vec E = this->ptr_to_model->get_eigenvalues();
+		const auto& V = this->ptr_to_model->get_eigenvectors();
+		double E_av = arma::trace(E) / double(dim);
+
+		auto i = std::min_element(std::begin(E), std::end(E), [=](double x, double y) {
+			return abs(x - E_av) < abs(y - E_av);
+		});
+		const long Eav_idx = i - std::begin(E);
+
+		std::string dir_realis = dir + "realisation=" + std::to_string(this->jobid + realis) + kPSep;
+		createDirs(dir_realis);
+		E.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "energies"));
+		
+		long int E_min = dim < 0? 0 : Eav_idx - long(dim / 4);
+		long int E_max = dim > 1e5? dim : Eav_idx + long(dim / 4);
+
+		double wH = 0;
+		for (long int i = E_min; i < E_max; i++)
+			wH += E(i+1) - E(i);
+		
+		wH /= double(E_max - E_min);
+
+		start = std::chrono::system_clock::now();
+		auto new_model = std::make_unique<QHS::QHamSolver<Quadratic>>(this->L, this->J, this->ws, this->seed, this->g, this->boundary_conditions);
+		new_model->diagonalization();
+		const arma::Col<element_type>& orbital = new_model->get_eigenState(dim / 2);
+		const arma::Mat<element_type>& opmat = orbital * orbital.t();
+
+		// std::cout << this->ptr_to_model->get_model_ref().get_disorder().t() << std::endl;
+		// std::cout << new_model->get_model_ref().get_disorder().t();
+		
+		arma::Mat<element_type> mat_elem = V.t() * opmat * V;	
+		// arma::mat xx = arma::abs(mat_elem);
+		// V.save(   arma::hdf5_name("ORBITALS" + info + ".hdf5", "eigenvectors"));
+		// opmat.save(   arma::hdf5_name("ORBITALS" + info + ".hdf5", "opmat",   arma::hdf5_opts::append));
+		// xx.save(   arma::hdf5_name("ORBITALS" + info + ".hdf5", "mat_elem",   arma::hdf5_opts::append));
+		std::cout << " - - - - - - finished matrix elements in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
+		start = std::chrono::system_clock::now();
+
+		// auto [_Z, _count, _count_proj,AGP_T, AGP_T_reg, AGP_E, AGP_E_proj] = adiabatics::gauge_potential_finite_T(mat_elem, E, betas, energy_density);
+		auto [_susc, _susc_r] = adiabatics::gauge_potential_save(mat_elem, E, this->L, wH);
+
+		std::cout << " - - - - - - finished AGP in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
+		start = std::chrono::system_clock::now();
+		arma::Mat<element_type> _integrated_spectral_fun(omegax.size()-1, energy_density.size(), arma::fill::zeros);
+		arma::Mat<element_type> _spectral_fun(omegax.size()-1, energy_density.size(), arma::fill::zeros);
+		arma::Mat<element_type> _spectral_fun_typ(omegax.size()-1, energy_density.size(), arma::fill::zeros);
+		arma::Mat<element_type> _element_count(omegax.size()-1, energy_density.size(), arma::fill::zeros);
+		
+		const double bandwidth = E(E.size() - 1) - E(0);
+		double window_width = bandwidth / 100;
+	#pragma omp parallel for
+		for(int ii = 0; ii < energy_density.size(); ii++){
+			const double eps = energy_density(ii);
+			const double energyx = eps * bandwidth + E(0);
+			spectrals::preset_omega set_omega(E, window_width, energyx);
+			arma::vec omegas_i, matter;
+				std::tie(omegas_i, matter) = set_omega.get_matrix_elements(mat_elem);
+				for(int k = 0; k < omegax.size() - 1; k++){
+					arma::uvec indices = arma::find(omegas_i >= omegax[k] && omegas_i < omegax[k+1]);
+					if(indices.size() > 0){
+						_element_count(k, ii) = indices.size();
+						arma::vec x = arma::vec( omegas_i.elem(indices) );
+						arma::vec y = arma::vec( matter.elem(indices) );
+						_spectral_fun(k, ii) = arma::accu( y );
+						_spectral_fun_typ(k, ii) = arma::accu( arma::log(y) );
+					}
+					indices = arma::find(omegas_i < omegax[k+1]);
+					if(indices.size() > 0){
+						arma::vec x = arma::vec( omegas_i.elem(indices) );
+						arma::vec y = arma::vec( matter.elem(indices) );
+						_integrated_spectral_fun(k, ii) = arma::accu(y);
+					}
+				}
+		}
+		std::cout << " - - - - - - finished Sz_L matrix elements at finite energy density in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
+	
+		{
+			omegax.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "omegas",   arma::hdf5_opts::append));
+			_integrated_spectral_fun.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "integrated_spectral_fun",   arma::hdf5_opts::append));
+			energy_density.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "energy_density",   arma::hdf5_opts::append));
+			_spectral_fun.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "spectral_fun",   arma::hdf5_opts::append));
+			_spectral_fun_typ.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "log(_spectral_fun_typ)",   arma::hdf5_opts::append));
+			_element_count.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "element_count",   arma::hdf5_opts::append));
+
+			_susc.save(	 arma::hdf5_name(dir_realis + info + ".hdf5", "susc",     arma::hdf5_opts::append));
+			_susc_r.save(arma::hdf5_name(dir_realis + info + ".hdf5", "susc_reg", arma::hdf5_opts::append));
+		}
+		spectral_fun += _spectral_fun;
+		element_count += _element_count;
+		spectral_fun_typ += _spectral_fun_typ;
+		
+		energies += E;
+		counter++;
+		std::cout << " - - - - - - finished realisation realis = " << realis << " in : " << tim_s(start_re) << " s - - - - - - " << std::endl; // simulation end
+	}
+}
+
+
 void ui::spectrals_other_operators()
 {
 	std::string dir = this->saving_dir + "SpectralFunctions" + kPSep + "OtherOperators" + kPSep;
