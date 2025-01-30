@@ -92,7 +92,7 @@ void ui::orbital_mat_elem()
 	createDirs(dir);
 	
 	size_t dim = this->ptr_to_model->get_hilbert_size();
-	std::string info = this->set_info();
+	std::string info = this->set_info() + ",ws=" + to_string_prec(this->ws);
 
 	const size_t size = dim > 1e5? this->l_steps : dim;
 
@@ -138,9 +138,6 @@ void ui::orbital_mat_elem()
 		});
 		const long Eav_idx = i - std::begin(E);
 
-		std::string dir_realis = dir + "realisation=" + std::to_string(this->jobid + realis) + kPSep;
-		createDirs(dir_realis);
-		E.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "energies"));
 		
 		long int E_min = dim < 0? 0 : Eav_idx - long(dim / 4);
 		long int E_max = dim > 1e5? dim : Eav_idx + long(dim / 4);
@@ -207,6 +204,10 @@ void ui::orbital_mat_elem()
 		std::cout << " - - - - - - finished Sz_L matrix elements at finite energy density in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
 	
 		{
+
+			std::string dir_realis = dir + "realisation=" + std::to_string(this->jobid + realis) + kPSep;
+			createDirs(dir_realis);
+			E.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "energies"));
 			omegax.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "omegas",   arma::hdf5_opts::append));
 			_integrated_spectral_fun.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "integrated_spectral_fun",   arma::hdf5_opts::append));
 			energy_density.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "energy_density",   arma::hdf5_opts::append));
