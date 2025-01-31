@@ -103,7 +103,7 @@ void ui::orbital_mat_elem()
 	
 	const double _bandwidth_def = std::sqrt(6 + this->w * this->w / 12.);
 	
-	const arma::vec omegax = arma::logspace(std::log10(1.0/dim) - 2, std::log10( _bandwidth_def ) + 1, 10 * this->L);
+	const arma::vec omegax = arma::logspace(std::log10(1.0/dim) - 0.75, std::log10( _bandwidth_def ) + 1.5, 8 * this->L);
 	const arma::vec energy_density = arma::regspace(0.05, 0.02, 0.95);
 
 	arma::Mat<element_type> spectral_fun(omegax.size()-1, energy_density.size(), arma::fill::zeros);
@@ -151,13 +151,16 @@ void ui::orbital_mat_elem()
 		start = std::chrono::system_clock::now();
 		auto new_model = std::make_unique<QHS::QHamSolver<Quadratic>>(this->L, this->J, this->ws, this->seed, this->g, this->boundary_conditions);
 		new_model->diagonalization();
-		const arma::Col<element_type>& orbital = new_model->get_eigenState(dim / 2);
-		const arma::Mat<element_type>& opmat = orbital * orbital.t();
+		arma::Mat<element_type> mat_elem(dim, dim, arma::fill::zeros);
+		for(int n = Eav_idx - long(dim / 8); n < Eav_idx + long(dim / 8); n++){
+			const arma::Col<element_type>& orbital = new_model->get_eigenState(n);
+			mat_elem += orbital * orbital.t();
+		}
+		double _operator_HSnorm = arma::trace(mat_elem * mat_elem) / dim;
+		mat_elem = mat_elem / std::sqrt(_operator_HSnorm);
 
-		// std::cout << this->ptr_to_model->get_model_ref().get_disorder().t() << std::endl;
-		// std::cout << new_model->get_model_ref().get_disorder().t();
-		
-		arma::Mat<element_type> mat_elem = V.t() * opmat * V;	
+		mat_elem = V.t() * mat_elem * V;	
+		arma::vec diag_mat_elem = arma::diagvec(mat_elem);
 		// arma::mat xx = arma::abs(mat_elem);
 		// V.save(   arma::hdf5_name("ORBITALS" + info + ".hdf5", "eigenvectors"));
 		// opmat.save(   arma::hdf5_name("ORBITALS" + info + ".hdf5", "opmat",   arma::hdf5_opts::append));
@@ -176,7 +179,7 @@ void ui::orbital_mat_elem()
 		arma::Mat<element_type> _element_count(omegax.size()-1, energy_density.size(), arma::fill::zeros);
 		
 		const double bandwidth = E(E.size() - 1) - E(0);
-		double window_width = bandwidth / 100;
+		double window_width = bandwidth / 500;
 	#pragma omp parallel for
 		for(int ii = 0; ii < energy_density.size(); ii++){
 			const double eps = energy_density(ii);
@@ -208,6 +211,7 @@ void ui::orbital_mat_elem()
 			std::string dir_realis = dir + "realisation=" + std::to_string(this->jobid + realis) + kPSep;
 			createDirs(dir_realis);
 			E.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "energies"));
+			diag_mat_elem.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "diagonal elements",   arma::hdf5_opts::append));
 			omegax.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "omegas",   arma::hdf5_opts::append));
 			_integrated_spectral_fun.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "integrated_spectral_fun",   arma::hdf5_opts::append));
 			energy_density.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "energy_density",   arma::hdf5_opts::append));
