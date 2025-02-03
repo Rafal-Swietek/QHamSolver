@@ -103,7 +103,7 @@ void ui::orbital_mat_elem()
 	
 	const double _bandwidth_def = std::sqrt(6 + this->w * this->w / 12.);
 	
-	const arma::vec omegax = arma::logspace(std::log10(1.0/dim) - 0.75, std::log10( _bandwidth_def ) + 1.5, 8 * this->L);
+	const arma::vec omegax = arma::logspace(std::log10(1.0/dim) - 0.75, std::log10( _bandwidth_def ) + 1.5, (DIM * DIM - 1) * this->L);
 	const arma::vec energy_density = arma::regspace(0.05, 0.02, 0.95);
 
 	arma::Mat<element_type> spectral_fun(omegax.size()-1, energy_density.size(), arma::fill::zeros);
@@ -152,10 +152,10 @@ void ui::orbital_mat_elem()
 		auto new_model = std::make_unique<QHS::QHamSolver<Quadratic>>(this->L, this->J, this->ws, this->seed, this->g, this->boundary_conditions);
 		new_model->diagonalization();
 		arma::Mat<element_type> mat_elem(dim, dim, arma::fill::zeros);
-		for(int n = Eav_idx - long(dim / 8); n < Eav_idx + long(dim / 8); n++){
-			const arma::Col<element_type>& orbital = new_model->get_eigenState(n);
-			mat_elem += orbital * orbital.t();
-		}
+		
+		const arma::Col<element_type>& orbital = new_model->get_eigenState(Eav_idx);
+		mat_elem = arma::diagmat( orbital * orbital.t() );
+		
 		double _operator_HSnorm = arma::trace(mat_elem * mat_elem) / dim;
 		mat_elem = mat_elem / std::sqrt(_operator_HSnorm);
 
