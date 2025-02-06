@@ -232,7 +232,16 @@ inline auto readFromFile(std::ifstream& input, std::string filename) {
 	return data;
 }
 
-
+template <typename ... _ty>
+inline void save_to_file(std::string name, const arma::vec& x, _ty... args) {
+	std::ofstream file;
+	openFile(file, name, ios::out);
+	for (int i = 0; i < x.size(); i++) {
+		if (i == 0) printSeparated(file, "\t", 12, true, x(i), args...);
+		else		printSeparated(file, "\t", 12, true, x(i));
+	}
+	file.close();
+}
 template <typename ... _ty>
 inline void save_to_file(std::string name, const arma::vec& x, const arma::vec& y, _ty... args) {
 	_assert_(x.size() == y.size(), "Incompatible dimensions: " + std::to_string(x.size()) + "vs.\t" + std::to_string(y.size()) );
