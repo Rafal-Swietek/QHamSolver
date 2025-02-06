@@ -1652,6 +1652,109 @@ void ui::quench()
 	}
 }
 
+
+void ui::multifractality(){
+	clk::time_point start = std::chrono::system_clock::now();
+
+	std::string subdir = "ParticipationRatio" + kPSep;
+	std::string dir = this->saving_dir + "NewBasis" + kPSep + subdir;
+	createDirs(dir);
+
+	std::string info = this->set_info();
+	std::string filename = info;
+	size_t dim = this->ptr_to_model->get_hilbert_size();
+
+	int counter = 0;
+
+	const int size = dim;	
+	// arma::vec q_ipr_list = arma::linspace(2.0 / double(this->num_of_points), 2.0, this->num_of_points);
+	arma::vec q_ipr_list = {0.5, 1.0, 1.5, 2, 3.0};
+
+	for(int realis = 0; realis < this->realisations; realis++)
+	{
+		if(realis > 0)
+			this->ptr_to_model->generate_hamiltonian();
+		
+    	clk::time_point start_loop = std::chrono::system_clock::now();
+		this->ptr_to_model->diagonalization();
+
+		const arma::vec E = this->ptr_to_model->get_eigenvalues();
+		u64 E_av_idx = spectrals::get_mean_energy_index(E);
+		u64	Emin = E_av_idx - this->l_steps / 2;
+		u64	Emax = E_av_idx + this->l_steps / 2;
+		std::cout << " - - - - - - finished diagonalization in : " << tim_s(start) << " s for realis = " << realis << " - - - - - - " << std::endl; // simulation end
+		start = std::chrono::system_clock::now();
+
+		auto new_model = std::make_unique<QHS::QHamSolver<QuantumSun>>(this->L_loc-1, this->J, this->alfa, this->gamma, this->w, this->h, 
+																	this->seed, this->grain_size, this->zeta, this->initiate_avalanche, normalize_grain); 
+		new_model->diagonalization();
+
+		const arma::mat V = arma::kron(new_model->get_eigenvectors(), arma::eye<arma::mat>(2, 2)) / std::sqrt(2) ;
+
+		std::cout << " - - - - - - finished diagonalization of L-1 sized matrix in : " << tim_s(start) << " s for realis = " << realis << " - - - - - - " << std::endl; // simulation end
+		start = std::chrono::system_clock::now();
+
+		arma::mat part_ratio(this->l_steps, q_ipr_list.size(), arma::fill::zeros);
+		arma::mat info_ent(this->l_steps, q_ipr_list.size(), arma::fill::zeros);
+		
+		arma::vec part_ratio_d2(size, arma::fill::zeros);
+		arma::vec info_ent_d2(size, arma::fill::zeros);
+
+		outer_threads = this->thread_number;
+		omp_set_num_threads(1);
+
+		for(int iq = 0; iq < q_ipr_list.size(); iq++)
+		{
+		#pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
+			for(int n = 0; n < this->l_steps; n++)
+			{
+				arma::Col<element_type> eigenstate = arma::normalise(this->ptr_to_model->get_eigenState(n + Emin));
+				if(q_ipr_list(iq) == 1)
+				{
+					double _pr_ = 0;
+					for (int k = 0; k < eigenstate.size(); k++) {
+						auto c_k = dot_prod(V.col(k), eigenstate);
+						double value = std::abs(std::conj(c_k) * c_k);
+						_pr_ += (std::abs(value) > 0) ? -value * std::log(value) : 0;
+					}
+					part_ratio(n, iq) = arma::norm(eigenstate);
+					info_ent(n, iq) = _pr_;
+				}
+				else{
+					double _pr_ = statistics::participation_ratio(eigenstate, V, q_ipr_list(iq));
+					part_ratio(n, iq) = _pr_;
+					info_ent(n, iq) = -std::log(_pr_) / (1 - q_ipr_list(iq));
+				}
+			}
+		}
+		std::cout << " - - - - - - finished IPR in spectrum center in : " << tim_s(start) << " s for realis = " << realis << " - - - - - - " << std::endl; // simulation end
+		start = std::chrono::system_clock::now();
+
+	#pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
+		for(int n = 0; n < dim; n++)
+		{
+			arma::Col<element_type> eigenstate = arma::normalise(this->ptr_to_model->get_eigenState(n));
+			double _pr_ = statistics::participation_ratio(eigenstate, V, 2);
+			part_ratio_d2(n) = _pr_;
+			info_ent_d2(n) = std::log(_pr_);
+		}
+
+		omp_set_num_threads(this->thread_number);
+
+		std::string dir_realis = dir + "realisation=" + std::to_string(realis + this->jobid) + kPSep;
+		createDirs(dir_realis);
+		q_ipr_list.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "qs"));
+		E.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "energies", arma::hdf5_opts::append));
+		part_ratio.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "pr", arma::hdf5_opts::append));
+		info_ent.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "info", arma::hdf5_opts::append));
+		part_ratio_d2.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "pr_d2", arma::hdf5_opts::append));
+		info_ent_d2.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "info_d2", arma::hdf5_opts::append));
+		
+		std::cout << " - - - - - - finished realisation realis = " << realis << " in : " << tim_s(start_loop) << " s - - - - - - " << std::endl; // simulation end
+	};
+    std::cout << " - - - - - - FINISHED IPR CALCULATION IN : " << tim_s(start) << " seconds - - - - - - " << std::endl; // simulation end
+}
+
 // -------------------------------------------------------------------------------------------------------------------------------------
 // ---------------------------------------------------------------------------------------------------------------- IMPLEMENTATION OF UI
 

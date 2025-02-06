@@ -50,6 +50,8 @@ namespace QSunUI{
 
         // ----------------------------------- OVERRIDEN METHODS
         virtual void matrix_elements() override;
+        virtual void multifractality() override;
+        
         virtual void correlators();
         void quench();
 
