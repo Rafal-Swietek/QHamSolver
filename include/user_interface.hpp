@@ -137,7 +137,8 @@ public:
 	virtual void entanglement_evolution() = 0;
 	virtual void eigenstate_entanglement() = 0;
 	virtual void eigenstate_entanglement_degenerate() = 0;
-	
+	virtual double rescaling_for_coefficients() = 0;
+
 	virtual void diagonal_matrix_elements() = 0;
 	virtual void matrix_elements() = 0;
 

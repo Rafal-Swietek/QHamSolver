@@ -54,6 +54,7 @@ namespace QuadraticUI{
         void total_spin();
 
         void orbital_mat_elem();
+	    virtual double rescaling_for_coefficients() override;
     };
 }
 

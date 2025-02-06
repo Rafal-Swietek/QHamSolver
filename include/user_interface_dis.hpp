@@ -50,9 +50,12 @@ public:
 	
 	virtual void check_krylov_evolution() override;
 
+	virtual void eigenstate_ergodicity_test();
+
 	virtual void entanglement_evolution() 				override;
 	virtual void eigenstate_entanglement() 				override;
 	virtual void eigenstate_entanglement_degenerate() 	override;
+	virtual double rescaling_for_coefficients() override { return 1.0; }
 
 	virtual void analyze_spectra() 						override;
 	virtual void diagonal_matrix_elements() 			override;

@@ -32,6 +32,8 @@ void user_interface_dis<Hamiltonian>::diagonalize(){
 
 		std::string name = dir_re + info + ".hdf5";
 		eigenvalues.save(arma::hdf5_name(name, "eigenvalues"));
+		save_to_file(dir_re + info + ".dat", eigenvalues);
+
 		std::cout << "\t\t	--> finished saving eigenvalues for " << info + _suffix << " - in time : " << tim_s(start) << "s" << std::endl;
 		if(this->ch){
 			auto H = this->ptr_to_model->get_dense_hamiltonian();
@@ -69,6 +71,8 @@ void user_interface_dis<Hamiltonian>::spectral_form_factor(){
 	
 	arma::vec etas = arma::regspace(0.1, 0.1, 0.7);
 	arma::vec betas = arma::regspace(0, 0.1, 5);
+	arma::vec kappas = arma::regspace(0, 0.05, 0.5);
+
 	arma::vec energy_densities = arma::regspace(0.02, 0.02, 0.5);
 	arma::vec gap_ratio(energy_densities.size(), arma::fill::zeros);
 	arma::vec wH_density(energy_densities.size(), arma::fill::zeros);
@@ -80,12 +84,18 @@ void user_interface_dis<Hamiltonian>::spectral_form_factor(){
 	arma::mat sff_beta(betas.size(), this->num_of_points, arma::fill::zeros);
 	arma::mat sff_beta_raw(betas.size(), this->num_of_points, arma::fill::zeros);
 	arma::mat sff_beta_folded(betas.size(), this->num_of_points, arma::fill::zeros);
+	arma::mat sff_open(kappas.size(), this->num_of_points, arma::fill::zeros);
+	arma::mat sff_open_raw(kappas.size(), this->num_of_points, arma::fill::zeros);
+	arma::mat sff_open_folded(kappas.size(), this->num_of_points, arma::fill::zeros);
 
 	arma::vec Z_eps(energy_densities.size(), arma::fill::zeros);
 	arma::vec Z_eps_folded(energy_densities.size(), arma::fill::zeros);
 	arma::vec Z_beta(betas.size(), arma::fill::zeros);
 	arma::vec Z_beta_raw(betas.size(), arma::fill::zeros);
 	arma::vec Z_beta_folded(betas.size(), arma::fill::zeros);
+	arma::vec Z_open(kappas.size(), arma::fill::zeros);
+	arma::vec Z_open_raw(kappas.size(), arma::fill::zeros);
+	arma::vec Z_open_folded(kappas.size(), arma::fill::zeros);
 	
 	arma::vec sff_raw(this->num_of_points, arma::fill::zeros);
 	arma::vec sff_raw_folded(this->num_of_points, arma::fill::zeros);
@@ -577,6 +587,108 @@ void user_interface_dis<Hamiltonian>::analyze_spectra()
 	statistics::probability_distribution(dir_gap, info, gap_ratio, num_hist);
 	statistics::probability_distribution(dir_gap, info, gap_ratio_unfolded, num_hist);
 }
+
+/// @brief Calculate entanglement entropy in all eigenstates and all subsystem sizes using schmidt decomposition
+/// @tparam Hamiltonian template parameter for current used model
+template <class Hamiltonian>
+void user_interface_dis<Hamiltonian>::eigenstate_ergodicity_test()
+{
+    clk::time_point start = std::chrono::system_clock::now();
+	
+	std::string dir = this->saving_dir + "ReducedDensityMatrix" + kPSep;// + "Eigenstate" + kPSep;
+	createDirs(dir);
+	
+	size_t dim = this->ptr_to_model->get_hilbert_size();
+	const size_t dim_cut = 100000;
+
+	std::string info = this->set_info();
+	std::string filename = info;
+
+	auto subsystem_sizes = arma::conv_to<arma::Col<int>>::from(arma::linspace(0, this->L, this->L + 1));
+	std::cout << subsystem_sizes.t() << std::endl;
+
+	arma::Col<element_type> bin_centers = arma::conv_to<arma::Col<element_type>>::from(arma::linspace(-2, 2, this->num_of_points + 1));
+	
+	std::vector<int> p(this->L);
+	for(int l = 0; l < this->L; l++)
+		p[l] = (l - 2 + this->L) % this->L;
+	auto permutation = QOps::_permutation_generator(this->L, p);
+	std::cout << p << std::endl;
+	std::cout << " - - - - - - set permutation matrix for LA = L/2 in" << std::endl;
+	
+// #pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
+	for(int realis = 0; realis < this->realisations; realis++)
+	{
+		if(realis > 0)
+			this->ptr_to_model->generate_hamiltonian();
+		start = std::chrono::system_clock::now();
+		size_t size, Emin, Emax;
+		if(dim > dim_cut){
+			double error = this->ptr_to_model->diag_sparse(this->l_steps, this->l_bundle, this->tol, this->seed);
+            if( error > 1e-10 ) { std::cout << "POLFED FAILED: Maximal Error = " << error << std::endl; continue; }
+			size = this->l_steps;
+			Emin = 0; Emax = size;
+		}
+		else{
+        	this->ptr_to_model->diagonalization();
+			size = dim;
+		}
+		const size_t reduced_size = ULLPOW( (this->L / 2) );
+
+		std::cout << " - - - - - - finished diagonalization in : " << tim_s(start) << " s for realis = " << realis << " - - - - - - " << std::endl; // simulation end
+		
+		const arma::vec E = this->ptr_to_model->get_eigenvalues();
+
+		if(dim < dim_cut){
+			u64 E_av_idx = spectrals::get_mean_energy_index(E);
+			Emin = E_av_idx - this->l_steps / 2;
+			Emax = E_av_idx + this->l_steps / 2;
+		}
+		const arma::mat V = (this->ptr_to_model->get_eigenvectors()).cols(Emin, Emax);
+		
+		
+		arma::Mat<element_type> lambdas(reduced_size, this->l_steps, arma::fill::zeros);
+		arma::Mat<element_type> lambdas_perm = lambdas;
+
+		arma::uvec distribution(this->num_of_points+1, arma::fill::zeros);
+		
+		outer_threads = this->thread_number;
+		omp_set_num_threads(1);
+		std::cout << outer_threads << "\t\t" << omp_get_num_threads() << std::endl;
+		
+		double _C = this->rescaling_for_coefficients();
+	#pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
+		for(int n = Emin; n < Emax; n++)
+		{
+			arma::Col<element_type> state = arma::normalise(this->ptr_to_model->get_eigenState(n));
+			state = this->cast_state(state);
+
+			lambdas.col(n-Emin) = ReducedDensityMatrix::get_eigvals<element_type, methods::schmidt_decomposition>(state, this->L / 2, this->L);
+			distribution += arma::hist(state * _C, bin_centers);
+				
+			arma::vec permuted_state = arma::real(permutation.multiply(state));
+			lambdas_perm.col(n-Emin) = ReducedDensityMatrix::get_eigvals<element_type, methods::schmidt_decomposition>(permuted_state, this->L / 2, this->L);
+
+		}
+		// if(this->realisations > 1)
+		{
+			std::string dir_realis = dir + "realisation=" + std::to_string(this->jobid + realis) + kPSep;
+			createDirs(dir_realis);
+			E.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "energies"));
+			lambdas.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "RDM eigenvalues", arma::hdf5_opts::append));
+			lambdas_perm.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "permuted RDM eigenvalues", arma::hdf5_opts::append));
+			subsystem_sizes.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "subsystem sizes", arma::hdf5_opts::append));
+			// bin_centers.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "bin centers", arma::hdf5_opts::append));
+			// distribution.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "coeff distribution", arma::hdf5_opts::append));
+			V.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "coefficients", arma::hdf5_opts::append));
+		}
+    	omp_set_num_threads(this->thread_number);
+
+		std::cout << " - - - - - - finished realisation realis = " << realis << " in : " << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
+	}
+    std::cout << " - - - - - - FINISHED ENTROPY CALCULATION IN : " << tim_s(start) << " seconds - - - - - - " << std::endl; // simulation end
+}
+
 
 /// @brief Calculate entanglement entropy in all eigenstates and all subsystem sizes using schmidt decomposition
 /// @tparam Hamiltonian template parameter for current used model

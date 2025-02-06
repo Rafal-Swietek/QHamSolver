@@ -47,6 +47,9 @@ void ui::make_sim(){
 	case 10:
 		orbital_mat_elem();
 		break;
+	case 11:
+		eigenstate_ergodicity_test();
+		break;
 	default:
 		#define generate_scaling_array(name) arma::linspace(this->name, this->name + this->name##s * (this->name##n - 1), this->name##n);
 		auto L_list = generate_scaling_array(L);
@@ -85,6 +88,16 @@ void ui::make_sim(){
 
 // -------------------------------------------------------------------------------------------------------------------------------------
 // ---------------------------------------------------------------------------------------------------------------- USER DEFINED ROUTINES
+
+double ui::rescaling_for_coefficients()
+{
+	const size_t dim = this->ptr_to_model->get_hilbert_size();
+	#if defined(ANDERSON) || defined(AUBRY_ANDRE) || defined(PLRB)
+		return std::sqrt( dim );
+	#elif defined(RP)
+		return std::pow(dim, 1 - this->g / 2);
+	#endif
+}
 
 void ui::orbital_mat_elem()
 {

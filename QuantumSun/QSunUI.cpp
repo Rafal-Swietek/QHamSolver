@@ -34,7 +34,7 @@ void ui::make_sim(){
 	// this->l_steps = 0.1 * Hamil.n_cols;
 	// if(this->l_steps > 500)
 	// 	this->l_steps = 500;
-	// auto polfed = polfed::POLFED<ui::element_type>(Hamil, this->l_steps, this->l_bundle, -1, this->tol, 0.2, this->seed, true);
+	// auto polfed = polfed::POLFED<ui::element_type>(Hamil, this->l_steps, this->l_bundle, -1, this->tol, 0.25, this->seed, true);
 	// auto [E, V] = polfed.eig();
 	// return;
 
@@ -112,6 +112,9 @@ void ui::make_sim(){
 		break;
 	case 13:
 		ground_state();
+		break;
+	case 14:
+		eigenstate_ergodicity_test();
 		break;
 	default:
 		#define generate_scaling_array(name) arma::linspace(this->name, this->name + this->name##s * (this->name##n - 1), this->name##n);

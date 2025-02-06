@@ -38,6 +38,7 @@ public:
 	
 	virtual void diagonal_matrix_elements() 			override;
 	virtual void matrix_elements()						override{};
+	virtual double rescaling_for_coefficients() override { return 1.0; }
 	
 	virtual 
 	arma::Col<element_type> 
