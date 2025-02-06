@@ -44,7 +44,7 @@ namespace statistics{
         //     }
         // } else 
         {
-        #pragma omp parallel for reduction(+: pr)
+        // #pragma omp parallel for reduction(+: pr)
             for (int n = 0; n < N; n++) {
                 double value = std::abs(std::conj(_state(n)) * _state(n));
                 pr += std::pow(value, q);
@@ -62,13 +62,48 @@ namespace statistics{
         ) {
         double ipr = 0;
         const size_t N = _state.size();
-    #pragma omp parallel for reduction(+: ipr)
+    // #pragma omp parallel for reduction(+: ipr)
         for (int n = 0; n < N; n++) {
             double value = abs(conj(_state(n)) * _state(n));
             ipr += value * value;
         }
         return 1.0 / ipr;
     }
+
+    //<! calculate information entropy of input state in another eigenbasis set within range
+    template <typename _type>
+    [[nodiscard]]
+    inline 
+    double participation_ratio(
+        const arma::Col<_type>& _state,     //<! inout state
+        const arma::Mat<_type>& new_basis,  //<! new eigenbasis to find overlap with _state
+        double q,                           //<! order of participation ratio
+        u64 _min,                           //<! first state in new basis
+        u64 _max                            //<! last eigenstate in new basis
+        ) {
+        const size_t N = _state.size();
+        double pr = 0;
+    // #pragma omp parallel for reduction(+: ent)
+        for (long k = (long)_min; k < (long)_max; k++) 
+        {
+            auto c_k = dot_prod(new_basis.col(k), _state);
+            double val = std::abs(std::conj(c_k) * c_k);
+            pr += std::pow(val * val, q);
+        }
+        return pr;
+    }
+    //<! same but without range (taken full space)
+    template <typename _type>
+    [[nodiscard]]
+    inline 
+    double participation_ratio(
+        const arma::Col<_type>& _state,     //<! inout state
+        const arma::Mat<_type>& new_basis,  //<! new eigenbasis to find overlap with _state
+        double q                            //<! order of participation ratio
+        ) 
+        { return participation_ratio(_state, new_basis, q, 0, new_basis.n_cols); }
+
+
 
 
     //! ---------------------------------------------------------------- INFORMATION ENTROPY
@@ -81,7 +116,7 @@ namespace statistics{
         ) {
         double ent = 0;
         const size_t N = _state.size();
-    #pragma omp parallel for reduction(+: ent)
+    // #pragma omp parallel for reduction(+: ent)
         for (int k = 0; k < N; k++) {
             double val = abs(conj(_state(k)) * _state(k));
             ent += val * log(val);
@@ -101,12 +136,12 @@ namespace statistics{
         ) {
         const size_t N = _state.size();
         double ent = 0;
-    #pragma omp parallel for reduction(+: ent)
+    // #pragma omp parallel for reduction(+: ent)
         for (long k = (long)_min; k < (long)_max; k++) 
         {
-            cpx c_k = cdot(new_basis.col(k), _state);
-            double val = abs(conj(c_k) * c_k);
-            ent += val * log(val);
+            cpx c_k = arma::cdot(new_basis.col(k), _state);
+            double val = std::abs(std::conj(c_k) * c_k);
+            ent += val * std::log(val);
         }
         return -ent / log(0.48 * N);
     }
