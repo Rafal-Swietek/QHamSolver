@@ -1680,22 +1680,25 @@ void ui::multifractality(){
 
 		const arma::vec E = this->ptr_to_model->get_eigenvalues();
 		u64 E_av_idx = spectrals::get_mean_energy_index(E);
-		u64	Emin = E_av_idx - this->l_steps / 2;
-		u64	Emax = E_av_idx + this->l_steps / 2;
+
+		u64 num_of_states = std::min( u64(this->l_steps), u64(0.1*dim) );
+		u64	Emin = E_av_idx - num_of_states / 2;
+		u64	Emax = E_av_idx + num_of_states / 2;
 		std::cout << " - - - - - - finished diagonalization in : " << tim_s(start) << " s for realis = " << realis << " - - - - - - " << std::endl; // simulation end
 		start = std::chrono::system_clock::now();
 
 		auto new_model = std::make_unique<QHS::QHamSolver<QuantumSun>>(this->L_loc-1, this->J, this->alfa, this->gamma, this->w, this->h, 
-																	this->seed, this->grain_size, this->zeta, this->initiate_avalanche, normalize_grain); 
+																	this->seed, this->grain_size, this->zeta, this->initiate_avalanche, normalize_grain);
 		new_model->diagonalization();
 
-		const arma::mat V = arma::kron(new_model->get_eigenvectors(), arma::eye<arma::mat>(2, 2)) / std::sqrt(2) ;
+		const arma::mat V = arma::kron(new_model->get_eigenvectors(), arma::eye<arma::mat>(2, 2));
+		// const arma::mat V = arma::kron(arma::eye<arma::mat>(2, 2), new_model->get_eigenvectors()) / std::sqrt(2) ;
 
 		std::cout << " - - - - - - finished diagonalization of L-1 sized matrix in : " << tim_s(start) << " s for realis = " << realis << " - - - - - - " << std::endl; // simulation end
 		start = std::chrono::system_clock::now();
 
-		arma::mat part_ratio(this->l_steps, q_ipr_list.size(), arma::fill::zeros);
-		arma::mat info_ent(this->l_steps, q_ipr_list.size(), arma::fill::zeros);
+		arma::mat part_ratio(num_of_states, q_ipr_list.size(), arma::fill::zeros);
+		arma::mat info_ent(num_of_states, q_ipr_list.size(), arma::fill::zeros);
 		
 		arma::vec part_ratio_d2(size, arma::fill::zeros);
 		arma::vec info_ent_d2(size, arma::fill::zeros);
@@ -1706,14 +1709,15 @@ void ui::multifractality(){
 		for(int iq = 0; iq < q_ipr_list.size(); iq++)
 		{
 		#pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
-			for(int n = 0; n < this->l_steps; n++)
+			for(int n = 0; n < num_of_states; n++)
 			{
 				arma::Col<element_type> eigenstate = arma::normalise(this->ptr_to_model->get_eigenState(n + Emin));
 				if(q_ipr_list(iq) == 1)
 				{
 					double _pr_ = 0;
 					for (int k = 0; k < eigenstate.size(); k++) {
-						auto c_k = dot_prod(V.col(k), eigenstate);
+						arma::vec state_k = arma::normalise(V.col(k));
+						auto c_k = dot_prod( state_k, eigenstate);
 						double value = std::abs(std::conj(c_k) * c_k);
 						_pr_ += (std::abs(value) > 0) ? -value * std::log(value) : 0;
 					}
@@ -1723,7 +1727,7 @@ void ui::multifractality(){
 				else{
 					double _pr_ = statistics::participation_ratio(eigenstate, V, q_ipr_list(iq));
 					part_ratio(n, iq) = _pr_;
-					info_ent(n, iq) = -std::log(_pr_) / (1 - q_ipr_list(iq));
+					info_ent(n, iq) = std::log(_pr_) / (1 - q_ipr_list(iq));
 				}
 			}
 		}
@@ -1736,8 +1740,9 @@ void ui::multifractality(){
 			arma::Col<element_type> eigenstate = arma::normalise(this->ptr_to_model->get_eigenState(n));
 			double _pr_ = statistics::participation_ratio(eigenstate, V, 2);
 			part_ratio_d2(n) = _pr_;
-			info_ent_d2(n) = std::log(_pr_);
+			info_ent_d2(n) = -std::log(_pr_);
 		}
+		std::cout << " - - - - - - finished IPR all for q=2 in : " << tim_s(start) << " s for realis = " << realis << " - - - - - - " << std::endl; // simulation end
 
 		omp_set_num_threads(this->thread_number);
 
