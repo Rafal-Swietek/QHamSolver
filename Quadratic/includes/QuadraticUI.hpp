@@ -51,6 +51,9 @@ namespace QuadraticUI{
         void spectrals_other_operators();
         void spectrals();
         void quench();
+
+        void quench_fourier();
+        
         void total_spin();
 
         void orbital_mat_elem();
