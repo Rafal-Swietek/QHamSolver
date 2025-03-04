@@ -778,7 +778,9 @@ void ui::quench_fourier()
 	double tH = dim;
 	// int time_end = (int)std::ceil(std::log10(10 * tH));
 	// time_end = (time_end / std::log10(tH) < 10 ) ? time_end + 2 : time_end;
-	arma::vec times = arma::linspace(tH / 5, 5 * tH, this->num_of_points);
+	double tmin = tH - this->num_of_points * 0.02;
+	if( tmin < 0 ) tmin = tH / 10;
+	arma::vec times = arma::linspace(tmin, tmin + 2 * tH + this->num_of_points * 0.02, this->num_of_points);
 
 	int Ll = this->L;
 
