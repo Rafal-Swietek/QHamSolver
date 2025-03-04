@@ -76,7 +76,8 @@ void ui::make_sim(){
 						const auto start_loop = std::chrono::system_clock::now();
 						std::cout << " - - START NEW ITERATION:\t\t par = "; // simuVAtion end
 						printSeparated(std::cout, "\t", 16, true, this->L, this->J, this->w, this->g);
-						
+						quench_fourier(); continue;
+
 						eigenstate_entanglement_manybody(); continue;
 						spectrals(); continue;
 						spectral_form_factor(); continue;
@@ -777,7 +778,7 @@ void ui::quench_fourier()
 	double tH = dim;
 	// int time_end = (int)std::ceil(std::log10(10 * tH));
 	// time_end = (time_end / std::log10(tH) < 10 ) ? time_end + 2 : time_end;
-	arma::vec times = arma::linspace(tH / 10, 100 * tH, this->num_of_points);
+	arma::vec times = arma::linspace(tH / 5, 5 * tH, this->num_of_points);
 
 	int Ll = this->L;
 
