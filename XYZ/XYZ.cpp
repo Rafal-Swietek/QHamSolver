@@ -85,7 +85,7 @@ void XYZ::create_hamiltonian()
     this->H = sparse_matrix(this->dim, this->dim);
     
     if(this->_use_disorder)
-        this->_disorder = disorder_generator.uniform(system_size, 0, two_pi);
+        this->_disorder = disorder_generator.uniform(system_size, -this->_w, this->_w);
     else{
         if(this->_add_parity_breaking)
             this->_disorder(0) = 5 * pi / 12.0;
@@ -110,11 +110,11 @@ void XYZ::create_hamiltonian()
             cpx val = 0.0;
             u64 op_k;
             std::tie(val, op_k) = operators::sigma_z(base_state, this->system_size, j);
-			double fieldZ = this->_w * std::cos(this->_disorder(j)) + this->_hz;
+			double fieldZ = this->_disorder(j) + this->_hz;
             this->set_hamiltonian_elements(k, fieldZ * real(val), op_k);
 	    	
             std::tie(val, op_k) = operators::sigma_x(base_state, this->system_size, j);			
-            double fieldX = this->_w * 0.0 * std::sin(this->_disorder(j)) + this->_hx;
+            double fieldX = this->_hx;
             this->set_hamiltonian_elements(k, fieldX * real(val), op_k);
 
             for(int a = 0; a < neighbor_distance.size(); a++){

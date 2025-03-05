@@ -85,7 +85,8 @@ namespace XYZ_UI{
         void compare_energies();
         void compare_hamiltonian();
         void check_symmetry_generators();
-
+        void quench_fourier();
+        
         template <
 			typename callable, 
 			typename... _types
