@@ -775,12 +775,12 @@ void ui::quench_fourier()
 
 	const size_t size = dim > 1e5? this->l_steps : dim;
 	
-	double tH = dim;
+	double tH = this->g >= 1.0? dim : std::pow(dim, (1 - this->g) / 2) ;
 	// int time_end = (int)std::ceil(std::log10(10 * tH));
 	// time_end = (time_end / std::log10(tH) < 10 ) ? time_end + 2 : time_end;
 	double tmin = tH - this->num_of_points * 0.02;
 	if( tmin < 0 ) tmin = tH / 10;
-	arma::vec times = arma::linspace(tmin, tmin + 2 * tH + this->num_of_points * 0.02, this->num_of_points);
+	arma::vec times = tmin + arma::linspace(0, 2 * this->num_of_points * 0.02, this->num_of_points);
 
 	int Ll = this->L;
 
