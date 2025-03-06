@@ -72,6 +72,9 @@ void ui::make_sim(){
     case 5:
         quench_fourier();
         break;
+    case 6:
+        spectral_form_factor();
+        break;
 	default:
 		#define generate_scaling_array(name) arma::linspace(this->name, this->name + this->name##s * (this->name##n - 1), this->name##n)
         #define for_loop(param, var) for (auto& param : generate_scaling_array(var))
@@ -148,10 +151,7 @@ void ui::quench_fourier()
 
 	const size_t size = dim > 1e5? this->l_steps : dim;
 	
-	double tH = dim / std::sqrt(this->L);
-	double tmin = tH - this->num_of_points * 0.02;
-	if( tmin < 0 ) tmin = tH / 10;
-	arma::vec times = tmin + arma::linspace(0, 2 * this->num_of_points * 0.02, this->num_of_points);
+	arma::vec times;
 
 	int Ll = this->L;
 
@@ -180,6 +180,30 @@ void ui::quench_fourier()
 		arma::vec Hdiagonal = arma::diagvec( this->ptr_to_model->get_dense_hamiltonian() );
 
 		double E_av = arma::trace(E) / double(dim);
+        
+        double tH = 0;
+		double bandwidth = 0;
+		if(realis == 0){
+			auto i = std::min_element(std::begin(E), std::end(E), [=](double x, double y) {
+				return abs(x - E_av) < abs(y - E_av);
+			});
+			const long Eav_idx = i - std::begin(E);
+			long int E_min = dim < 0? 0 : Eav_idx - long(dim / 4);
+			long int E_max = dim > 1e5? dim : Eav_idx + long(dim / 4);
+
+			double wH = 0;
+			for (long int i = E_min; i < E_max; i++)
+				wH += E(i+1) - E(i);
+			wH /= double(E_max - E_min);
+			tH = 2 * constants<double>::two_pi / wH;
+			bandwidth = E(E.size() - 1) - E(0);
+
+			double dt = 1.25 * 2 * constants<double>::two_pi / bandwidth;
+			double tmin = tH - this->num_of_points / 2 * dt;
+			if( tmin < 0 ) tmin = tH / 10;
+			times = tmin + arma::linspace(0, this->num_of_points / 2 * dt, this->num_of_points + 1);
+		}
+
 		auto i = min_element(begin(Hdiagonal), end(Hdiagonal), [=](double x, double y) {
 			return abs(x - E_av) < abs(y - E_av);
 		});
@@ -236,6 +260,8 @@ void ui::quench_fourier()
 			times.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "times"));
 			quench.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "quench",   arma::hdf5_opts::append));
 			arma::vec( {quench_E} ).save(   arma::hdf5_name(dir_realis + info + ".hdf5", "quench_energy",   arma::hdf5_opts::append));
+			arma::vec( {bandwidth} ).save(   arma::hdf5_name(dir_realis + info + ".hdf5", "bandwidth",   arma::hdf5_opts::append));
+			arma::vec( {tH} ).save(   arma::hdf5_name(dir_realis + info + ".hdf5", "tH",   arma::hdf5_opts::append));
 		}
 		// #endif
 		
@@ -619,7 +645,7 @@ void ui::parse_cmd_options(int argc, std::vector<std::string> argv)
     this->set_option(this->syms.zz_sym, argv, choosen_option);
 
     //<! FOLDER
-    std::string folder = "." + kPSep + "results" + kPSep;
+    std::string folder = this->dir_prefix + "results" + kPSep;
     #ifdef USE_SYMMETRIES
         folder += "symmetries" + kPSep;
     #else
