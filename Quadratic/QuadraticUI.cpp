@@ -773,11 +773,19 @@ void ui::quench_fourier()
 	size_t dim = this->ptr_to_model->get_hilbert_size();
 	std::string info = this->set_info();
 
-	auto H =  this->ptr_to_model->get_dense_hamiltonian();
-	double width = std::sqrt( arma::trace(H*H) - arma::trace(H)*arma::trace(H) );
-
 	const size_t size = dim > 1e5? this->l_steps : dim;
-	arma::vec times;
+	
+	double bandwidth = 0;
+	double dim_log = this->L * std::log(2);
+	double dE_base = std::sqrt(1 + std::pow(dim, 1 - this->g));
+	if(this->g >= 1) bandwidth = 2 * dE_base * ( std::sqrt(2 * dim_log) - std::log(dim_log * 4 * constants<double>::pi) / std::sqrt(2*dim_log) / 2 );
+	else			 bandwidth = 4 * dE_base;
+
+	double dt = 2 * constants<double>::two_pi / bandwidth;
+	double tH = 2 * dim / dE_base;
+	double tmin = tH - this->num_of_points / 2 * dt;
+	if( tmin < 0 ) tmin = tH / 10;
+	arma::vec times = tmin + arma::linspace(0, this->num_of_points / 2 * dt, this->num_of_points + 1);
 
 	int Ll = this->L;
 
@@ -803,29 +811,6 @@ void ui::quench_fourier()
 		const auto& V = this->ptr_to_model->get_eigenvectors();
 		double E_av = arma::trace(E) / double(dim);
 
-		double tH = 0;
-		double bandwidth = 0;
-		if(realis == 0){
-			auto i = std::min_element(std::begin(E), std::end(E), [=](double x, double y) {
-				return abs(x - E_av) < abs(y - E_av);
-			});
-			const long Eav_idx = i - std::begin(E);
-			long int E_min = dim < 0? 0 : Eav_idx - long(dim / 4);
-			long int E_max = dim > 1e5? dim : Eav_idx + long(dim / 4);
-
-			double wH = 0;
-			for (long int i = E_min; i < E_max; i++)
-				wH += E(i+1) - E(i);
-			wH /= double(E_max - E_min);
-			tH = 2 * constants<double>::two_pi / wH;
-			bandwidth = E(E.size() - 1) - E(0);
-
-			double dt = 1.25 * 2 * constants<double>::two_pi / bandwidth;
-			double tmin = tH - this->num_of_points / 2 * dt;
-			if( tmin < 0 ) tmin = tH / 10;
-			times = tmin + arma::linspace(0, this->num_of_points / 2 * dt, this->num_of_points + 1);
-		}
-		
 		arma::vec Hdiagonal = arma::diagvec( this->ptr_to_model->get_dense_hamiltonian() );
 
 		auto i = min_element(begin(Hdiagonal), end(Hdiagonal), [=](double x, double y) {
