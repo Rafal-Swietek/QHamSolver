@@ -781,7 +781,7 @@ void ui::quench_fourier()
 	if(this->g >= 1) bandwidth = 2 * dE_base * ( std::sqrt(2 * dim_log) - std::log(dim_log * 4 * constants<double>::pi) / std::sqrt(2*dim_log) / 2 );
 	else			 bandwidth = 4 * dE_base;
 
-	double dt = 2 * constants<double>::two_pi / bandwidth;
+	double dt = constants<double>::two_pi / bandwidth;
 	double tH = 2 * dim / dE_base;
 	double tmin = tH - this->num_of_points / 2 * dt;
 	if( tmin < 0 ) tmin = tH / 10;
