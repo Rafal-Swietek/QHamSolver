@@ -241,7 +241,7 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
 	std::string filename = info;// + "_subsize=" + std::to_string(VA);
 
 	// const int Gamma_max = this->num_of_points;
-	u64 num_states = 1e5;//500 * Gamma_max;//ULLPOW(14);
+	u64 num_states = this->num_of_points;//500 * Gamma_max;//ULLPOW(14);
 	
 	arma::Col<int> Gammas = arma::Col<int>({1, 2, 4, this->V / 4, this->V / 2, this->V, this->V * this->V});
 	const int Gamma_max = Gammas.size();
