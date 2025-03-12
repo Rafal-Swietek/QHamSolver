@@ -767,7 +767,9 @@ void ui::quench()
 
 void ui::quench_fourier()
 {
-	std::string dir = this->saving_dir + "Quench" + kPSep + "Fourier" + kPSep;
+	std::string dir;
+	if(this->op==1) dir = this->saving_dir + "Quench" + kPSep + "Fourier_SxSx" + kPSep;
+	else 		 	dir = this->saving_dir + "Quench" + kPSep + "Fourier" + kPSep;
 	createDirs(dir);
 	
 	size_t dim = this->ptr_to_model->get_hilbert_size();
@@ -842,12 +844,23 @@ void ui::quench_fourier()
 		std::cout << " - - - - - - finished preparing initial states for all times in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
 		
 		start = std::chrono::system_clock::now();
-		auto kernel = [Ll](u64 state){ 
-			auto [val1, tmp22] = operators::sigma_z(state, Ll, Ll - 1 );
-			return std::make_pair(state, val1);
-			};
-		auto _operator = QOps::generic_operator<>(this->L, std::move(kernel), 1.0);
-		arma::sp_mat op = arma::real(_operator.to_matrix(dim));
+		arma::sp_mat op;
+		if(this->op==1){
+			auto kernel = [Ll](u64 state){ 
+				auto [val1, state_x] = operators::sigma_x(state, Ll, Ll - 1 );
+				auto [val2, state_xx] = operators::sigma_x(state_x, Ll, Ll - 2 );
+				return std::make_pair(state_xx, val1* val2);
+				};
+			auto _operator = QOps::generic_operator<>(this->L, std::move(kernel), 1.0);
+			op = arma::real(_operator.to_matrix(dim));
+		} else {
+			auto kernel = [Ll](u64 state){ 
+				auto [val1, state_z] = operators::sigma_z(state, Ll, Ll - 1 );
+				return std::make_pair(state_z, val1);
+				};
+			auto _operator = QOps::generic_operator<>(this->L, std::move(kernel), 1.0);
+			op = arma::real(_operator.to_matrix(dim));
+		}
 		arma::Mat<element_type> mat_elem = V.t() * op * V;
 		arma::vec diag_mat_elem = arma::diagvec(mat_elem);
 		std::cout << " - - - - - - finished Sz_L matrix elements in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
