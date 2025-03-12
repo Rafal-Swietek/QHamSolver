@@ -1093,7 +1093,7 @@ void ui::total_spin()
 // ---------------------------------------------------------------------------------------------------------------- IMPLEMENTATION OF UI
 
 void ui::set_volume(){
-	#if defined(RP) || defined(SYK) || defined(PLRB)
+	#if defined(RP)|| defined(PLRB)// || defined(SYK) 
 		this->V = ULLPOW(this->L);
 	// #elif 
 	// 	this->V = this->L;
