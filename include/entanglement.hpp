@@ -283,6 +283,37 @@ namespace entropy{
         return _entropy;
     }
     
+
+    /// @brief Calculates the entropy using the Schmidt decomposition of a wavefunction
+    /// @tparam _ty input state type
+    /// @param state input state in full Hilbert space
+    /// @param dimA Hilbert space of subsystem A
+    /// @param dimB Hilbert space of subsystem B
+    /// @return entanglement entropy
+    template <typename _ty>
+    inline
+    auto schmidt_decomposition_dims(
+        const arma::Col<_ty>& state,
+        u64 dimA,
+        u64 dimB
+        )
+    {
+        // reshape array to matrix
+        arma::Mat<_ty> rho = arma::reshape(state, dimA, dimB);
+
+        // get schmidt coefficients from singular-value-decomposition
+        arma::vec schmidt_coeff = arma::svd(rho);
+
+        //calculate entropy
+        double entropy = 0;
+    // #pragma omp parallel for reduction(+: entropy)
+    	for (int i = 0; i < schmidt_coeff.size(); i++) {
+    		auto value = std::abs(schmidt_coeff(i)) * std::abs(schmidt_coeff(i));
+    		entropy += (abs(value) > 0) ? -value * std::log(value) : 0;
+    	}
+        return entropy;
+    }
+
     /// @brief Calculates the entropy using the Schmidt decomposition of a wavefunction
     /// @tparam _ty input state type
     /// @param state input state in full Hilbert space
@@ -300,21 +331,9 @@ namespace entropy{
     	const long long dimA = (ULLPOW( (block_size *      A_size ) ));
     	const long long dimB = (ULLPOW( (block_size * (L - A_size)) ));
 
-        // reshape array to matrix
-        arma::Mat<_ty> rho = arma::reshape(state, dimA, dimB);
-
-        // get schmidt coefficients from singular-value-decomposition
-        arma::vec schmidt_coeff = arma::svd(rho);
-
-        //calculate entropy
-        double entropy = 0;
-    // #pragma omp parallel for reduction(+: entropy)
-    	for (int i = 0; i < schmidt_coeff.size(); i++) {
-    		auto value = std::abs(schmidt_coeff(i)) * std::abs(schmidt_coeff(i));
-    		entropy += (abs(value) > 0) ? -value * std::log(value) : 0;
-    	}
-        return entropy;
+        return schmidt_decomposition_dims(state, dimA, dimB);
     }
+
 };
 
 

@@ -8,9 +8,10 @@ namespace QHS{
 
             /// @brief Initialize the ManyBodyState class to convert from gaussian to many-body states
             /// @tparam _ty type of input orbitals
-            template <typename _ty>
+            /// @tparam use_U1_decomp Create ManyBody state in U(1) subspace
+            template <typename _ty, bool use_U1_decomp>
             inline 
-            void ManyBodyState<_ty>::initialize() 
+            void ManyBodyState<_ty, use_U1_decomp>::initialize() 
             {
                 CONSTRUCTOR_CALL;
                 this->check_spin = QOps::__builtins::get_digit(this->volume);
@@ -18,10 +19,11 @@ namespace QHS{
             
             /// @brief Initialize the ManyBodyState class to convert from gaussian to many-body states
             /// @tparam _ty type of input orbitals
+            /// @tparam use_U1_decomp Create ManyBody state in U(1) subspace
             /// @param gaussian_state Input gaussian state (bitset) as quasiparticle product state
-            template <typename _ty>
+            template <typename _ty, bool use_U1_decomp>
             inline
-            arma::uvec ManyBodyState<_ty>::set_indices(const boost::dynamic_bitset<>& gaussian_state, int N)
+            arma::uvec ManyBodyState<_ty, use_U1_decomp>::set_indices(const boost::dynamic_bitset<>& gaussian_state, int N)
             {
                 arma::uvec set_idx(N, arma::fill::zeros);
                 int count = 0;
@@ -37,20 +39,22 @@ namespace QHS{
 
             /// @brief Initialize the ManyBodyState class to convert from gaussian to many-body states
             /// @tparam _ty type of input orbitals
+            /// @tparam use_U1_decomp Create ManyBody state in U(1) subspace
             /// @param gaussian_state Input gaussian state (bitset) as quasiparticle product state
-            template <typename _ty>
+            template <typename _ty, bool use_U1_decomp>
             inline
-            arma::uvec ManyBodyState<_ty>::_set_indices(const boost::dynamic_bitset<>& gaussian_state)
+            arma::uvec ManyBodyState<_ty, use_U1_decomp>::_set_indices(const boost::dynamic_bitset<>& gaussian_state)
             {
                 return set_indices(gaussian_state, this->num_particles);
             }
 
             /// @brief Initialize the ManyBodyState class to convert from gaussian to many-body states
             /// @tparam _ty type of input orbitals
+            /// @tparam use_U1_decomp Create ManyBody state in U(1) subspace
             /// @param state_idx Input gaussian state (bitset) as quasiparticle product state
-            template <typename _ty>
+            template <typename _ty, bool use_U1_decomp>
             inline
-            arma::uvec ManyBodyState<_ty>::_set_ell_indices(u64 state_idx)
+            arma::uvec ManyBodyState<_ty, use_U1_decomp>::_set_ell_indices(u64 state_idx)
             {
                 arma::uvec set_ell(this->num_particles, arma::fill::zeros);
                 int count = 0;
@@ -67,10 +71,12 @@ namespace QHS{
             /// @brief Calculate Slater determinant of gaussian state (given by set indices set_q) with product state (given by set indices set_l)
             /// @param set_l set indices of current product state
             /// @param set_q sert indices of gaussian state of interest
+            /// @tparam _ty type of input orbitals
+            /// @tparam use_U1_decomp Create ManyBody state in U(1) subspace
             /// @return slater determinant for given indices
-            template <typename _ty>
+            template <typename _ty, bool use_U1_decomp>
             inline
-            _ty ManyBodyState<_ty>::determinant(const arma::uvec& set_l, const arma::uvec& set_q)
+            _ty ManyBodyState<_ty, use_U1_decomp>::determinant(const arma::uvec& set_l, const arma::uvec& set_q)
             {
                 auto W = this->_orbitals.submat(set_l, set_q);
                 auto eigs = arma::eig_gen(W);

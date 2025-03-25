@@ -18,11 +18,14 @@ namespace QHS{
             {
                 arma::uvec col_idx(long(state.count()));
                 int idx = 0;
-                for(int q = 0; q < orbitals.n_cols; q++){
-                    double n_q = int(state[q]);
-                    lambda += prefactor * n_q * std::abs(orbitals(q, VA) * std::conj(orbitals(q, VA)));
-                    if(n_q == 1)
-                        col_idx(idx++) = q;
+                
+                if(VA < orbitals.n_cols){
+                    for(int q = 0; q < orbitals.n_cols; q++){
+                        double n_q = int(state[q]);
+                        lambda += prefactor * n_q * std::abs(orbitals(q, VA) * std::conj(orbitals(q, VA)));
+                        if(n_q == 1)
+                            col_idx(idx++) = q;
+                    }
                 }
                 if(VA > 0){
                     arma::uvec row_idx = arma::regspace<arma::uvec>(0, VA-1);

@@ -7,10 +7,14 @@ namespace QHS{
 
         namespace slater{
 
-            template <typename _ty>
+            /// @brief ManyBodyState class to convert from gaussian to many-body states
+            /// @tparam _ty type of input orbitals
+            /// @tparam use_U1_decomp Create ManyBody state in U(1) subspace
+            template <typename _ty, bool use_U1_decomp = false>
             class ManyBodyState
             {
                 const arma::Mat<_ty>& _orbitals;
+
                 U1_hilbert_space<U1::charge, true> _hilbert_space;
                 QOps::_ifun check_spin;
 
