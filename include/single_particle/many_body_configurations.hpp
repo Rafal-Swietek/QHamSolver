@@ -43,7 +43,7 @@ namespace QHS{
         {
             std::vector<boost::dynamic_bitset<>> mb_states;
             num_of_states = u64(std::min((double)num_of_states, binom(volume, num_particles)));
-        #pragma omp parallel for
+        // #pragma omp parallel for
             for(u64 id = 0; id < num_of_states; id++){
                 long num_up = num_particles;
                 long num_down = volume - num_up;
@@ -61,7 +61,7 @@ namespace QHS{
                         // state.push_back(0);
                     }
                 }
-                #pragma omp critical
+                // #pragma omp critical
                 {
                     mb_states.emplace_back(state);
                 }
@@ -69,11 +69,12 @@ namespace QHS{
             
             // Search for repeating states
             std::vector<u64> indices;
-        #pragma omp parallel for
+        // #pragma omp parallel for
             for(u64 n = 0; n < mb_states.size(); n++){
                 for(u64 m = n+1; m < mb_states.size() && m != n; m++){
-                    if(mb_states[m] == mb_states[n]){
-                    #pragma omp critical
+                    if(mb_states[m] == mb_states[n])
+                    {
+                    // #pragma omp critical
                         {
                             indices.push_back(m);
                         }
@@ -118,9 +119,10 @@ namespace QHS{
                     }
                     state[q] = ints[q];
                 }
-                // if( (N == num_particles) && (Q % volume == 0) && (std::abs(E) < 1e-12) )
-                if( (N == num_particles) && (std::abs(E) < 1e-12) )
+                if( (N == num_particles) && (Q % volume == 0) && (std::abs(E) < 1e-12) ){
+                // if( (N == num_particles) && (std::abs(E) < 1e-12) ){
                     mb_states.emplace_back(state);
+                }
             }while(std::next_permutation(ints.begin(), ints.end()));
             return mb_states;
         }
