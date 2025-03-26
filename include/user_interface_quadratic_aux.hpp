@@ -245,7 +245,7 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
 	
 	arma::Col<int> Gammas = arma::Col<int>({1, 2, 4, this->V / 4, this->V / 2, this->V});
 	const int Gamma_max = Gammas.size();
-	arma::vec qs = arma::vec({0.5, 1, 2});
+	// arma::vec qs = arma::vec({0.5, 1, 2});
 
 	// arma::Col<int> subsystem_sizes = arma::conv_to<arma::Col<int>>::from(arma::linspace(0, this->V / 2, this->V / 2 + 1));
 	arma::Col<int> subsystem_sizes = arma::Col<int>({this->V / 2});
@@ -255,7 +255,7 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
 
 	arma::mat entropies(Gamma_max, subsystem_sizes.size(), arma::fill::zeros);
 	arma::mat single_site_entropy(Gamma_max, subsystem_sizes.size(), arma::fill::zeros);
-	arma::mat participation_ratios(Gamma_max, qs.size(), arma::fill::zeros);
+	// arma::mat participation_ratios(Gamma_max, qs.size(), arma::fill::zeros);
 
 	int counter = 0;
 
@@ -348,14 +348,14 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
 
 		std::cout << " - - - - - - finished setting slater converter in : " << tim_s(start) << " s for realis = " << realis << " - - - - - - " << std::endl;
 		// for(auto& VA : subsystem_sizes)
-		arma::mat prs(Gamma_max, qs.size(), arma::fill::zeros);
+		// arma::mat prs(Gamma_max, qs.size(), arma::fill::zeros);
 		for(int VA_idx = 0; VA_idx < subsystem_sizes.size(); VA_idx++)
 		{
 			const long VA = subsystem_sizes(VA_idx);
 			auto start_VA = std::chrono::system_clock::now();
 			
 			start_VA = std::chrono::system_clock::now();
-			prs.zeros();
+			// prs.zeros();
 
 		// #pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
 			for(int ii = 0; ii < Gammas.size(); ii++)
@@ -372,7 +372,7 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
 				{
 					auto start_G = std::chrono::system_clock::now();
 					auto start_G0 = std::chrono::system_clock::now();
-					arma::vec _prs_(qs.size(), arma::fill::zeros);
+					// arma::vec _prs_(qs.size(), arma::fill::zeros);
 					arma::cx_mat U = random_matrix.generate_matrix(gamma_a);
 					
 					arma::Col<int> indices = random_integers.uniform(gamma_a, 0, num_states - 1);
@@ -396,7 +396,7 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
 						for(int n = 0; n < gamma_a; n++)
 						{
 							auto state_n = mb_states[indices(n)];
-
+							// std::cout << gamma_a << "\t\t" << state_n << std::endl;
 							// Fill state with appropriate values --------------------------------------------------
 							SlaterConverter_U1.convert(fullstate, state_n, coeff(n));
 							// --------------------------------------------------------------------------------------
@@ -434,7 +434,8 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
 									
 								if(state_n[qs[0]] ^ state_n[qs[1]])	// state n and m differ at q1 and q2 to enable hopping, otherwise skip
 								{
-									for(auto& qss : v_2d<int>( { qs, v_1d<int>({qs[1], qs[0]}) } ) ){
+									for(auto& qss : v_2d<int>( { qs, v_1d<int>({qs[1], qs[0]}) } ) )
+									{
 										int q1 = qss[0];
 										int q2 = qss[1];
 
@@ -449,8 +450,8 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
 											auto orbital2 = orbitals.col(q2).rows(0, VA - 1);
 											J_m += pre * orbital2 * orbital1.t();
 										}
-										auto orbital1 = orbitals.col(q1).rows(0, V - 1);
-										auto orbital2 = orbitals.col(q2).rows(0, V - 1);
+										auto orbital1 = orbitals.col(q1);
+										auto orbital2 = orbitals.col(q2);
 										J_m_full += pre * orbital2 * orbital1.t();
 									}
 								}
@@ -469,7 +470,7 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
 					// prs.row(ii) += _prs_.t();
 					counter_states++;
 				}
-				participation_ratios(ii) = prs(ii) / (double)counter_states;
+				// participation_ratios(ii) = prs(ii) / (double)counter_states;
 				S(ii, VA_idx) 			 = entropy / (double)counter_states;				// entanglement of subsystem VA using Slater determiniants
 
 				S_corr(ii, VA_idx) 		 = entropy_corr_mat / (double)counter_states;				// entanglement of subsystem VA using Gaussian approx
@@ -489,8 +490,8 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
 			NonGauss.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "Non-Gaussianity", arma::hdf5_opts::append));
 			// S_site.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "single_site_entropy", arma::hdf5_opts::append));
 			subsystem_sizes.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "subsystem_sizes", arma::hdf5_opts::append));
-			qs.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "qs", arma::hdf5_opts::append));
-			prs.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "participation_ratio", arma::hdf5_opts::append));
+			// qs.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "qs", arma::hdf5_opts::append));
+			// prs.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "participation_ratio", arma::hdf5_opts::append));
 			single_particle_energy.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "single particle energy", arma::hdf5_opts::append));
 		}
 		entropies += S;
