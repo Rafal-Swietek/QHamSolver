@@ -54,6 +54,9 @@ void ui::make_sim(){
 	case 11:
 		eigenstate_ergodicity_test();
 		break;
+	case 12:
+		non_gaussianity();
+		break;
 	default:
 		#define generate_scaling_array(name) arma::linspace(this->name, this->name + this->name##s * (this->name##n - 1), this->name##n);
 		auto L_list = generate_scaling_array(L);

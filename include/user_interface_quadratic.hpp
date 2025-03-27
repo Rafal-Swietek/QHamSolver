@@ -55,6 +55,7 @@ public:
 	// virtual void average_sff() 				override;
 	virtual void eigenstate_entanglement() 	override;
     virtual void eigenstate_entanglement_degenerate() override;
+	virtual void non_gaussianity();
 
 	virtual void eigenstate_entanglement_manybody();
 	// virtual void analyze_spectra() 			override;

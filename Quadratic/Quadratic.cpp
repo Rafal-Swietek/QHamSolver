@@ -44,7 +44,7 @@ Quadratic::Quadratic(int L, double J, double w, const u64 seed, double g, bool _
 /// @brief Method to create hamiltonian within the class
 void Quadratic::create_hamiltonian()
 {
-    write(std::cout);
+    // write(std::cout);
     this->H = sparse_matrix(this->dim, this->dim);
     #ifdef ANDERSON
         if(std::abs(this->_w) < 1e-15) this->_disorder = arma::vec(this->dim, arma::fill::zeros);

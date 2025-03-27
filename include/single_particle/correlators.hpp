@@ -64,7 +64,7 @@ namespace QHS{
                     auto W = orbitals.submat(row_idx, col_idx);
                     J_m += W * W.t();
                 }
-                std::make_pair(J_m, lambda);    
+                return std::make_pair(J_m, lambda);    
             }
         }
 
