@@ -370,7 +370,12 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
 					// arma::vec _prs_(qs.size(), arma::fill::zeros);
 					arma::cx_mat U = random_matrix.generate_matrix(gamma_a);
 					
-					arma::Col<int> indices = random_integers.uniform(gamma_a, 0, num_states - 1);
+					// arma::Col<int> indices = random_integers.uniform(gamma_a, 0, num_states - 1);
+					// std::cout << arma::sort(indices) << std::endl;
+					arma::Col<int> indices = random_integers.uniform(5 * Gammas(Gamma_max-1), 0, num_states - 1);
+					indices = arma::unique(indices);
+					indices = indices.rows(0, gamma_a - 1);
+					_extra_debug_(  std::cout << arma::sort(indices) << std::endl; )
 					int id = random_integers.uniform_dist<int>(0, gamma_a-1);
 					
 					arma::cx_vec coeff = U.col(id);
@@ -378,9 +383,14 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
 
 					QHS::single_particle::slater::ManyBodyState<cpx, false> SlaterConverter(orbitals, _hilbert_space);
 
+					std::vector<boost::dynamic_bitset<>> states_for_superposition;
+					for(int n = 0; n < gamma_a; n++){
+						states_for_superposition.push_back(mb_states[indices(n)]);
+						_extra_debug_( std::cout << mb_states[indices(n)] << std::endl; )
+					}
+
 					std::cout << "\t- - - - - - finished preamble Gamma = " << gamma_a << " mixings in time:" << tim_s(start_G) << " s - - - - - - " << std::endl; // simuVAtion end
 					start_G = std::chrono::system_clock::now();
-
 					
 					arma::cx_vec fullstate(ULLPOW(this->V), arma::fill::zeros);
 					for(int n = 0; n < gamma_a; n++)
@@ -389,7 +399,8 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
 						if(this->op)
 						{
 							// Use selected states from the same Hamiltonian ----------------------------------------
-							state_n = mb_states[indices(n)];
+							// state_n = mb_states[indices(n)];
+							state_n = states_for_superposition[n];
 							// Fill state with appropriate values --------------------------------------------------
 							SlaterConverter.convert(fullstate, state_n, coeff(n));
 							// --------------------------------------------------------------------------------------
@@ -437,16 +448,17 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
 						for(int i = 0; i < this->V; i++)
 						{
 							auto [_spin, _] = operators::sigma_z(state, this->V, i);
-							if( std::real(_spin) > 0)
-							J_m_MB(i, i) += std::conj(fullstate(state)) * fullstate(state);
-
+							if( std::real(_spin) > 0){
+								J_m_MB(i, i) += std::conj(fullstate(state)) * fullstate(state);
+							}
 							u64 mask_i = reverseBits( ULLPOW(i)-1, this->V );
 							for(int j = i+1; j < this->V; j++)
 							{
 								u64 mask_j = reverseBits( ULLPOW(j)-1, this->V );
 								double sign1 = (__builtin_popcountll(state & mask_i) % 2)? -1 : +1;
-								double sign2 = (__builtin_popcountll(state & mask_j) % 2)? -1 : +1;
 								auto [val1, cm] = operators::sigma_minus(state, this->V, j);
+
+								double sign2 = (__builtin_popcountll(cm & mask_j) % 2)? -1 : +1;
 		    					auto [val2, cpcm] = operators::sigma_plus(cm, this->V, i);
 								if(std::abs(val1 * val2) > 0)
 								{
@@ -490,6 +502,8 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
 					arma::cx_mat J_m_full;
 					if(this->op)
 					{
+						// Choose states in advance
+
 						for(int VA_idx = 0; VA_idx < subsystem_sizes.size(); VA_idx++)
 						{
 							const long VA = subsystem_sizes(VA_idx); 
@@ -498,52 +512,101 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
 							cpx lambda = 0.0;
 							for(int n = 0; n < gamma_a; n++)
 							{
-								auto state_n = mb_states[indices(n)];
+								// auto state_n = mb_states[indices(n)];
+								auto state_n = states_for_superposition[n];
 								
 								// <n|f+_q f_q|n>
-								double pre = std::abs(coeff(n)) * std::abs(coeff(n));
+								double pre = std::abs( std::conj(coeff(n)) * coeff(n));
 								QHS::single_particle::correlators::one_body(orbitals, state_n, VA, J_m, lambda, pre);
 								QHS::single_particle::correlators::one_body(orbitals, state_n, V, J_m_full, lambda, pre);
 								
-								// <m|f+_q1 f_q2|n>
-								for(int m = n + 1; m < gamma_a; m++)
+								// <m|f+_q1 f_q2|n> // m<n is included in different q,q'
+								for(int m = 0; m < gamma_a; m++)
 								{
-									auto state_m = mb_states[indices(m)];
+									// auto state_m = mb_states[indices(m)];
+									auto state_m = states_for_superposition[m];
 								
 									// arma::cx_mat J_m_tmp(VA, VA, arma::fill::zeros);
 									auto x = state_n ^ state_m;
 									if(x.count() == 2){		// states differ only at two sites, q1 and q2
-										// std::cout << state_n << "\t\t" << state_m << std::endl;
 										std::vector<int> qs;
-										auto prefactor = std::conj(coeff(m)) * coeff(n);
-										for(int q = 0; q < this->V; q++)
-											if(x[q]) qs.push_back(q);
-											
-										if(state_n[qs[0]] ^ state_n[qs[1]])	// state n and m differ at q1 and q2 to enable hopping, otherwise skip
-										{
-											for(auto& qss : v_2d<int>( { qs, v_1d<int>({qs[1], qs[0]}) } ) )
-											{
-												int q1 = qss[0];
-												int q2 = qss[1];
-
-												cpx pre = prefactor;
-												if(state_n[q1])		// for one of the 2 cases do conjungation
-													pre = std::conj(prefactor);
-												
-												lambda += pre * std::abs(orbitals(q2, VA) * std::conj(orbitals(q1, VA)));
-												
-												if(VA > 0)
-												{
-													// arma::uvec row_idx = arma::regspace<arma::uvec>(0, VA-1);
-													auto orbital1 = orbitals.col(q1).rows(this->V - VA, this->V - 1);
-													auto orbital2 = orbitals.col(q2).rows(this->V - VA, this->V - 1);
-													J_m += pre * orbital2 * orbital1.t();
-												}
-												auto orbital1 = orbitals.col(q1);
-												auto orbital2 = orbitals.col(q2);
-												J_m_full += pre * orbital2 * orbital1.t();
+										// auto prefactor = std::conj(coeff(n)) * coeff(m);
+										for(int q = 0; q < this->V; q++){
+											if(x[q]){
+												qs.push_back(q);
 											}
 										}
+										
+										if(state_n[qs[0]] ^ state_n[qs[1]])	// state n and m differ at q1 and q2 to enable hopping, otherwise skip
+										{
+											_extra_debug_( std::cout << state_n << "\t\t" << state_m << "\t\t" << x << "\t\t" << qs; )// << std::endl;
+											for(int q1 : qs){
+												boost::dynamic_bitset<> mask_q1(this->V, ULLPOW(q1) - 1);
+												for(int q2 : qs){
+													boost::dynamic_bitset<> mask_q2(this->V, ULLPOW(q2) - 1);
+													if( (q1 != q2) && state_m[q1] )
+													{
+														double sign1 = ((state_m & mask_q1).count() % 2)? -1 : 1;
+														boost::dynamic_bitset<> _state_m_anih = state_m;
+														_state_m_anih[q1] = 0;
+														double sign2 = ((_state_m_anih & mask_q2).count() % 2)? -1 : 1;
+														cpx pre = sign1 * sign2 * std::conj(coeff(n)) * coeff(m);
+
+														_extra_debug_( std::cout << q1 << "\t\t" << q2 << "\t\t" << state_m[q1] << "\t\t" << state_m[q2] << "\t\t" << sign1 << "\t\t" << sign2 << "\t\t" << pre << std::endl; )
+														
+														lambda += pre * std::abs(orbitals(q2, VA) * std::conj(orbitals(q1, VA)));
+
+														if(VA > 0)
+														{
+															// arma::uvec row_idx = arma::regspace<arma::uvec>(0, VA-1);
+															auto orbital1 = orbitals.col(q1).rows(this->V - VA, this->V - 1);
+															auto orbital2 = orbitals.col(q2).rows(this->V - VA, this->V - 1);
+															J_m += pre * orbital2 * orbital1.t();
+														}
+														auto orbital1 = orbitals.col(q1);
+														auto orbital2 = orbitals.col(q2);
+														J_m_full += pre * orbital2 * orbital1.t();
+													}
+												}	
+											}
+										}
+
+										// if(state_n[qs[0]] ^ state_n[qs[1]])	// state n and m differ at q1 and q2 to enable hopping, otherwise skip
+										// {
+										// 	std::cout << state_n << "\t\t" << state_m << "\t\t" << x << "\t\t" << qs;// << std::endl;
+										// 	for(auto& qss : v_2d<int>( { qs, v_1d<int>({qs[1], qs[0]}) } ) )
+										// 	{
+										// 		int q1 = qss[0];	boost::dynamic_bitset<> mask_q1(this->V, ULLPOW(q1) - 1);
+										// 		int q2 = qss[1];	boost::dynamic_bitset<> mask_q2(this->V, ULLPOW(q2) - 1);
+
+										// 		double sign1 = ((state_m & mask_q1).count() % 2)? -1 : 1;
+										// 		boost::dynamic_bitset<> _state_m_anih = state_m;
+										// 		if(state_m[q1]){
+										// 			_state_m_anih[q1] = 0;
+										// 		} else if (state_m[q2]){
+										// 			_state_m_anih[q2] = 0;
+										// 		}
+										// 		double sign2 = ((_state_m_anih & mask_q2).count() % 2)? -1 : 1;
+												
+										// 		std::cout << q1 << "\t\t" << q2 << "\t\t" << state_m[q1] << "\t\t" << state_m[q2] << "\t\t" << sign1 << "\t\t" << sign2 << std::endl;
+										// 		cpx pre = sign1 * sign2 * prefactor;
+										// 		if(state_n[q1])		// for one of the 2 cases do conjungation
+										// 			pre = std::conj(prefactor);
+												
+										// 		lambda += pre * std::abs(orbitals(q2, VA) * std::conj(orbitals(q1, VA)));
+												
+										// 		if(VA > 0)
+										// 		{
+										// 			// arma::uvec row_idx = arma::regspace<arma::uvec>(0, VA-1);
+										// 			auto orbital1 = orbitals.col(q1).rows(this->V - VA, this->V - 1);
+										// 			auto orbital2 = orbitals.col(q2).rows(this->V - VA, this->V - 1);
+										// 			J_m += pre * orbital2 * orbital1.t();
+										// 		}
+										// 		auto orbital1 = orbitals.col(q1);
+										// 		auto orbital2 = orbitals.col(q2);
+										// 		J_m_full += pre * orbital2 * orbital1.t();
+										// 	}
+										// }
 									}
 								}
 							}
@@ -551,7 +614,7 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
 							auto lambdas = arma::eig_sym(J_m);
 							// if(gamma_a == 1) entropy_corr_mat_OPDM(subsystem_sizes.size() - VA_idx - 1) += QHS::single_particle::entanglement::vonNeumann(lambdas);
 							// else			 
-							entropy_corr_mat_OPDM(VA_idx) += QHS::single_particle::entanglement::vonNeumann(lambdas);
+							entropy_corr_mat_OPDM(VA_idx) = QHS::single_particle::entanglement::vonNeumann(lambdas);
 
 							J_m_full = 2.0 * J_m_full - arma::eye(V, V);
 							lambdas = arma::eig_sym(J_m_full);
