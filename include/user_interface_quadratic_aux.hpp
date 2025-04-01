@@ -830,6 +830,8 @@ void user_interface_quadratic<Hamiltonian>::non_gaussianity()
 		//<! Make general for complex matrices
         
 		arma::vec NonGauss(Gamma_max, arma::fill::zeros);
+		arma::vec Purity1(Gamma_max, arma::fill::zeros);
+		arma::vec Purity2(Gamma_max, arma::fill::zeros);
 		arma::mat S_corr(Gamma_max, subsystem_sizes.size(), arma::fill::zeros);
 		arma::mat S_site_corr(Gamma_max, subsystem_sizes.size(), arma::fill::zeros);
 
@@ -881,8 +883,6 @@ void user_interface_quadratic<Hamiltonian>::non_gaussianity()
 						new_orbitals.set_real(eigV);
 						_orbitals_.push_back(new_orbitals);
 						// --------------------------------------------------------------------------------------
-					} else {
-						_orbitals_.push_back(orbitals);
 					}
 				}
 
@@ -894,11 +894,11 @@ void user_interface_quadratic<Hamiltonian>::non_gaussianity()
 					normalization = 0.0;
 					for(int n = 0; n < gamma_a; n++)
 					{
-						auto _matrix_state_n = QHS::single_particle::tools::get_matrix_state(_orbitals_[n], states_for_superposition[n]);
+						auto _matrix_state_n = QHS::single_particle::tools::get_matrix_state(this->op? orbitals : _orbitals_[n], states_for_superposition[n]);
 						normalization += std::abs( std::conj(coeff(n)) * coeff(n));
 						for(int m = n+1; m < gamma_a; m++)
 						{
-							auto _matrix_state_m = QHS::single_particle::tools::get_matrix_state(_orbitals_[m], states_for_superposition[m]);
+							auto _matrix_state_m = QHS::single_particle::tools::get_matrix_state(this->op? orbitals : _orbitals_[m], states_for_superposition[m]);
 							arma::cx_vec eigs = arma::conj( arma::eig_gen(_matrix_state_n.t() * _matrix_state_m) );
 							cpx val = arma::prod(eigs) * std::conj(coeff(n)) * coeff(m);
 							normalization += val + std::conj(val);
@@ -963,7 +963,10 @@ void user_interface_quadratic<Hamiltonian>::non_gaussianity()
 					std::cout << "\t\t - - - - - - Finished One-body density matrix for Gamma = " << gamma_a << " mixings with Norm = " << normalization << " in time:" << tim_s(start_G) << " s - - - - - - " << std::endl; // simuVAtion end
 					start_G = std::chrono::system_clock::now();
 
+					Purity1(ii) = std::real( arma::trace(OneBodyDensMat * OneBodyDensMat) / arma::trace(OneBodyDensMat) );
 					OneBodyDensMat = 2.0 * OneBodyDensMat - arma::eye(V, V);
+					Purity2(ii) = std::real( arma::trace(OneBodyDensMat * OneBodyDensMat) / arma::trace(OneBodyDensMat) );
+
 					auto lambdas = arma::eig_sym(OneBodyDensMat);
 					non_gaussianity = QHS::single_particle::entanglement::vonNeumann(lambdas);
 
@@ -1026,7 +1029,10 @@ void user_interface_quadratic<Hamiltonian>::non_gaussianity()
 					std::cout << "\t\t - - - - - - Finished One-body density matrix for Gamma = " << gamma_a << " mixings with Norm = " << normalization << " in time:" << tim_s(start_G) << " s - - - - - - " << std::endl; // simuVAtion end
 					start_G = std::chrono::system_clock::now();
 
+					Purity1(ii) = std::real( arma::trace(OneBodyDensMat * OneBodyDensMat) / arma::trace(OneBodyDensMat) );
 					OneBodyDensMat = ( arma::eye(V, V) - 2.0 * OneBodyDensMat);
+					Purity2(ii) = std::real( arma::trace(OneBodyDensMat * OneBodyDensMat) / arma::trace(OneBodyDensMat) );
+
 					auto lambdas = arma::eig_sym(OneBodyDensMat);
 					non_gaussianity = QHS::single_particle::entanglement::vonNeumann(lambdas);
 
@@ -1071,6 +1077,8 @@ void user_interface_quadratic<Hamiltonian>::non_gaussianity()
 			S_corr.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "entropy_corr_mat", arma::hdf5_opts::append));
 			S_site_corr.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "entropy_single_site_corr_mat", arma::hdf5_opts::append));
 			NonGauss.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "Non-Gaussianity", arma::hdf5_opts::append));
+			Purity1.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "Purity1", arma::hdf5_opts::append));
+			Purity2.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "Purity2", arma::hdf5_opts::append));
 		}
 		std::cout << " - - - - - - finished realisation realis = " << realis << " in : " << tim_s(start) << " s - - - - - - " << std::endl; // simuVAtion end
 	}
