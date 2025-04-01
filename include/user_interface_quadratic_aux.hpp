@@ -963,9 +963,9 @@ void user_interface_quadratic<Hamiltonian>::non_gaussianity()
 					std::cout << "\t\t - - - - - - Finished One-body density matrix for Gamma = " << gamma_a << " mixings with Norm = " << normalization << " in time:" << tim_s(start_G) << " s - - - - - - " << std::endl; // simuVAtion end
 					start_G = std::chrono::system_clock::now();
 
-					Purity1(ii) = std::real( arma::trace(OneBodyDensMat * OneBodyDensMat) / arma::trace(OneBodyDensMat) );
+					Purity1(ii) = std::real( arma::trace(OneBodyDensMat * OneBodyDensMat) );
 					OneBodyDensMat = 2.0 * OneBodyDensMat - arma::eye(V, V);
-					Purity2(ii) = std::real( arma::trace(OneBodyDensMat * OneBodyDensMat) / arma::trace(OneBodyDensMat) );
+					Purity2(ii) = std::real( arma::trace(OneBodyDensMat * OneBodyDensMat) );
 
 					auto lambdas = arma::eig_sym(OneBodyDensMat);
 					non_gaussianity = QHS::single_particle::entanglement::vonNeumann(lambdas);
@@ -1029,9 +1029,9 @@ void user_interface_quadratic<Hamiltonian>::non_gaussianity()
 					std::cout << "\t\t - - - - - - Finished One-body density matrix for Gamma = " << gamma_a << " mixings with Norm = " << normalization << " in time:" << tim_s(start_G) << " s - - - - - - " << std::endl; // simuVAtion end
 					start_G = std::chrono::system_clock::now();
 
-					Purity1(ii) = std::real( arma::trace(OneBodyDensMat * OneBodyDensMat) / arma::trace(OneBodyDensMat) );
+					Purity1(ii) = std::real( arma::trace(OneBodyDensMat * OneBodyDensMat) );
 					OneBodyDensMat = ( arma::eye(V, V) - 2.0 * OneBodyDensMat);
-					Purity2(ii) = std::real( arma::trace(OneBodyDensMat * OneBodyDensMat) / arma::trace(OneBodyDensMat) );
+					Purity2(ii) = std::real( arma::trace(OneBodyDensMat * OneBodyDensMat) );
 
 					auto lambdas = arma::eig_sym(OneBodyDensMat);
 					non_gaussianity = QHS::single_particle::entanglement::vonNeumann(lambdas);
