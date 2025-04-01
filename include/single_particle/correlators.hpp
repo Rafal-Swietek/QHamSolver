@@ -4,6 +4,29 @@
 namespace QHS{
     namespace single_particle{
 
+        namespace tools{
+            
+            /// @brief Extract the matrix of the input Gaussian state using input single-particle states
+            /// @param orbitals single particle wavefunctions
+            /// @param state many-body eigenstate (configuration -- product state as boost::dynamic_bitset)
+            template <typename _ty>
+            inline
+            const arma::Mat<_ty> get_matrix_state(const arma::Mat<_ty>& orbitals, const boost::dynamic_bitset<>& state)
+            {
+                arma::uvec col_idx(long(state.count()));
+                int idx = 0;
+                int V = orbitals.n_cols;
+                for(int q = 0; q < V; q++){
+                    double n_q = int(state[q]);
+                    if(n_q == 1)
+                        col_idx(idx++) = q;
+                }
+                arma::uvec row_idx = arma::regspace<arma::uvec>(0, V - 1);
+                return orbitals.submat(row_idx, col_idx);
+            }
+
+        }
+
         namespace correlators{
 
             /// @brief Calculate one-body correlation matrix for eigenstate state with single particle states in orbitals. The size of matrix is set by VA
