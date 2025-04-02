@@ -593,7 +593,7 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
 									arma::cx_mat Wm_ci = arma::join_rows(_matrix_state_m, created_state_i);
 									auto eigs = arma::eig_gen(Wm_ci.t() * Wn_ci);
 									cpx val = arma::prod(eigs);
-									OneBodyDensMat(i, i) += pre * val; // (1 - ...) because swap of creation operators: ci+ cj -> cj ci+ 
+									OneBodyDensMat(i, i) += pre * val;
 									for(int j = i+1; j < this->V; j++)
 									{
 										arma::cx_vec created_state_j(this->V, arma::fill::zeros);	
@@ -602,14 +602,15 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
 
 										auto eigs = arma::eig_gen(Wm_cj.t() * Wn_ci);
 										cpx val = arma::prod(eigs);
-										// (-) because swap of creation operators: ci+ cj -> cj ci+ 
+										 
 										OneBodyDensMat(i, j) += pre * val;
 										OneBodyDensMat(j, i) += std::conj( pre * val );
 									}
 								}
 							}
 						}
-						OneBodyDensMat = ( arma::eye(V, V) - 2.0 * OneBodyDensMat);
+						OneBodyDensMat = ( arma::eye(V, V) - OneBodyDensMat); // (-) because swap of creation operators: ci+ cj -> cj ci+
+						OneBodyDensMat = 2.0 * OneBodyDensMat - arma::eye(V, V);
 						lambdas = arma::eig_sym(OneBodyDensMat);
 						non_gaussianity_OPDM = QHS::single_particle::entanglement::vonNeumann(lambdas);
 
@@ -781,16 +782,18 @@ void user_interface_quadratic<Hamiltonian>::non_gaussianity()
 	// const int Gamma_max = this->num_of_points;
 	u64 num_states = this->num_of_points;//500 * Gamma_max;//ULLPOW(14);
 
-	// arma::Col<int> subsystem_sizes = arma::conv_to<arma::Col<int>>::from(arma::linspace(1, this->V-1, this->V-1));
-	arma::Col<int> subsystem_sizes = arma::regspace<arma::Col<int>>(10, 10, this->V - 10);
+	arma::Col<int> subsystem_sizes = arma::conv_to<arma::Col<int>>::from(arma::linspace(1, this->V-1, this->V-1));
+	// arma::Col<int> subsystem_sizes = arma::regspace<arma::Col<int>>(10, 10, this->V - 10);
 	
-	arma::Col<int> Gammas = arma::linspace<arma::Col<int>>(1, 20, 20);
-	// Gammas = arma::join_cols(Gammas, arma::Col<int>({this->V / 10, this->V / 2, this->V, 2 * this->V}));
+	// arma::Col<int> Gammas = arma::linspace<arma::Col<int>>(1, 20, 20);
+	// // Gammas = arma::join_cols(Gammas, arma::Col<int>({this->V / 10, this->V / 2, this->V, 2 * this->V}));
 	
-	if(5*this->V > 200) Gammas = arma::join_cols(Gammas, arma::Col<int>({50, 100, this->V / 2, this->V, 2 * this->V}));
-	else if(5*this->V > 1000) Gammas = arma::join_cols(Gammas, arma::Col<int>({50, 100, this->V / 4, this->V / 2, this->V}));
-	else if(5*this->V > 3000) Gammas = arma::join_cols(Gammas, arma::Col<int>({50, 100, this->V / 4, this->V / 2}));
-	else 					  Gammas = arma::join_cols(Gammas, arma::Col<int>({50, 100, this->V / 4, this->V / 2, this->V, 2 * this->V, 4*this->V}));
+	// if(5*this->V > 200) Gammas = arma::join_cols(Gammas, arma::Col<int>({50, 100, this->V / 2, this->V, 2 * this->V}));
+	// else if(5*this->V > 1000) Gammas = arma::join_cols(Gammas, arma::Col<int>({50, 100, this->V / 4, this->V / 2, this->V}));
+	// else if(5*this->V > 3000) Gammas = arma::join_cols(Gammas, arma::Col<int>({50, 100, this->V / 4, this->V / 2}));
+	// else 					  Gammas = arma::join_cols(Gammas, arma::Col<int>({50, 100, this->V / 4, this->V / 2, this->V, 2 * this->V, 4*this->V}));
+
+	arma::Col<int> Gammas = arma::Col<int>({1, 2, 3, 4, 10, 20, this->V / 2, this->V});
 	const int Gamma_max = Gammas.size();
 
 	int counter = 0;
@@ -834,6 +837,7 @@ void user_interface_quadratic<Hamiltonian>::non_gaussianity()
 		arma::vec Purity2(Gamma_max, arma::fill::zeros);
 		arma::mat S_corr(Gamma_max, subsystem_sizes.size(), arma::fill::zeros);
 		arma::mat S_site_corr(Gamma_max, subsystem_sizes.size(), arma::fill::zeros);
+		arma::mat TraceDistance(Gamma_max, subsystem_sizes.size()+1, arma::fill::zeros);
 
 		std::vector<boost::dynamic_bitset<>> mb_states;
 		mb_states = QHS::single_particle::mb_config(num_states, this->V, random_generator, N);
@@ -912,6 +916,7 @@ void user_interface_quadratic<Hamiltonian>::non_gaussianity()
 				if(this->op)
 				{
 					arma::cx_mat OneBodyDensMat(V, V, arma::fill::zeros);
+					arma::cx_mat OneBodyDensMat_approx(V, V, arma::fill::zeros);
 					cpx lambda = 0.0;
 					for(int n = 0; n < gamma_a; n++)
 					{
@@ -920,6 +925,7 @@ void user_interface_quadratic<Hamiltonian>::non_gaussianity()
 						// <n|f+_q f_q|n>
 						double pre = std::abs( std::conj(coeff(n)) * coeff(n));
 						QHS::single_particle::correlators::one_body(orbitals, state_n, V, OneBodyDensMat, lambda, pre);
+						QHS::single_particle::correlators::one_body(orbitals, state_n, V, OneBodyDensMat_approx, lambda, pre);
 						
 						// <m|f+_q1 f_q2|n> // m<n is included in different q,q'
 						for(int m = 0; m < gamma_a; m++)
@@ -963,6 +969,11 @@ void user_interface_quadratic<Hamiltonian>::non_gaussianity()
 					std::cout << "\t\t - - - - - - Finished One-body density matrix for Gamma = " << gamma_a << " mixings with Norm = " << normalization << " in time:" << tim_s(start_G) << " s - - - - - - " << std::endl; // simuVAtion end
 					start_G = std::chrono::system_clock::now();
 
+					arma::cx_mat dist = OneBodyDensMat - OneBodyDensMat_approx;
+					dist = dist * dist;
+					auto lambdas_dist = arma::eig_sym(dist);
+					TraceDistance(ii, subsystem_sizes.size()) = arma::trace(arma::sqrt(lambdas_dist)) / (2.0 * N);
+
 					Purity1(ii) = std::real( arma::trace(OneBodyDensMat * OneBodyDensMat) );
 					OneBodyDensMat = 2.0 * OneBodyDensMat - arma::eye(V, V);
 					Purity2(ii) = std::real( arma::trace(OneBodyDensMat * OneBodyDensMat) );
@@ -987,15 +998,20 @@ void user_interface_quadratic<Hamiltonian>::non_gaussianity()
 						double lambda = std::real( OneBodyDensMat(this->V - 1 - VA, this->V - 1 - VA) );
 						entropy_single_site_corr_mat(VA_idx) = QHS::single_particle::entanglement::vonNeumann_helper(lambda);
 
+						dist = (ReducedOneBodyDensMat + arma::eye(VA, VA)) / 2.0 - OneBodyDensMat_approx.submat(row_idx, col_idx);
+						dist = dist * dist;
+						lambdas_dist = arma::eig_sym(dist);
+						TraceDistance(ii, VA_idx) = arma::trace(arma::sqrt(lambdas_dist)) / (2.0 * N);
 						std::cout << "\t\t - - - - - - Finished subsystem size VA = " << VA << " mixings in time:" << tim_s(start_VAA) << " s - - - - - - " << std::endl; // simuVAtion end
 					}
 				} else {
 					arma::cx_mat OneBodyDensMat(V, V, arma::fill::zeros);
+					arma::cx_mat OneBodyDensMat_approx(V, V, arma::fill::zeros);
 					for(int n = 0; n < gamma_a; n++)
 					{
-						// cpx lambda = 0;
-						// double prefactor = std::abs( std::conj(coeff(n)) * coeff(n));
-						// QHS::single_particle::correlators::one_body(_orbitals_[n], states_for_superposition[n], V, OneBodyDensMat_diag, lambda, prefactor);
+						cpx lambda = 0;
+						double prefactor = std::abs( std::conj(coeff(n)) * coeff(n));
+						QHS::single_particle::correlators::one_body(_orbitals_[n], states_for_superposition[n], V, OneBodyDensMat_approx, lambda, prefactor);
 						
 						auto _matrix_state_n = QHS::single_particle::tools::get_matrix_state(_orbitals_[n], states_for_superposition[n]);
 						for(int m = 0; m < gamma_a; m++)
@@ -1010,7 +1026,7 @@ void user_interface_quadratic<Hamiltonian>::non_gaussianity()
 								arma::cx_mat Wm_ci = arma::join_rows(_matrix_state_m, created_state_i);
 								auto eigs = arma::eig_gen(Wm_ci.t() * Wn_ci);
 								cpx val = arma::prod(eigs);
-								OneBodyDensMat(i, i) += pre * val; // (1 - ...) because swap of creation operators: ci+ cj -> cj ci+ 
+								OneBodyDensMat(i, i) += pre * val;
 								for(int j = i+1; j < this->V; j++)
 								{
 									arma::cx_vec created_state_j(this->V, arma::fill::zeros);	
@@ -1019,18 +1035,30 @@ void user_interface_quadratic<Hamiltonian>::non_gaussianity()
 
 									auto eigs = arma::eig_gen(Wm_cj.t() * Wn_ci);
 									cpx val = arma::prod(eigs);
-									// (-) because swap of creation operators: ci+ cj -> cj ci+ 
+									
 									OneBodyDensMat(i, j) += pre * val;
 									OneBodyDensMat(j, i) += std::conj( pre * val );
 								}
 							}
 						}
 					}
+					OneBodyDensMat = ( arma::eye(V, V) - OneBodyDensMat);
 					std::cout << "\t\t - - - - - - Finished One-body density matrix for Gamma = " << gamma_a << " mixings with Norm = " << normalization << " in time:" << tim_s(start_G) << " s - - - - - - " << std::endl; // simuVAtion end
 					start_G = std::chrono::system_clock::now();
+					if(ii == 0)
+					{
+						std::cout << OneBodyDensMat << std::endl;
+						std::cout << OneBodyDensMat_approx << std::endl;
+						std::cout << OneBodyDensMat - OneBodyDensMat_approx << std::endl;
+					}
+
+					arma::cx_mat dist = OneBodyDensMat - OneBodyDensMat_approx;
+					dist = dist * dist;
+					auto lambdas_dist = arma::eig_sym(dist);
+					TraceDistance(ii, subsystem_sizes.size()) = arma::trace(arma::sqrt(lambdas_dist)) / (2.0 * N);
 
 					Purity1(ii) = std::real( arma::trace(OneBodyDensMat * OneBodyDensMat) );
-					OneBodyDensMat = ( arma::eye(V, V) - 2.0 * OneBodyDensMat);
+					OneBodyDensMat = (2.0 * OneBodyDensMat - arma::eye(V, V));
 					Purity2(ii) = std::real( arma::trace(OneBodyDensMat * OneBodyDensMat) );
 
 					auto lambdas = arma::eig_sym(OneBodyDensMat);
@@ -1053,6 +1081,12 @@ void user_interface_quadratic<Hamiltonian>::non_gaussianity()
 						double lambda = std::real( OneBodyDensMat(this->V - 1 - VA, this->V - 1 - VA) );
 						entropy_single_site_corr_mat(VA_idx) = QHS::single_particle::entanglement::vonNeumann_helper(lambda);
 
+						dist = (ReducedOneBodyDensMat + arma::eye(VA, VA)) / 2.0 - OneBodyDensMat_approx.submat(row_idx, col_idx);
+						dist = dist * dist;
+						lambdas_dist = arma::abs( arma::eig_sym(dist) );
+						TraceDistance(ii, VA_idx) = arma::trace(arma::sqrt(lambdas_dist)) / (2.0 * N);
+						std::cout << TraceDistance(ii, VA_idx) << std::endl;
+						std::cout << lambdas_dist.t() << std::endl;
 						std::cout << "\t\t - - - - - - Finished subsystem size VA = " << VA << " mixings in time:" << tim_s(start_VAA) << " s - - - - - - " << std::endl; // simuVAtion end
 					}
 				}
@@ -1079,6 +1113,7 @@ void user_interface_quadratic<Hamiltonian>::non_gaussianity()
 			NonGauss.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "Non-Gaussianity", arma::hdf5_opts::append));
 			Purity1.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "Purity1", arma::hdf5_opts::append));
 			Purity2.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "Purity2", arma::hdf5_opts::append));
+			TraceDistance.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "TraceDistance", arma::hdf5_opts::append));
 		}
 		std::cout << " - - - - - - finished realisation realis = " << realis << " in : " << tim_s(start) << " s - - - - - - " << std::endl; // simuVAtion end
 	}
