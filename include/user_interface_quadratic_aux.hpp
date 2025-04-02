@@ -839,6 +839,12 @@ void user_interface_quadratic<Hamiltonian>::non_gaussianity()
 		arma::mat S_site_corr(Gamma_max, subsystem_sizes.size(), arma::fill::zeros);
 		arma::mat TraceDistance(Gamma_max, subsystem_sizes.size()+1, arma::fill::zeros);
 
+		arma::mat Trace_n1(Gamma_max, subsystem_sizes.size()+1, arma::fill::zeros);
+		arma::mat Trace_n2(Gamma_max, subsystem_sizes.size()+1, arma::fill::zeros);
+		arma::mat Trace_n3(Gamma_max, subsystem_sizes.size()+1, arma::fill::zeros);
+		arma::mat Trace_n4(Gamma_max, subsystem_sizes.size()+1, arma::fill::zeros);
+		arma::mat Trace_n5(Gamma_max, subsystem_sizes.size()+1, arma::fill::zeros);
+
 		std::vector<boost::dynamic_bitset<>> mb_states;
 		mb_states = QHS::single_particle::mb_config(num_states, this->V, random_generator, N);
 		num_states = mb_states.size();
@@ -981,6 +987,13 @@ void user_interface_quadratic<Hamiltonian>::non_gaussianity()
 					auto lambdas = arma::eig_sym(OneBodyDensMat);
 					non_gaussianity = QHS::single_particle::entanglement::vonNeumann(lambdas);
 
+					arma::cx_mat J2 = OneBodyDensMat * OneBodyDensMat;
+					Trace_n1(ii, subsystem_sizes.size()) = std::real( arma::trace(J2) );
+					Trace_n2(ii, subsystem_sizes.size()) = std::real( arma::trace(J2 * J2) );
+					Trace_n3(ii, subsystem_sizes.size()) = std::real( arma::trace(J2 * J2 * J2) );
+					Trace_n4(ii, subsystem_sizes.size()) = std::real( arma::trace(J2 * J2 * J2 * J2) );
+					Trace_n5(ii, subsystem_sizes.size()) = std::real( arma::trace(J2 * J2 * J2 * J2 * J2) );
+
 					std::cout << "\t\t - - - - - - Calculated Gaussianity for Gamma = " << gamma_a << " mixings with Norm = " << normalization << " in time:" << tim_s(start_G) << " s - - - - - - " << std::endl; // simuVAtion end
 					start_G = std::chrono::system_clock::now();
 
@@ -1002,6 +1015,13 @@ void user_interface_quadratic<Hamiltonian>::non_gaussianity()
 						dist = dist * dist;
 						lambdas_dist = arma::eig_sym(dist);
 						TraceDistance(ii, VA_idx) = arma::trace(arma::sqrt(lambdas_dist)) / (2.0 * N);
+						
+						J2 = ReducedOneBodyDensMat * ReducedOneBodyDensMat;
+						Trace_n1(ii, VA_idx) = std::real( arma::trace(J2) );
+						Trace_n2(ii, VA_idx) = std::real( arma::trace(J2 * J2) );
+						Trace_n3(ii, VA_idx) = std::real( arma::trace(J2 * J2 * J2) );
+						Trace_n4(ii, VA_idx) = std::real( arma::trace(J2 * J2 * J2 * J2) );
+						Trace_n5(ii, VA_idx) = std::real( arma::trace(J2 * J2 * J2 * J2 * J2) );
 						std::cout << "\t\t - - - - - - Finished subsystem size VA = " << VA << " mixings in time:" << tim_s(start_VAA) << " s - - - - - - " << std::endl; // simuVAtion end
 					}
 				} else {
@@ -1058,6 +1078,12 @@ void user_interface_quadratic<Hamiltonian>::non_gaussianity()
 					auto lambdas = arma::eig_sym(OneBodyDensMat);
 					non_gaussianity = QHS::single_particle::entanglement::vonNeumann(lambdas);
 
+					arma::cx_mat J2 = OneBodyDensMat * OneBodyDensMat;
+					Trace_n1(ii, subsystem_sizes.size()) = std::real( arma::trace(J2) );
+					Trace_n2(ii, subsystem_sizes.size()) = std::real( arma::trace(J2 * J2) );
+					Trace_n3(ii, subsystem_sizes.size()) = std::real( arma::trace(J2 * J2 * J2) );
+					Trace_n4(ii, subsystem_sizes.size()) = std::real( arma::trace(J2 * J2 * J2 * J2) );
+					Trace_n5(ii, subsystem_sizes.size()) = std::real( arma::trace(J2 * J2 * J2 * J2 * J2) );
 					std::cout << "\t\t - - - - - - Calculated Gaussianity for Gamma = " << gamma_a << " mixings with Norm = " << normalization << " in time:" << tim_s(start_G) << " s - - - - - - " << std::endl; // simuVAtion end
 					start_G = std::chrono::system_clock::now();
 					
@@ -1081,6 +1107,12 @@ void user_interface_quadratic<Hamiltonian>::non_gaussianity()
 						TraceDistance(ii, VA_idx) = arma::trace(arma::sqrt(lambdas_dist)) / (2.0 * N);
 						// std::cout << TraceDistance(ii, VA_idx) << std::endl;
 						// std::cout << lambdas_dist.t() << std::endl;
+						J2 = ReducedOneBodyDensMat * ReducedOneBodyDensMat;
+						Trace_n1(ii, VA_idx) = std::real( arma::trace(J2) );
+						Trace_n2(ii, VA_idx) = std::real( arma::trace(J2 * J2) );
+						Trace_n3(ii, VA_idx) = std::real( arma::trace(J2 * J2 * J2) );
+						Trace_n4(ii, VA_idx) = std::real( arma::trace(J2 * J2 * J2 * J2) );
+						Trace_n5(ii, VA_idx) = std::real( arma::trace(J2 * J2 * J2 * J2 * J2) );
 						std::cout << "\t\t - - - - - - Finished subsystem size VA = " << VA << " mixings in time:" << tim_s(start_VAA) << " s - - - - - - " << std::endl; // simuVAtion end
 					}
 				}
@@ -1108,6 +1140,11 @@ void user_interface_quadratic<Hamiltonian>::non_gaussianity()
 			Purity1.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "Purity1", arma::hdf5_opts::append));
 			Purity2.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "Purity2", arma::hdf5_opts::append));
 			TraceDistance.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "TraceDistance", arma::hdf5_opts::append));
+			Trace_n1.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "Trace n=1", arma::hdf5_opts::append));
+			Trace_n2.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "Trace n=2", arma::hdf5_opts::append));
+			Trace_n3.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "Trace n=3", arma::hdf5_opts::append));
+			Trace_n4.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "Trace n=4", arma::hdf5_opts::append));
+			Trace_n5.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "Trace n=5", arma::hdf5_opts::append));
 		}
 		std::cout << " - - - - - - finished realisation realis = " << realis << " in : " << tim_s(start) << " s - - - - - - " << std::endl; // simuVAtion end
 	}
