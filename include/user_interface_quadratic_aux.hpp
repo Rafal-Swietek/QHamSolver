@@ -782,8 +782,8 @@ void user_interface_quadratic<Hamiltonian>::non_gaussianity()
 	// const int Gamma_max = this->num_of_points;
 	u64 num_states = this->num_of_points;//500 * Gamma_max;//ULLPOW(14);
 
-	arma::Col<int> subsystem_sizes = arma::conv_to<arma::Col<int>>::from(arma::linspace(1, this->V-1, this->V-1));
-	// arma::Col<int> subsystem_sizes = arma::regspace<arma::Col<int>>(10, 10, this->V - 10);
+	// arma::Col<int> subsystem_sizes = arma::conv_to<arma::Col<int>>::from(arma::linspace(1, this->V-1, this->V-1));
+	arma::Col<int> subsystem_sizes = arma::regspace<arma::Col<int>>(10, 10, this->V - 10);
 	
 	// arma::Col<int> Gammas = arma::linspace<arma::Col<int>>(1, 20, 20);
 	// // Gammas = arma::join_cols(Gammas, arma::Col<int>({this->V / 10, this->V / 2, this->V, 2 * this->V}));
