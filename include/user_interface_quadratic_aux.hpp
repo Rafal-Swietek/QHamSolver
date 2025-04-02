@@ -1045,12 +1045,6 @@ void user_interface_quadratic<Hamiltonian>::non_gaussianity()
 					OneBodyDensMat = ( arma::eye(V, V) - OneBodyDensMat);
 					std::cout << "\t\t - - - - - - Finished One-body density matrix for Gamma = " << gamma_a << " mixings with Norm = " << normalization << " in time:" << tim_s(start_G) << " s - - - - - - " << std::endl; // simuVAtion end
 					start_G = std::chrono::system_clock::now();
-					if(ii == 0)
-					{
-						std::cout << OneBodyDensMat << std::endl;
-						std::cout << OneBodyDensMat_approx << std::endl;
-						std::cout << OneBodyDensMat - OneBodyDensMat_approx << std::endl;
-					}
 
 					arma::cx_mat dist = OneBodyDensMat - OneBodyDensMat_approx;
 					dist = dist * dist;
@@ -1085,8 +1079,8 @@ void user_interface_quadratic<Hamiltonian>::non_gaussianity()
 						dist = dist * dist;
 						lambdas_dist = arma::abs( arma::eig_sym(dist) );
 						TraceDistance(ii, VA_idx) = arma::trace(arma::sqrt(lambdas_dist)) / (2.0 * N);
-						std::cout << TraceDistance(ii, VA_idx) << std::endl;
-						std::cout << lambdas_dist.t() << std::endl;
+						// std::cout << TraceDistance(ii, VA_idx) << std::endl;
+						// std::cout << lambdas_dist.t() << std::endl;
 						std::cout << "\t\t - - - - - - Finished subsystem size VA = " << VA << " mixings in time:" << tim_s(start_VAA) << " s - - - - - - " << std::endl; // simuVAtion end
 					}
 				}
