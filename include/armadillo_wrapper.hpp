@@ -131,7 +131,8 @@ inline arma::vec exctract_vector(
 
 template <typename _type>
 inline
-arma::sp_cx_mat cast_cx_sparse(const arma::SpMat<_type>& mat);
+arma::sp_cx_mat cast_cx_sparse(const arma::SpMat<_type>& mat)
+	{ return mat; }
 
 template <>
 inline arma::sp_cx_mat cast_cx_sparse(const arma::sp_mat& mat)

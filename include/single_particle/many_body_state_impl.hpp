@@ -81,6 +81,21 @@ namespace QHS{
                 auto W = this->_orbitals.submat(set_l, set_q);
                 auto eigs = arma::eig_gen(W);
                 return arma::prod(eigs);
+            }template <>
+            inline
+            double ManyBodyState<double, true>::determinant(const arma::uvec& set_l, const arma::uvec& set_q)
+            {
+                auto W = this->_orbitals.submat(set_l, set_q);
+                auto eigs = arma::eig_gen(W);
+                return std::real(arma::prod(eigs));
+            }
+            template <>
+            inline
+            double ManyBodyState<double, false>::determinant(const arma::uvec& set_l, const arma::uvec& set_q)
+            {
+                auto W = this->_orbitals.submat(set_l, set_q);
+                auto eigs = arma::eig_gen(W);
+                return std::real(arma::prod(eigs));
             }
         }
     }

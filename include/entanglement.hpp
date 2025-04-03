@@ -20,7 +20,7 @@ namespace ReducedDensityMatrix{
         const arma::Col<_ty>& state,
         int A_size,
         unsigned int L,
-        QOps::generic_operator<> permutation = QOps::generic_operator<>()
+        QOps::generic_operator<_ty> permutation = QOps::generic_operator<_ty>()
         ) 
         -> arma::Mat<_ty> 
         {
@@ -55,7 +55,7 @@ namespace ReducedDensityMatrix{
         const arma::Col<_ty>& state,
         int A_size,
         unsigned int L,
-        QOps::generic_operator<> permutation = QOps::generic_operator<>()
+        QOps::generic_operator<_ty> permutation = QOps::generic_operator<_ty>()
         ) 
         -> arma::vec
         {
@@ -103,7 +103,7 @@ namespace ReducedDensityMatrix{
         const arma::Col<_ty>& state,
         int A_size,
         unsigned int L,
-        QOps::generic_operator<> permutation = QOps::generic_operator<>()
+        QOps::generic_operator<_ty> permutation = QOps::generic_operator<_ty>()
         ) 
         -> arma::vec
         {
@@ -163,7 +163,7 @@ namespace entropy{
         const arma::Col<_ty>& state,
         int A_size,
         unsigned int L,
-        QOps::generic_operator<> permutation = QOps::generic_operator<>()
+        QOps::generic_operator<_ty> permutation = QOps::generic_operator<_ty>()
         ){
     	
         arma::vec probabilities = ReducedDensityMatrix::get_eigvals<_ty, _method_>(state, A_size, L, permutation);
@@ -183,7 +183,7 @@ namespace entropy{
     arma::vec vonNeumann(
         const arma::Col<_ty>& state,
         unsigned int L,
-        QOps::generic_operator<> permutation
+        QOps::generic_operator<_ty> permutation
     ){
     	arma::vec _entropy(L - 1, arma::fill::zeros);
     //#pragma omp parallel for
@@ -226,7 +226,7 @@ namespace entropy{
         int A_size,
         unsigned int L,
         int alfa,
-        QOps::generic_operator<> permutation
+        QOps::generic_operator<_ty> permutation
         ) {
         _assert_(alfa > 1, "Only alfa>=2 powers are possible");
     	
@@ -270,7 +270,7 @@ namespace entropy{
         const arma::Col<_ty>& state,
         int A_size,
         unsigned int L,
-        QOps::generic_operator<> permutation
+        QOps::generic_operator<_ty> permutation
         ) {
         
     	arma::vec probabilities = ReducedDensityMatrix::get_eigvals<_ty, _method_>(state, A_size, L, permutation);

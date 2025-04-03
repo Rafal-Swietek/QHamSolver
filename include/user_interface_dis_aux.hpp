@@ -588,7 +588,7 @@ void user_interface_dis<Hamiltonian>::analyze_spectra()
 	statistics::probability_distribution(dir_gap, info, gap_ratio_unfolded, num_hist);
 }
 
-/// @brief Calculate entanglement entropy in all eigenstates and all subsystem sizes using schmidt decomposition
+/// @brief Calculate eigenvalues of reduced density matrix and save'em with eigenstate coefficeints
 /// @tparam Hamiltonian template parameter for current used model
 template <class Hamiltonian>
 void user_interface_dis<Hamiltonian>::eigenstate_ergodicity_test()
@@ -607,12 +607,12 @@ void user_interface_dis<Hamiltonian>::eigenstate_ergodicity_test()
 	auto subsystem_sizes = arma::conv_to<arma::Col<int>>::from(arma::linspace(0, this->L, this->L + 1));
 	std::cout << subsystem_sizes.t() << std::endl;
 
-	arma::Col<element_type> bin_centers = arma::conv_to<arma::Col<element_type>>::from(arma::linspace(-2, 2, this->num_of_points + 1));
+	arma::vec bin_centers = arma::conv_to<arma::vec>::from(arma::linspace(-2, 2, this->num_of_points + 1));
 	
 	std::vector<int> p(this->L);
 	for(int l = 0; l < this->L; l++)
 		p[l] = (l - 2 + this->L) % this->L;
-	auto permutation = QOps::_permutation_generator(this->L, p);
+	auto permutation = QOps::_permutation_generator<element_type>(this->L, p);
 	std::cout << p << std::endl;
 	std::cout << " - - - - - - set permutation matrix for LA = L/2 in" << std::endl;
 	
@@ -644,11 +644,11 @@ void user_interface_dis<Hamiltonian>::eigenstate_ergodicity_test()
 			Emin = E_av_idx - this->l_steps / 2;
 			Emax = E_av_idx + this->l_steps / 2;
 		}
-		const arma::mat V = (this->ptr_to_model->get_eigenvectors()).cols(Emin, Emax);
+		const arma::Mat<element_type> V = (this->ptr_to_model->get_eigenvectors()).cols(Emin, Emax);
 		
 		
-		arma::Mat<element_type> lambdas(reduced_size, this->l_steps, arma::fill::zeros);
-		arma::Mat<element_type> lambdas_perm = lambdas;
+		arma::mat lambdas(reduced_size, this->l_steps, arma::fill::zeros);
+		arma::mat lambdas_perm = lambdas;
 
 		arma::uvec distribution(this->num_of_points+1, arma::fill::zeros);
 		
@@ -664,9 +664,10 @@ void user_interface_dis<Hamiltonian>::eigenstate_ergodicity_test()
 			state = this->cast_state(state);
 
 			lambdas.col(n-Emin) = ReducedDensityMatrix::get_eigvals<element_type, methods::schmidt_decomposition>(state, this->L / 2, this->L);
-			distribution += arma::hist(state * _C, bin_centers);
+			arma::vec x = arma::abs(state * _C);
+			distribution += arma::hist(x, bin_centers);
 				
-			arma::vec permuted_state = arma::real(permutation.multiply(state));
+			arma::Col<element_type> permuted_state = permutation.multiply(state);
 			lambdas_perm.col(n-Emin) = ReducedDensityMatrix::get_eigvals<element_type, methods::schmidt_decomposition>(permuted_state, this->L / 2, this->L);
 
 		}
@@ -683,6 +684,77 @@ void user_interface_dis<Hamiltonian>::eigenstate_ergodicity_test()
 			V.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "coefficients", arma::hdf5_opts::append));
 		}
     	omp_set_num_threads(this->thread_number);
+
+		std::cout << " - - - - - - finished realisation realis = " << realis << " in : " << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
+	}
+    std::cout << " - - - - - - FINISHED ENTROPY CALCULATION IN : " << tim_s(start) << " seconds - - - - - - " << std::endl; // simulation end
+}
+
+/// @brief Calculate spreading in fock-space to study transport
+/// @tparam Hamiltonian template parameter for current used model
+template <class Hamiltonian>
+void user_interface_dis<Hamiltonian>::fockspace_spreading()
+{
+	clk::time_point start = std::chrono::system_clock::now();
+	
+	std::string dir = this->saving_dir + "ReducedDensityMatrix" + kPSep;// + "Eigenstate" + kPSep;
+	createDirs(dir);
+	
+	size_t dim = this->ptr_to_model->get_hilbert_size();
+	const size_t dim_cut = 100000;
+
+	std::string info = this->set_info();
+	std::string filename = info;
+
+	auto hamming_distance = [](u64 state1, u64 state2) -> int
+	{
+		u64 diff = (state1 ^ state2);
+		return __builtin_popcountll(diff);
+	};
+	auto ultrametric_distance = [this](u64 state1, u64 state2) -> int
+	{
+		u64 diff = reverseBits(state1 ^ state2, this->L); 	// XOR to find where is different
+		return state1 == state2? 0 : this->L - (__builtin_ffs(diff) - 1);		// first bit that differs is distant
+	};
+
+	u64 state1 = ULLPOW(this->L / 2) - 1;
+	u64 state1_re = reverseBits(state1, this->L);
+	// print(dim, state1);
+	std::cout << "------------------------------------- HAMMING DISTANCE -------------------------------------" << std::endl;
+	for(u64 state2 = 0; state2 < dim; state2++){
+		u64 state2_re = reverseBits(state2, this->L);
+		printSeparated(std::cout, "\t", 20, true, boost::dynamic_bitset<>(this->L, state1_re), boost::dynamic_bitset<>(this->L, state2_re), hamming_distance(state1, state2));
+	}
+
+	std::cout << "------------------------------------- ULTRAMETRIC DISTANCE -------------------------------------" << std::endl;
+	for(u64 state2 = 0; state2 < dim; state2++){
+		u64 state2_re = reverseBits(state2, this->L);
+		printSeparated(std::cout, "\t", 20, true, boost::dynamic_bitset<>(this->L, state1_re), boost::dynamic_bitset<>(this->L, state2_re), ultrametric_distance(state1, state2));
+	}
+
+	return;
+	for(int realis = 0; realis < this->realisations; realis++)
+	{
+		if(realis > 0)
+			this->ptr_to_model->generate_hamiltonian();
+		start = std::chrono::system_clock::now();
+		size_t size;
+		if(dim > dim_cut){
+			double error = this->ptr_to_model->diag_sparse(this->l_steps, this->l_bundle, this->tol, this->seed);
+            if( error > 1e-10 ) { std::cout << "POLFED FAILED: Maximal Error = " << error << std::endl; continue; }
+			size = this->l_steps;
+		}
+		else{
+        	this->ptr_to_model->diagonalization();
+			size = dim;
+		}
+		const size_t reduced_size = ULLPOW( (this->L / 2) );
+
+		std::cout << " - - - - - - finished diagonalization in : " << tim_s(start) << " s for realis = " << realis << " - - - - - - " << std::endl; // simulation end
+		
+		const arma::vec E = this->ptr_to_model->get_eigenvalues();
+		const arma::Mat<element_type>& V = this->ptr_to_model->get_eigenvectors();
+		
 
 		std::cout << " - - - - - - finished realisation realis = " << realis << " in : " << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
 	}
@@ -716,7 +788,7 @@ void user_interface_dis<Hamiltonian>::eigenstate_entanglement()
 	auto subsystem_sizes = arma::conv_to<arma::Col<int>>::from(arma::linspace(0, this->L, this->L + 1));
 	std::cout << subsystem_sizes.t() << std::endl;
 
-	std::vector<QOps::genOp> permutation_op;
+	std::vector<QOps::generic_operator<element_type>> permutation_op;
 	for(int LA_idx = 0; LA_idx < subsystem_sizes.size() - 1; LA_idx++)
 	{	
 		int LA = subsystem_sizes[LA_idx];
@@ -729,7 +801,7 @@ void user_interface_dis<Hamiltonian>::eigenstate_entanglement()
 			}
 		}
 		// std::cout << LA << "\t\t" << p << "\t\t" << p2 << std::endl;
-		auto permutation = QOps::_permutation_generator(this->L, p);
+		auto permutation = QOps::_permutation_generator<element_type>(this->L, p);
 		permutation_op.push_back(permutation);
 
 		std::cout << " - - - - - - set permutation matrix for LA = " << LA << " in : " << tim_s(start_LA) << " s - - - - - - " << std::endl;
@@ -779,7 +851,7 @@ void user_interface_dis<Hamiltonian>::eigenstate_entanglement()
 				int LA = subsystem_sizes[LA_idx];
 				S(n, LA_idx) = entropy::schmidt_decomposition(state, this->L - LA, this->L);	// bipartite entanglement at subsystem size LA
 				
-				arma::vec permuted_state = arma::real(permutation_op[LA_idx].multiply(state));
+				arma::Col<element_type> permuted_state = permutation_op[LA_idx].multiply(state);
 				S_site(n, LA_idx) = entropy::schmidt_decomposition(permuted_state, this->L - 1, this->L);	// single site entanglement at site LA
 			}
 		}
@@ -888,8 +960,8 @@ void user_interface_dis<Hamiltonian>::eigenstate_entanglement_degenerate()
 				if(l != LA % this->L)
 					p[l] = (l < (LA % this->L) )? l + 1 : l;
 			std::cout << p << std::endl;
-			auto permutation = QOps::_permutation_generator(this->L, p);
-			arma::sp_mat P = arma::real(permutation.to_matrix( size ));
+			auto permutation = QOps::_permutation_generator<double>(this->L, p);
+			arma::sp_mat P = permutation.to_matrix( size );
 
 			std::cout << " - - - - - - set permutation matrix for LA = " << LA << " in : " << tim_s(start_LA) << " s for realis = " << realis << " - - - - - - " << std::endl;
 			start_LA = std::chrono::system_clock::now();
@@ -1009,8 +1081,8 @@ void user_interface_dis<Hamiltonian>::entanglement_evolution()
 		for(int l = 0; l < this->L; l++)
 			if(l != LA % this->L)
 				p[l] = (l < (LA % this->L) )? l + 1 : l;
-		auto permutation = QOps::_permutation_generator(this->L, p);
-		arma::sp_mat P = arma::real(permutation.to_matrix( ULLPOW(this->L) ));
+		auto permutation = QOps::_permutation_generator<double>(this->L, p);
+		arma::sp_mat P = permutation.to_matrix( ULLPOW(this->L) );
 		permutation_matrices.push_back(P);
 		std::cout << " - - - - - - set permutation matrix for LA = " << LA << " in : " << tim_s(start_LA) << " s - - - - - - " << std::endl;
 	}
@@ -1051,9 +1123,10 @@ void user_interface_dis<Hamiltonian>::entanglement_evolution()
 				double time = times(n);
 				arma::cx_vec state = arma::cx_vec(initial_state.size(), arma::fill::zeros);
 				for(int k = 0; k < dim; k++){
-					arma::cx_vec psi_k(dim, arma::fill::zeros);
-					psi_k.set_real(this->ptr_to_model->get_eigenState(k));
-					auto overlap = arma::cdot(psi_k, initial_state);
+					arma::Col<element_type> psi_k(dim, arma::fill::zeros);
+					psi_k = this->ptr_to_model->get_eigenState(k);
+
+					auto overlap = dot_prod(psi_k, initial_state);
 					state += std::exp(-1i * E(k) * time) * overlap * this->ptr_to_model->get_eigenState(k);
 				}
 				for(int LA_idx = 0; LA_idx < subsystem_sizes.size(); LA_idx++)
@@ -1073,7 +1146,7 @@ void user_interface_dis<Hamiltonian>::entanglement_evolution()
 		else 
 		{
 			arma::sp_cx_mat H(dim, dim);
-			H.set_real(this->ptr_to_model->get_hamiltonian());
+			H = cast_cx_sparse(this->ptr_to_model->get_hamiltonian());
 			
 			arma::cx_vec _state_ = initial_state;
 			for(int n = 0; n < times.size(); n++)
@@ -1308,17 +1381,17 @@ void user_interface_dis<Hamiltonian>::diagonal_matrix_elements()
 	std::string info = this->set_info();
 	std::string filename = info;
 
-	arma::cx_vec sigX_mat(size, arma::fill::zeros);
-	arma::cx_vec sigZ_mat(size, arma::fill::zeros);
+	arma::Col<element_type> sigX_mat(size, arma::fill::zeros);
+	arma::Col<element_type> sigZ_mat(size, arma::fill::zeros);
 	arma::vec energies(size, arma::fill::zeros);
 
 	int Ll = this->L;
-	auto kernel1 = [Ll](u64 state){ auto [val, num] = operators::sigma_x(state, Ll, Ll / 2 ); return std::make_pair(num, val); };
-	auto SigmaX_op = QOps::generic_operator<>(this->L, std::move(kernel1), 1.0);
+	auto kernel1 = [Ll](u64 state){ auto [val, num] = operators::sigma_x<element_type>(state, Ll, Ll / 2 ); return std::make_pair(num, val); };
+	auto SigmaX_op = QOps::generic_operator<element_type>(this->L, std::move(kernel1), 1.0);
 	auto SigmaX = SigmaX_op.to_matrix(dim);
 
-	auto kernel2 = [Ll](u64 state){ auto [val, num] = operators::sigma_z(state, Ll, Ll / 2 ); return std::make_pair(num, val); };
-	auto SigmaZ_op = QOps::generic_operator<>(this->L, std::move(kernel2), 1.0);
+	auto kernel2 = [Ll](u64 state){ auto [val, num] = operators::sigma_z<element_type>(state, Ll, Ll / 2 ); return std::make_pair(num, val); };
+	auto SigmaZ_op = QOps::generic_operator<element_type>(this->L, std::move(kernel2), 1.0);
 	auto SigmaZ = SigmaZ_op.to_matrix(dim);
 
 	int counter = 0;
@@ -1343,8 +1416,8 @@ void user_interface_dis<Hamiltonian>::diagonal_matrix_elements()
 		
 		const arma::vec E = this->ptr_to_model->get_eigenvalues();
 
-		arma::cx_vec sigX(size, arma::fill::zeros);
-		arma::cx_vec sigZ(size, arma::fill::zeros);
+		arma::Col<element_type> sigX(size, arma::fill::zeros);
+		arma::Col<element_type> sigZ(size, arma::fill::zeros);
 
 		outer_threads = this->thread_number;
 		omp_set_num_threads(1);
@@ -1354,8 +1427,8 @@ void user_interface_dis<Hamiltonian>::diagonal_matrix_elements()
 	#pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
 		for(int n = 0; n < size; n++){
 			arma::Col<element_type> state = this->cast_state(this->ptr_to_model->get_eigenState(n));
-			sigX(n) = dot_prod(state, arma::cx_vec(SigmaX * state));
-			sigZ(n) = dot_prod(state, arma::cx_vec(SigmaZ * state));
+			sigX(n) = arma::cdot(state, arma::Col<element_type>(SigmaX * state));
+			sigZ(n) = arma::cdot(state, arma::Col<element_type>(SigmaZ * state));
 		}
     	std::cout << " - - - - - - finished matrix elemnts in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
 		if(this->realisations > 1){
@@ -1398,25 +1471,25 @@ void user_interface_dis<Hamiltonian>::matrix_elements()
 
 	arma::vec sites = arma::linspace(0, this->L-1, this->L);
 	// arma::vec sites = arma::vec({3, this->L / 2, this->L - 1});
-	arma::vec agp_norm_Sz(sites.size(), arma::fill::zeros);
-	arma::vec typ_susc_Sz(sites.size(), arma::fill::zeros);
-	arma::mat diag_mat_elem_Sz(dim, sites.size(), arma::fill::zeros);
+	arma::Col<element_type> agp_norm_Sz(sites.size(), arma::fill::zeros);
+	arma::Col<element_type> typ_susc_Sz(sites.size(), arma::fill::zeros);
+	arma::Mat<element_type> diag_mat_elem_Sz(dim, sites.size(), arma::fill::zeros);
 
-	arma::vec agp_norm_Sx(sites.size(), arma::fill::zeros);
-	arma::vec typ_susc_Sx(sites.size(), arma::fill::zeros);
-	arma::mat diag_mat_elem_Sx(dim, sites.size(), arma::fill::zeros);
+	arma::Col<element_type> agp_norm_Sx(sites.size(), arma::fill::zeros);
+	arma::Col<element_type> typ_susc_Sx(sites.size(), arma::fill::zeros);
+	arma::Mat<element_type> diag_mat_elem_Sx(dim, sites.size(), arma::fill::zeros);
 
-	arma::vec agp_norm_SxSx(sites.size() - 1, arma::fill::zeros);
-	arma::vec typ_susc_SxSx(sites.size() - 1, arma::fill::zeros);
-	arma::mat diag_mat_elem_SxSx(dim, sites.size(), arma::fill::zeros);
+	arma::Col<element_type> agp_norm_SxSx(sites.size() - 1, arma::fill::zeros);
+	arma::Col<element_type> typ_susc_SxSx(sites.size() - 1, arma::fill::zeros);
+	arma::Mat<element_type> diag_mat_elem_SxSx(dim, sites.size(), arma::fill::zeros);
 
-	arma::vec agp_norm_SzSz(sites.size() - 1, arma::fill::zeros);
-	arma::vec typ_susc_SzSz(sites.size() - 1, arma::fill::zeros);
-	arma::mat diag_mat_elem_SzSz(dim, sites.size(), arma::fill::zeros);
+	arma::Col<element_type> agp_norm_SzSz(sites.size() - 1, arma::fill::zeros);
+	arma::Col<element_type> typ_susc_SzSz(sites.size() - 1, arma::fill::zeros);
+	arma::Mat<element_type> diag_mat_elem_SzSz(dim, sites.size(), arma::fill::zeros);
 
-	arma::vec agp_norm_kin(sites.size() - 1, arma::fill::zeros);
-	arma::vec typ_susc_kin(sites.size() - 1, arma::fill::zeros);
-	arma::mat diag_mat_elem_kin(dim, sites.size(), arma::fill::zeros);
+	arma::Col<element_type> agp_norm_kin(sites.size() - 1, arma::fill::zeros);
+	arma::Col<element_type> typ_susc_kin(sites.size() - 1, arma::fill::zeros);
+	arma::Mat<element_type> diag_mat_elem_kin(dim, sites.size(), arma::fill::zeros);
 	arma::vec energies(dim, arma::fill::zeros);
 
 	int Ll = this->L;
@@ -1424,7 +1497,7 @@ void user_interface_dis<Hamiltonian>::matrix_elements()
 	// std::vector<arma::sp_mat> Sz_ops;
 	// for(int site : sites){
 	// 	auto kernel = [Ll, site](u64 state){ 
-	// 		auto [val, num] = operators::sigma_z(state, Ll, site ); 
+	// 		auto [val, num] = operators::sigma_z<element_type>(state, Ll, site ); 
 	// 		return std::make_pair(num, val); 
 	// 		};
 	// 	auto _operator = QOps::generic_operator<>(this->L, std::move(kernel), 1.0);
@@ -1448,24 +1521,24 @@ void user_interface_dis<Hamiltonian>::matrix_elements()
 		const arma::vec E = this->ptr_to_model->get_eigenvalues();
 		const auto& V = this->ptr_to_model->get_eigenvectors();
 		
-		arma::vec agp_norm_Sz_r(sites.size(), arma::fill::zeros);
-		arma::vec typ_susc_Sz_r(sites.size(), arma::fill::zeros);
+		arma::Col<element_type> agp_norm_Sz_r(sites.size(), arma::fill::zeros);
+		arma::Col<element_type> typ_susc_Sz_r(sites.size(), arma::fill::zeros);
 		arma::Mat<element_type> diag_mat_elem_Sz_r(dim, sites.size(), arma::fill::zeros);
 
-		arma::vec agp_norm_Sx_r(sites.size(), arma::fill::zeros);
-		arma::vec typ_susc_Sx_r(sites.size(), arma::fill::zeros);
+		arma::Col<element_type> agp_norm_Sx_r(sites.size(), arma::fill::zeros);
+		arma::Col<element_type> typ_susc_Sx_r(sites.size(), arma::fill::zeros);
 		arma::Mat<element_type> diag_mat_elem_Sx_r(dim, sites.size(), arma::fill::zeros);
 
-		arma::vec agp_norm_SxSx_r(sites.size() - 1, arma::fill::zeros);
-		arma::vec typ_susc_SxSx_r(sites.size() - 1, arma::fill::zeros);
+		arma::Col<element_type> agp_norm_SxSx_r(sites.size() - 1, arma::fill::zeros);
+		arma::Col<element_type> typ_susc_SxSx_r(sites.size() - 1, arma::fill::zeros);
 		arma::Mat<element_type> diag_mat_elem_SxSx_r(dim, sites.size(), arma::fill::zeros);
 
-		arma::vec agp_norm_SzSz_r(sites.size() - 1, arma::fill::zeros);
-		arma::vec typ_susc_SzSz_r(sites.size() - 1, arma::fill::zeros);
+		arma::Col<element_type> agp_norm_SzSz_r(sites.size() - 1, arma::fill::zeros);
+		arma::Col<element_type> typ_susc_SzSz_r(sites.size() - 1, arma::fill::zeros);
 		arma::Mat<element_type> diag_mat_elem_SzSz_r(dim, sites.size(), arma::fill::zeros);
 
-		arma::vec agp_norm_kin_r(sites.size() - 1, arma::fill::zeros);
-		arma::vec typ_susc_kin_r(sites.size() - 1, arma::fill::zeros);
+		arma::Col<element_type> agp_norm_kin_r(sites.size() - 1, arma::fill::zeros);
+		arma::Col<element_type> typ_susc_kin_r(sites.size() - 1, arma::fill::zeros);
 		arma::Mat<element_type> diag_mat_elem_kin_r(dim, sites.size(), arma::fill::zeros);
 		
 		for(int i = 0; i < sites.size(); i++)
@@ -1476,11 +1549,11 @@ void user_interface_dis<Hamiltonian>::matrix_elements()
 			start = std::chrono::system_clock::now();
 			// arma::Mat<element_type> mat_elem = V * Sz_ops[i] * V.t();
 			auto kernel_Sz = [Ll, site](u64 state){ 
-				auto [val, tmp11] = operators::sigma_z(state, Ll, site ); 
+				auto [val, tmp11] = operators::sigma_z<element_type>(state, Ll, site ); 
 				return std::make_pair(state, val); 
 				};
-			auto _operator = QOps::generic_operator<>(this->L, std::move(kernel_Sz), 1.0);
-			arma::sp_mat op = arma::real(_operator.to_matrix(dim));
+			auto _operator = QOps::generic_operator<element_type>(this->L, std::move(kernel_Sz), 1.0);
+			arma::SpMat<element_type> op = _operator.to_matrix(dim);
 			arma::Mat<element_type> mat_elem = V.t() * op * V;
 
 			std::tie(_agp, _typ_susc, _susc, tmp) = adiabatics::gauge_potential(mat_elem, E, this->L);
@@ -1491,11 +1564,11 @@ void user_interface_dis<Hamiltonian>::matrix_elements()
     		std::cout << " - - - - - - finished Sz matrix elements for site i = " << sites(i) << "in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
 			start = std::chrono::system_clock::now();
 			auto kernel_Sx = [Ll, site](u64 state){ 
-				auto [val, num] = operators::sigma_x(state, Ll, site ); 
+				auto [val, num] = operators::sigma_x<element_type>(state, Ll, site ); 
 				return std::make_pair(num, val); 
 				};
-			_operator = QOps::generic_operator<>(this->L, std::move(kernel_Sx), 1.0);
-			op = arma::real(_operator.to_matrix(dim));
+			_operator = QOps::generic_operator<element_type>(this->L, std::move(kernel_Sx), 1.0);
+			op = _operator.to_matrix(dim);
 			mat_elem = V.t() * op * V;
 
 			std::tie(_agp, _typ_susc, _susc, tmp) = adiabatics::gauge_potential(mat_elem, E, this->L);
@@ -1507,12 +1580,12 @@ void user_interface_dis<Hamiltonian>::matrix_elements()
 			if(site < this->L - 1){
 				start = std::chrono::system_clock::now();
 				auto kernel_SzSz = [Ll, site](u64 state){ 
-					auto [val1, tmp22] = operators::sigma_z(state, Ll, site );
-					auto [val2, tmp33] = operators::sigma_z(state, Ll, site + 1 );
+					auto [val1, tmp22] = operators::sigma_z<element_type>(state, Ll, site );
+					auto [val2, tmp33] = operators::sigma_z<element_type>(state, Ll, site + 1 );
 					return std::make_pair(state, val1 * val2);
 					};
-				_operator = QOps::generic_operator<>(this->L, std::move(kernel_SzSz), 1.0);
-				op = arma::real(_operator.to_matrix(dim));
+				_operator = QOps::generic_operator<element_type>(this->L, std::move(kernel_SzSz), 1.0);
+				op = _operator.to_matrix(dim);
 				mat_elem = V.t() * op * V;
 
 				std::tie(_agp, _typ_susc, _susc, tmp) = adiabatics::gauge_potential(mat_elem, E, this->L);
@@ -1523,12 +1596,12 @@ void user_interface_dis<Hamiltonian>::matrix_elements()
 				std::cout << " - - - - - - finished SzSz matrix elements for site i = " << sites(i) << "in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
 				start = std::chrono::system_clock::now();
 				auto kernel_SxSx = [Ll, site](u64 state){ 
-					auto [val1, num] = operators::sigma_x(state, Ll, site );
-					auto [val2, num2] = operators::sigma_x(num, Ll, site + 1 );
+					auto [val1, num] = operators::sigma_x<element_type>(state, Ll, site );
+					auto [val2, num2] = operators::sigma_x<element_type>(num, Ll, site + 1 );
 					return std::make_pair(num2, val1 * val2); 
 					};
-				_operator = QOps::generic_operator<>(this->L, std::move(kernel_SxSx), 1.0);
-				op = arma::real(_operator.to_matrix(dim));
+				_operator = QOps::generic_operator<element_type>(this->L, std::move(kernel_SxSx), 1.0);
+				op = _operator.to_matrix(dim);
 				mat_elem = V.t() * op * V;
 
 				std::tie(_agp, _typ_susc, _susc, tmp) = adiabatics::gauge_potential(mat_elem, E, this->L);
@@ -1539,17 +1612,17 @@ void user_interface_dis<Hamiltonian>::matrix_elements()
 				std::cout << " - - - - - - finished SxSx matrix elements for site i = " << sites(i) << "in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
 				start = std::chrono::system_clock::now();
 				auto kernel_kin = [Ll, site](u64 state){ 
-					auto [spin1, tmp11] = operators::sigma_z(state, Ll, site );
-					auto [spin2, tmp22] = operators::sigma_z(state, Ll, site + 1 );
+					auto [spin1, tmp11] = operators::sigma_z<element_type>(state, Ll, site );
+					auto [spin2, tmp22] = operators::sigma_z<element_type>(state, Ll, site + 1 );
 					if(std::real(spin1 * spin2) < 0){
-						auto [val1, num] = operators::sigma_x(state, Ll, site );
-						auto [val2, num2] = operators::sigma_x(num, Ll, site + 1 );
+						auto [val1, num] = operators::sigma_x<element_type>(state, Ll, site );
+						auto [val2, num2] = operators::sigma_x<element_type>(num, Ll, site + 1 );
 						return std::make_pair(num2, val1 * val2); 
 					} else 
-						return std::make_pair(state, cpx(0.0));
+						return std::make_pair(state, element_type(0.0));
 					};
-				_operator = QOps::generic_operator<>(this->L, std::move(kernel_kin), 1.0);
-				op = arma::real(_operator.to_matrix(dim));
+				_operator = QOps::generic_operator<element_type>(this->L, std::move(kernel_kin), 1.0);
+				op = _operator.to_matrix(dim);
 				mat_elem = V.t() * op * V;
 
 				std::tie(_agp, _typ_susc, _susc, tmp) = adiabatics::gauge_potential(mat_elem, E, this->L);
@@ -1861,7 +1934,8 @@ void user_interface_dis<Hamiltonian>::check_krylov_evolution()
 
 	size_t dim = this->ptr_to_model->get_hilbert_size();
 	arma::sp_cx_mat H(dim, dim);
-	H.set_real(this->ptr_to_model->get_hamiltonian());
+	H = cast_cx_sparse(this->ptr_to_model->get_hamiltonian());
+	
 	this->ptr_to_model->diagonalization();
 	std::cout << " - - - - - - finished diagonalization in : " << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
 	

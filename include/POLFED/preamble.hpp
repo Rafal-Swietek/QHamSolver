@@ -50,8 +50,8 @@ namespace polfed{
         // _ty DOS     = this->N * (Emax - Emin) / 2.0 / ( std::sqrt(2.0 * two_pi * var) );
         _ty mu      = arma::trace(this->P_H) / double(this->N);
         _ty var     = arma::trace(this->P_H * this->P_H) / double(this->N) - mu * mu;
-        _ty DOS     = double(this->N) / ( std::sqrt(2.0 * two_pi * var) ) * std::exp( -(this->sigma - mu)*(this->sigma - mu) / (2 * var) );
-        _ty delta   = this->num_of_eigval / (2.0 * DOS);
+        _ty DOS     = double(this->N) / ( std::sqrt(2.0 * two_pi * var) ) * std::exp( -(this->sigma - mu)*(this->sigma - mu) / (2.0 * var) );
+        _ty delta   = double(this->num_of_eigval) / (2.0 * DOS);
         
         this->K = 15;
         //<! loop until only desired states left in energy window
@@ -59,7 +59,7 @@ namespace polfed{
             this->coeff = arma::Col<_ty>(this->K + 1, arma::fill::zeros);
             this->coeff(0) = 1.0;
             for(int n = 1; n < K+1; n++)
-                this->coeff(n) = 2.0 * std::cos(n * std::acos(this->sigma));
+                this->coeff(n) = 2.0 * std::cos( double(n) * std::acos(this->sigma));
             _ty poly = clenshaw::chebyshev(this->K, this->coeff, this->sigma + delta) / clenshaw::chebyshev(this->K, this->coeff, this->sigma);
             if( std::abs(poly) < this->cutoff){
                 this->K -= 2;
@@ -94,7 +94,7 @@ namespace polfed{
         this->coeff = arma::Col<_ty>(this->K + 1, arma::fill::zeros);
         this->coeff(0) = 1.0;
         for(int n = 1; n < K+1; n++)
-            this->coeff(n) = 2.0 * std::cos(n * std::acos(this->sigma));
+            this->coeff(n) = 2.0 * std::cos( double(n) * std::acos(this->sigma));
 
         // _debug_end( std::cout << "\t\tSet coefficients for polynomial:\t" 
         //                         <<  this->coeff.t() 
@@ -103,7 +103,7 @@ namespace polfed{
 
         // final transform
         _debug_start( start = std::chrono::system_clock::now(); )
-        double D = clenshaw::chebyshev(this->K, this->coeff, this->sigma);
+        _ty D = clenshaw::chebyshev(this->K, this->coeff, this->sigma);
         auto kernel = [this, D](const arma::Mat<_ty>& bundle) -> arma::Mat<_ty>
             { return -1.0 * clenshaw::chebyshev(this->K, this->coeff, this->P_H, bundle) / D; };
         this->PH_multiply = hamiltonian_func_ptr<arma::Mat<_ty>>(kernel);

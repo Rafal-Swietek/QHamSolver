@@ -11,13 +11,18 @@
     #define lattice_type lattice::lattice3D
 #endif
 
+#if (_MAT_ENSEMBLE_ == 0 || _MAT_ENSEMBLE_ > 2) && (defined(SYK) || defined(RP))
+    using elem_ty = double;
+#else
+    using elem_ty = cpx;
+#endif
 /// @brief Model for EBT, Anderson model
 class Quadratic : 
-    public QHS::hamiltonian_base<double, QHS::full_hilbert_space>
+    public QHS::hamiltonian_base<elem_ty, QHS::full_hilbert_space>
 {
     //<! ----------------------------------------------------- INHERIT TYPEDEFs FROM BASE
-    typedef typename QHS::hamiltonian_base<double, QHS::full_hilbert_space>::matrix        matrix;
-    typedef typename QHS::hamiltonian_base<double, QHS::full_hilbert_space>::sparse_matrix sparse_matrix;
+    typedef typename QHS::hamiltonian_base<elem_ty, QHS::full_hilbert_space>::matrix        matrix;
+    typedef typename QHS::hamiltonian_base<elem_ty, QHS::full_hilbert_space>::sparse_matrix sparse_matrix;
 
     //<! ----------------------------------------------------- MODEL PARAMETERS
 private:
@@ -26,7 +31,7 @@ private:
     #ifdef PLRB
         rmt::uniform_ensemble random_matrix;    // generator of uniform random matrices
     #else
-        GOE random_matrix;                      // generator of random matrices (GOE,GUE,...)
+        ENSEMBLE random_matrix;                 // generator of random matrices (GOE,GUE,...)
     #endif
     //<! Add GUE case as well, change type of matrix
 
@@ -53,7 +58,7 @@ private:
         #ifdef PLRB
             this->random_matrix = rmt::uniform_ensemble(this->_seed);
         #else
-            this->random_matrix = GOE(this->_seed);
+            this->random_matrix = ENSEMBLE(this->_seed);
         #endif
         // create hamiltonian
         this->create_hamiltonian();
@@ -71,7 +76,7 @@ public:
     // local hamiltonian has no reason to exist in single-particle models
     virtual sparse_matrix create_local_hamiltonian(int site) override { return sparse_matrix(this->dim, this->dim); };
     
-    virtual void set_hamiltonian_elements(u64 k, double value, u64 new_idx) override {};
+    virtual void set_hamiltonian_elements(u64 k, elem_ty value, u64 new_idx) override {};
 
     //<! ----------------------------------------------------- OVERRIDEN OPERATORS
     virtual std::ostream& write(std::ostream&) const override;

@@ -27,7 +27,7 @@ inline
         
         //<! GET EIGENVALUES
         _debug_start( start = std::chrono::system_clock::now(); )
-        arma::vec E = arma::diagvec(V.t() * this->H * V);
+        arma::vec E = arma::real(arma::diagvec(V.t() * this->H * V));
     //     arma::vec E(this->num_of_eigval);
     // // #pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
     //     for(long k = 0; k < this->num_of_eigval; k++)

@@ -63,7 +63,7 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement()
 		
 		arma::vec single_particle_energy = this->ptr_to_model->get_eigenvalues();
 		
-		arma::cx_mat orbitals = arma::cx_mat(this->V, this->V, arma::fill::zeros);
+		arma::Mat<element_type> orbitals = this->ptr_to_model->get_eigenvectors();
 		
         //<! Make general for complex matrices
 		arma::vec S(subsystem_sizes.size(), arma::fill::zeros);
@@ -78,13 +78,12 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement()
 			else if(this->op == 2) 	mb_states = QHS::single_particle::mb_config_all(this->V, N);
 			else					mb_states = QHS::single_particle::mb_config_free_fermion(this->V, N);
 
-			for(int k = 0; k < this->V; k++){
-				single_particle_energy(k) = 2.0 * std::cos(two_pi * double(k) / double(this->V));
-				for(int ell = 0; ell < this->V; ell++)
-					orbitals(ell, k) = std::exp(-1.0i * two_pi * double(k) / double(this->V) * double(ell)) / std::sqrt(this->V);
-			}
+			// for(int k = 0; k < this->V; k++){
+			// 	single_particle_energy(k) = 2.0 * std::cos(two_pi * double(k) / double(this->V));
+			// 	for(int ell = 0; ell < this->V; ell++)
+			// 		orbitals(ell, k) = std::exp(-1.0i * two_pi * double(k) / double(this->V) * double(ell)) / std::sqrt(this->V);
+			// }
 		#else
-			orbitals.set_real(this->ptr_to_model->get_eigenvectors());
 			if(this->op == 2) 	mb_states = QHS::single_particle::mb_config_all(this->V, N);
 			else			 	mb_states = QHS::single_particle::mb_config(num_states, this->V, random_generator, N);
 		#endif
@@ -134,8 +133,8 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement()
 						E(n) += single_particle_energy(i);
 				}
 				//<! Generate ope-body density matrix rho -> then do correlator J
-				arma::cx_mat J_m(VA, VA, arma::fill::zeros);
-				cpx lambda = 0.0;
+				arma::Mat<element_type> J_m(VA, VA, arma::fill::zeros);
+				element_type lambda = 0.0;
 				QHS::single_particle::correlators::one_body(orbitals, state_n, VA, J_m, lambda, 1.0);
 				J_m = 2.0 * J_m - arma::eye(VA, VA);
 
@@ -271,8 +270,11 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
 
 	disorder<double> random_generator(this->seed);
 	disorder<int> random_integers(this->seed);
-	CUE random_matrix(this->seed);
-	//GUE
+	disorder<element_type> random_coeff(this->seed);
+	
+	#if _MAT_ENSEMBLE_ == 2
+		disorder<element_type> random_matrix(this->seed);
+	#endif
 
 	// printSeparated(std::cout, "\t", 20, true, "VA", "ManyBody state", "S_opdm", "S_schmidt", "S_opdm - S_schmidt");
 // #pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
@@ -297,10 +299,8 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
 
 		arma::vec single_particle_energy = this->ptr_to_model->get_eigenvalues();
 		
-		arma::cx_mat orbitals = arma::cx_mat(this->V, this->V, arma::fill::zeros);
-        orbitals.set_real(this->ptr_to_model->get_eigenvectors());
-		//<! Make general for complex matrices
-        
+		arma::Mat<element_type> orbitals = this->ptr_to_model->get_eigenvectors();//arma::cx_mat(this->V, this->V, arma::fill::zeros);
+        // orbitals.set_real(this->ptr_to_model->get_eigenvectors());
 
 		arma::mat S(Gamma_max, subsystem_sizes_MB.size(), arma::fill::zeros);
 		// arma::vec S(Gamma_max, arma::fill::zeros);
@@ -338,16 +338,9 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
 		
 		start = std::chrono::system_clock::now();
 
-		QHS::single_particle::slater::ManyBodyState<cpx> SlaterConverter(orbitals, _hilbert_space);
+		// QHS::single_particle::slater::ManyBodyState<element_type> SlaterConverter(orbitals, _hilbert_space);
 
 		std::cout << " - - - - - - finished setting slater converter in : " << tim_s(start) << " s for realis = " << realis << " - - - - - - " << std::endl;
-		// for(auto& VA : subsystem_sizes)
-		// arma::mat prs(Gamma_max, qs.size(), arma::fill::zeros);
-		// for(int VA_idx = 0; VA_idx < subsystem_sizes.size(); VA_idx++)
-		// {
-		// 	const long VA = subsystem_sizes(VA_idx);
-		// 	auto start_VA = std::chrono::system_clock::now();
-			// prs.zeros();
 
 		// #pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
 			for(int ii = 0; ii < Gammas.size(); ii++)
@@ -369,24 +362,22 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
 				// for(u64 unused = 0; unused < 1; unused++)
 				// {
 					auto start_G = std::chrono::system_clock::now();
-					// auto start_G0 = std::chrono::system_clock::now();
-					// arma::vec _prs_(qs.size(), arma::fill::zeros);
-					arma::cx_mat U = random_matrix.generate_matrix(gamma_a);
-					
-					// arma::Col<int> indices = random_integers.uniform(gamma_a, 0, num_states - 1);
-					// std::cout << arma::sort(indices) << std::endl;
 					arma::Col<int> indices = random_integers.uniform(5 * Gammas(Gamma_max-1), 0, num_states - 1);
 					indices = arma::unique(indices);
 					indices = indices.rows(0, gamma_a - 1);
 					_extra_debug_(  std::cout << arma::sort(indices) << std::endl; )
 					int id = random_integers.uniform_dist<int>(0, gamma_a-1);
 					
-					arma::cx_vec coeff = U.col(id);
+					#if _MAT_ENSEMBLE_ == 2
+						arma::Col<element_type>  coeff = random_matrix.generate_matrix(gamma_a).col(id);
+					#else
+						arma::Col<element_type> coeff = random_coeff.gaussian(gamma_a, 0, 1);
+					#endif
 					coeff = arma::normalise(coeff);
 
-					QHS::single_particle::slater::ManyBodyState<cpx, false> SlaterConverter(orbitals, _hilbert_space);
+					// QHS::single_particle::slater::ManyBodyState<element_type, false> SlaterConverter(orbitals, _hilbert_space);
 
-					std::vector<arma::cx_mat> _orbitals_;
+					std::vector<arma::Mat<element_type>> _orbitals_;
 					std::vector<boost::dynamic_bitset<>> states_for_superposition;
 					for(int n = 0; n < gamma_a; n++){
 						states_for_superposition.push_back(mb_states[indices(n)]);
@@ -399,9 +390,7 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
 							arma::vec eigE; 
 							arma::Mat<element_type> eigV;
 							arma::eig_sym(eigE, eigV, H_temp);
-							arma::cx_mat new_orbitals = arma::cx_mat(this->V, this->V, arma::fill::zeros);
-							new_orbitals.set_real(eigV);
-							_orbitals_.push_back(new_orbitals);
+							_orbitals_.push_back(eigV);
 							// --------------------------------------------------------------------------------------
 						} else {
 							_orbitals_.push_back(orbitals);
@@ -411,10 +400,10 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
 					std::cout << "\t- - - - - - finished preamble Gamma = " << gamma_a << " mixings in time:" << tim_s(start_G) << " s - - - - - - " << std::endl; // simuVAtion end
 					start_G = std::chrono::system_clock::now();
 					
-					arma::cx_vec fullstate(ULLPOW(this->V), arma::fill::zeros);
+					arma::Col<element_type> fullstate(ULLPOW(this->V), arma::fill::zeros);
 					for(int n = 0; n < gamma_a; n++)
 					{
-						QHS::single_particle::slater::ManyBodyState<cpx, false>  SlaterConverter(_orbitals_[n], _hilbert_space);
+						QHS::single_particle::slater::ManyBodyState<element_type, false>  SlaterConverter(_orbitals_[n], _hilbert_space);
 						
 						// Fill state with appropriate values ---------------------------------------------------
 						SlaterConverter.convert(fullstate, states_for_superposition[n], coeff(n));
@@ -432,8 +421,8 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
 					{
 						for(int i = 0; i < this->V; i++)
 						{
-							auto [_spin, _] = operators::sigma_z(state, this->V, i);
-							if( std::real(_spin) > 0){
+							auto [_spin, _] = operators::sigma_z<double>(state, this->V, i);
+							if( _spin > 0){
 								J_m_MB(i, i) += std::conj(fullstate(state)) * fullstate(state);
 							}
 							u64 mask_i = reverseBits( ULLPOW(i)-1, this->V );
@@ -441,10 +430,10 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
 							{
 								u64 mask_j = reverseBits( ULLPOW(j)-1, this->V );
 								double sign1 = (__builtin_popcountll(state & mask_i) % 2)? -1 : +1;
-								auto [val1, cm] = operators::sigma_minus(state, this->V, j);
+								auto [val1, cm] = operators::sigma_minus<double>(state, this->V, j);
 
 								double sign2 = (__builtin_popcountll(cm & mask_j) % 2)? -1 : +1;
-		    					auto [val2, cpcm] = operators::sigma_plus(cm, this->V, i);
+		    					auto [val2, cpcm] = operators::sigma_plus<double>(cm, this->V, i);
 								if(std::abs(val1 * val2) > 0)
 								{
 									auto _val_ = std::conj(fullstate(cpcm)) * fullstate(state) * val1 * val2 * sign1 * sign2;
@@ -487,7 +476,7 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
 					std::cout << "\t\t - - - - - - finished Schmidt-decompositions from Many-Body state for Gamma = " << gamma_a << " mixings in time:" << tim_s(start_G) << " s - - - - - - " << std::endl; // simuVAtion end
 					start_G = std::chrono::system_clock::now();
 
-					cpx normalization = 0;
+					double normalization = 0;
 					for(int n = 0; n < gamma_a; n++)
 					{
 						auto _matrix_state_n = QHS::single_particle::tools::get_matrix_state(_orbitals_[n], states_for_superposition[n]);
@@ -495,19 +484,19 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
 						for(int m = n+1; m < gamma_a; m++)
 						{
 							auto _matrix_state_m = QHS::single_particle::tools::get_matrix_state(_orbitals_[m], states_for_superposition[m]);
-							arma::cx_vec eigs = arma::conj( arma::eig_gen(_matrix_state_n.t() * _matrix_state_m) );
+							arma::cx_vec eigs = arma::eig_gen(_matrix_state_n.t() * _matrix_state_m);
 							cpx val = arma::prod(eigs) * std::conj(coeff(n)) * coeff(m);
-							normalization += val + std::conj(val);
+							normalization += 2 * std::real(val);
 						}
 					}
-					coeff = coeff / std::sqrt(normalization);
+					coeff = coeff / std::sqrt( normalization);
 					std::cout << "\t\t - - - - - - Found normalization for Gamma = " << gamma_a << " mixings with Norm = " << normalization << " in time:" << tim_s(start_G) << " s - - - - - - " << std::endl; // simuVAtion end
 					start_G = std::chrono::system_clock::now();
 
 					if(this->op)
 					{
-						arma::cx_mat OneBodyDensMat(V, V, arma::fill::zeros);
-						cpx lambda = 0.0;
+						arma::Mat<element_type> OneBodyDensMat(V, V, arma::fill::zeros);
+						element_type lambda = 0.0;
 						for(int n = 0; n < gamma_a; n++)
 						{
 							auto state_n = states_for_superposition[n];
@@ -542,7 +531,7 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
 													boost::dynamic_bitset<> _state_m_anih = state_m;
 													_state_m_anih[q1] = 0;
 													double sign2 = ((_state_m_anih & mask_q2).count() % 2)? -1 : 1;
-													cpx pre = sign1 * sign2 * std::conj(coeff(n)) * coeff(m);
+													element_type pre = sign1 * sign2 * my_conjungate(coeff(m)) * coeff(n);
 
 													_extra_debug_( std::cout << q1 << "\t\t" << q2 << "\t\t" << state_m[q1] << "\t\t" << state_m[q2] << "\t\t" << sign1 << "\t\t" << sign2 << "\t\t" << pre << std::endl; )
 													auto orbital1 = orbitals.col(q1);
@@ -565,7 +554,7 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
 							const long VA = subsystem_sizes(VA_idx); 
 							arma::uvec row_idx = arma::regspace<arma::uvec>(this->V - VA, this->V - 1);
 							arma::uvec col_idx = arma::regspace<arma::uvec>(this->V - VA, this->V - 1);
-							arma::cx_mat ReducedOneBodyDensMat = OneBodyDensMat.submat(row_idx, col_idx);
+							arma::Mat<element_type> ReducedOneBodyDensMat = OneBodyDensMat.submat(row_idx, col_idx);
 							auto lambdas = arma::eig_sym(ReducedOneBodyDensMat);
 							entropy_corr_mat_OPDM(VA_idx) = QHS::single_particle::entanglement::vonNeumann(lambdas);
 
@@ -573,7 +562,7 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
 							entropy_single_site_corr_mat_OPDM(VA_idx) = QHS::single_particle::entanglement::vonNeumann_helper(lambda);
 						}
 					} else {
-						arma::cx_mat OneBodyDensMat(V, V, arma::fill::zeros);
+						arma::Mat<element_type> OneBodyDensMat(V, V, arma::fill::zeros);
 						for(int n = 0; n < gamma_a; n++)
 						{
 							// cpx lambda = 0;
@@ -583,28 +572,39 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
 							auto _matrix_state_n = QHS::single_particle::tools::get_matrix_state(_orbitals_[n], states_for_superposition[n]);
 							for(int m = 0; m < gamma_a; m++)
 							{
-								cpx pre = std::conj(coeff(n)) * coeff(m);
+								element_type pre = my_conjungate(coeff(n)) * coeff(m);
 								auto _matrix_state_m = QHS::single_particle::tools::get_matrix_state(_orbitals_[m], states_for_superposition[m]);
 								for(int i = 0; i < this->V; i++)
 								{
-									arma::cx_vec created_state_i(this->V, arma::fill::zeros);	
+									arma::Col<element_type> created_state_i(this->V, arma::fill::zeros);	
 									created_state_i(i) = 1.0;
-									arma::cx_mat Wn_ci = arma::join_rows(_matrix_state_n, created_state_i);
-									arma::cx_mat Wm_ci = arma::join_rows(_matrix_state_m, created_state_i);
+									arma::Mat<element_type> Wn_ci = arma::join_rows(_matrix_state_n, created_state_i);
+									arma::Mat<element_type> Wm_ci = arma::join_rows(_matrix_state_m, created_state_i);
 									auto eigs = arma::eig_gen(Wm_ci.t() * Wn_ci);
-									cpx val = arma::prod(eigs);
-									OneBodyDensMat(i, i) += pre * val;
+									cpx val = std::conj(arma::prod(eigs));
+									
+									#if _MAT_ENSEMBLE_ == 0
+										OneBodyDensMat(i, i) += std::real(pre * val);
+									#else
+										OneBodyDensMat(i, i) += pre * val;
+									#endif
+
 									for(int j = i+1; j < this->V; j++)
 									{
-										arma::cx_vec created_state_j(this->V, arma::fill::zeros);	
+										arma::Col<element_type> created_state_j(this->V, arma::fill::zeros);	
 										created_state_j(j) = 1.0;
-										arma::cx_mat Wm_cj = arma::join_rows(_matrix_state_m, created_state_j);
+										arma::Mat<element_type> Wm_cj = arma::join_rows(_matrix_state_m, created_state_j);
 
 										auto eigs = arma::eig_gen(Wm_cj.t() * Wn_ci);
-										cpx val = arma::prod(eigs);
-										 
-										OneBodyDensMat(i, j) += pre * val;
-										OneBodyDensMat(j, i) += std::conj( pre * val );
+										cpx val = std::conj(arma::prod(eigs));
+
+										#if _MAT_ENSEMBLE_ == 0
+											OneBodyDensMat(i, j) += std::real( pre * val );
+											OneBodyDensMat(j, i) += std::real( std::conj( pre * val ) );
+										#else
+											OneBodyDensMat(i, j) += pre * val;
+											OneBodyDensMat(j, i) += std::conj( pre * val );
+										#endif
 									}
 								}
 							}
@@ -619,7 +619,7 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
 							const long VA = subsystem_sizes(VA_idx); 
 							arma::uvec row_idx = arma::regspace<arma::uvec>(this->V - VA, this->V - 1);
 							arma::uvec col_idx = arma::regspace<arma::uvec>(this->V - VA, this->V - 1);
-							arma::cx_mat ReducedOneBodyDensMat = OneBodyDensMat.submat(row_idx, col_idx);
+							arma::Mat<element_type> ReducedOneBodyDensMat = OneBodyDensMat.submat(row_idx, col_idx);
 							auto lambdas = arma::eig_sym(ReducedOneBodyDensMat);
 							entropy_corr_mat_OPDM(VA_idx) = QHS::single_particle::entanglement::vonNeumann(lambdas);
 
@@ -782,8 +782,9 @@ void user_interface_quadratic<Hamiltonian>::non_gaussianity()
 	// const int Gamma_max = this->num_of_points;
 	u64 num_states = this->num_of_points;//500 * Gamma_max;//ULLPOW(14);
 
-	// arma::Col<int> subsystem_sizes = arma::conv_to<arma::Col<int>>::from(arma::linspace(1, this->V-1, this->V-1));
-	arma::Col<int> subsystem_sizes = arma::regspace<arma::Col<int>>(10, 10, this->V - 10);
+	arma::Col<int> subsystem_sizes = arma::conv_to<arma::Col<int>>::from(arma::linspace(1, this->V-1, this->V-1));
+	if(this->V >= 100)
+		subsystem_sizes = arma::regspace<arma::Col<int>>(10, 10, this->V - 10);
 	
 	// arma::Col<int> Gammas = arma::linspace<arma::Col<int>>(1, 20, 20);
 	// // Gammas = arma::join_cols(Gammas, arma::Col<int>({this->V / 10, this->V / 2, this->V, 2 * this->V}));
@@ -802,8 +803,11 @@ void user_interface_quadratic<Hamiltonian>::non_gaussianity()
 	const long N = int(filling * this->V);
 	disorder<double> random_generator(this->seed);
 	disorder<int> random_integers(this->seed);
-	CUE random_matrix(this->seed);
-	//GUE
+	disorder<element_type> random_coeff(this->seed);
+	
+	#if _MAT_ENSEMBLE_ == 2
+		disorder<element_type> random_matrix(this->seed);
+	#endif
 
 	// printSeparated(std::cout, "\t", 20, true, "VA", "ManyBody state", "S_opdm", "S_schmidt", "S_opdm - S_schmidt");
 // #pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
@@ -828,8 +832,8 @@ void user_interface_quadratic<Hamiltonian>::non_gaussianity()
 
 		arma::vec single_particle_energy = this->ptr_to_model->get_eigenvalues();
 		
-		arma::cx_mat orbitals = arma::cx_mat(this->V, this->V, arma::fill::zeros);
-        orbitals.set_real(this->ptr_to_model->get_eigenvectors());
+		arma::Mat<element_type> orbitals = this->ptr_to_model->get_eigenvectors();//arma::cx_mat(this->V, this->V, arma::fill::zeros);
+        // orbitals.set_real(this->ptr_to_model->get_eigenvectors());
 		//<! Make general for complex matrices
         
 		arma::vec NonGauss(Gamma_max, arma::fill::zeros);
@@ -866,7 +870,7 @@ void user_interface_quadratic<Hamiltonian>::non_gaussianity()
 				double non_gaussianity = 0;
 				
 				auto start_G = std::chrono::system_clock::now();
-				arma::cx_mat U = random_matrix.generate_matrix(gamma_a);
+				// arma::cx_mat U = random_matrix.generate_matrix(gamma_a); // Check complex coefficients
 				
 				arma::Col<int> indices = random_integers.uniform(5 * Gammas(Gamma_max-1), 0, num_states - 1);
 				indices = arma::unique(indices);
@@ -874,9 +878,14 @@ void user_interface_quadratic<Hamiltonian>::non_gaussianity()
 				_extra_debug_(  std::cout << arma::sort(indices) << std::endl; )
 				int id = random_integers.uniform_dist<int>(0, gamma_a-1);
 				
-				arma::cx_vec coeff = U.col(id);
+				#if _MAT_ENSEMBLE_ == 2
+					arma::Col<element_type>  coeff = random_matrix.generate_matrix(gamma_a).col(id);
+				#else
+					arma::Col<element_type> coeff = random_coeff.gaussian(gamma_a, 0, 1);
+				#endif
 				coeff = arma::normalise(coeff);
-				std::vector<arma::cx_mat> _orbitals_;
+
+				std::vector<arma::Mat<element_type>> _orbitals_;
 				std::vector<boost::dynamic_bitset<>> states_for_superposition;
 				for(int n = 0; n < gamma_a; n++){
 					states_for_superposition.push_back(mb_states[indices(n)]);
@@ -889,9 +898,7 @@ void user_interface_quadratic<Hamiltonian>::non_gaussianity()
 						arma::vec eigE; 
 						arma::Mat<element_type> eigV;
 						arma::eig_sym(eigE, eigV, H_temp);
-						arma::cx_mat new_orbitals = arma::cx_mat(this->V, this->V, arma::fill::zeros);
-						new_orbitals.set_real(eigV);
-						_orbitals_.push_back(new_orbitals);
+						_orbitals_.push_back(eigV);
 						// --------------------------------------------------------------------------------------
 					}
 				}
@@ -899,31 +906,31 @@ void user_interface_quadratic<Hamiltonian>::non_gaussianity()
 				std::cout << "\t- - - - - - finished preamble Gamma = " << gamma_a << " mixings in time:" << tim_s(start_G) << " s - - - - - - " << std::endl; // simuVAtion end
 				start_G = std::chrono::system_clock::now();
 				
-				cpx normalization = 1.0;
+				double normalization = 1.0;
 				if(this->op == 0){
-					normalization = 0.0;
+					normalization = 0;
 					for(int n = 0; n < gamma_a; n++)
 					{
-						auto _matrix_state_n = QHS::single_particle::tools::get_matrix_state(this->op? orbitals : _orbitals_[n], states_for_superposition[n]);
+						auto _matrix_state_n = QHS::single_particle::tools::get_matrix_state(_orbitals_[n], states_for_superposition[n]);
 						normalization += std::abs( std::conj(coeff(n)) * coeff(n));
 						for(int m = n+1; m < gamma_a; m++)
 						{
-							auto _matrix_state_m = QHS::single_particle::tools::get_matrix_state(this->op? orbitals : _orbitals_[m], states_for_superposition[m]);
-							arma::cx_vec eigs = arma::conj( arma::eig_gen(_matrix_state_n.t() * _matrix_state_m) );
+							auto _matrix_state_m = QHS::single_particle::tools::get_matrix_state(_orbitals_[m], states_for_superposition[m]);
+							arma::cx_vec eigs = arma::eig_gen(_matrix_state_n.t() * _matrix_state_m);
 							cpx val = arma::prod(eigs) * std::conj(coeff(n)) * coeff(m);
-							normalization += val + std::conj(val);
+							normalization += 2 * std::real(val);
 						}
 					}
-					coeff = coeff / std::sqrt(normalization);
+					coeff = coeff / std::sqrt( normalization);
 				}
 				std::cout << "\t\t - - - - - - Found normalization for Gamma = " << gamma_a << " mixings with Norm = " << normalization << " in time:" << tim_s(start_G) << " s - - - - - - " << std::endl; // simuVAtion end
 				start_G = std::chrono::system_clock::now();
 
 				if(this->op)
 				{
-					arma::cx_mat OneBodyDensMat(V, V, arma::fill::zeros);
-					arma::cx_mat OneBodyDensMat_approx(V, V, arma::fill::zeros);
-					cpx lambda = 0.0;
+					arma::Mat<element_type> OneBodyDensMat(V, V, arma::fill::zeros);
+					arma::Mat<element_type> OneBodyDensMat_approx(V, V, arma::fill::zeros);
+					element_type lambda = 0.0;
 					for(int n = 0; n < gamma_a; n++)
 					{
 						auto state_n = states_for_superposition[n];
@@ -959,7 +966,7 @@ void user_interface_quadratic<Hamiltonian>::non_gaussianity()
 												boost::dynamic_bitset<> _state_m_anih = state_m;
 												_state_m_anih[q1] = 0;
 												double sign2 = ((_state_m_anih & mask_q2).count() % 2)? -1 : 1;
-												cpx pre = sign1 * sign2 * std::conj(coeff(n)) * coeff(m);
+												element_type pre = sign1 * sign2 * my_conjungate(coeff(m)) * coeff(n);
 
 												_extra_debug_( std::cout << q1 << "\t\t" << q2 << "\t\t" << state_m[q1] << "\t\t" << state_m[q2] << "\t\t" << sign1 << "\t\t" << sign2 << "\t\t" << pre << std::endl; )
 												auto orbital1 = orbitals.col(q1);
@@ -975,7 +982,7 @@ void user_interface_quadratic<Hamiltonian>::non_gaussianity()
 					std::cout << "\t\t - - - - - - Finished One-body density matrix for Gamma = " << gamma_a << " mixings with Norm = " << normalization << " in time:" << tim_s(start_G) << " s - - - - - - " << std::endl; // simuVAtion end
 					start_G = std::chrono::system_clock::now();
 
-					arma::cx_mat dist = OneBodyDensMat - OneBodyDensMat_approx;
+					arma::Mat<element_type> dist = OneBodyDensMat - OneBodyDensMat_approx;
 					dist = dist * dist;
 					auto lambdas_dist = arma::eig_sym(dist);
 					TraceDistance(ii, subsystem_sizes.size()) = arma::trace(arma::sqrt(lambdas_dist)) / (2.0 * N);
@@ -987,7 +994,7 @@ void user_interface_quadratic<Hamiltonian>::non_gaussianity()
 					auto lambdas = arma::eig_sym(OneBodyDensMat);
 					non_gaussianity = QHS::single_particle::entanglement::vonNeumann(lambdas);
 
-					arma::cx_mat J2 = OneBodyDensMat * OneBodyDensMat;
+					arma::Mat<element_type> J2 = OneBodyDensMat * OneBodyDensMat;
 					Trace_n1(ii, subsystem_sizes.size()) = std::real( arma::trace(J2) );
 					Trace_n2(ii, subsystem_sizes.size()) = std::real( arma::trace(J2 * J2) );
 					Trace_n3(ii, subsystem_sizes.size()) = std::real( arma::trace(J2 * J2 * J2) );
@@ -1004,7 +1011,7 @@ void user_interface_quadratic<Hamiltonian>::non_gaussianity()
 						const long VA = subsystem_sizes(VA_idx); 
 						arma::uvec row_idx = arma::regspace<arma::uvec>(this->V - VA, this->V - 1);
 						arma::uvec col_idx = arma::regspace<arma::uvec>(this->V - VA, this->V - 1);
-						arma::cx_mat ReducedOneBodyDensMat = OneBodyDensMat.submat(row_idx, col_idx);
+						arma::Mat<element_type> ReducedOneBodyDensMat = OneBodyDensMat.submat(row_idx, col_idx);
 						auto lambdas = arma::eig_sym(ReducedOneBodyDensMat);
 						entropy_corr_mat(VA_idx) = QHS::single_particle::entanglement::vonNeumann(lambdas);
 
@@ -1025,39 +1032,51 @@ void user_interface_quadratic<Hamiltonian>::non_gaussianity()
 						std::cout << "\t\t - - - - - - Finished subsystem size VA = " << VA << " mixings in time:" << tim_s(start_VAA) << " s - - - - - - " << std::endl; // simuVAtion end
 					}
 				} else {
-					arma::cx_mat OneBodyDensMat(V, V, arma::fill::zeros);
-					arma::cx_mat OneBodyDensMat_approx(V, V, arma::fill::zeros);
+					arma::Mat<element_type> OneBodyDensMat(V, V, arma::fill::zeros);
+					arma::Mat<element_type> OneBodyDensMat_approx(V, V, arma::fill::zeros);
 					for(int n = 0; n < gamma_a; n++)
 					{
-						cpx lambda = 0;
-						double prefactor = std::abs( std::conj(coeff(n)) * coeff(n));
-						QHS::single_particle::correlators::one_body(_orbitals_[n], states_for_superposition[n], V, OneBodyDensMat_approx, lambda, prefactor);
+						element_type lambda = 0;
+						double prefactor = std::abs( my_conjungate(coeff(n)) * coeff(n));
+						arma::Mat<element_type> orbit = _orbitals_[n];
+						QHS::single_particle::correlators::one_body(orbit, states_for_superposition[n], V, OneBodyDensMat_approx, lambda, prefactor);
 						
 						auto _matrix_state_n = QHS::single_particle::tools::get_matrix_state(_orbitals_[n], states_for_superposition[n]);
 						for(int m = 0; m < gamma_a; m++)
 						{
-							cpx pre = std::conj(coeff(n)) * coeff(m);
+							element_type pre = my_conjungate(coeff(n)) * coeff(m);
 							auto _matrix_state_m = QHS::single_particle::tools::get_matrix_state(_orbitals_[m], states_for_superposition[m]);
 							for(int i = 0; i < this->V; i++)
 							{
-								arma::cx_vec created_state_i(this->V, arma::fill::zeros);	
+								arma::Col<element_type> created_state_i(this->V, arma::fill::zeros);	
 								created_state_i(i) = 1.0;
-								arma::cx_mat Wn_ci = arma::join_rows(_matrix_state_n, created_state_i);
-								arma::cx_mat Wm_ci = arma::join_rows(_matrix_state_m, created_state_i);
+								arma::Mat<element_type> Wn_ci = arma::join_rows(_matrix_state_n, created_state_i);
+								arma::Mat<element_type> Wm_ci = arma::join_rows(_matrix_state_m, created_state_i);
 								auto eigs = arma::eig_gen(Wm_ci.t() * Wn_ci);
-								cpx val = arma::prod(eigs);
-								OneBodyDensMat(i, i) += pre * val;
+								cpx val = std::conj(arma::prod(eigs));
+								
+								#if _MAT_ENSEMBLE_ == 0
+									OneBodyDensMat(i, i) += std::real(pre * val);
+								#else
+									OneBodyDensMat(i, i) += pre * val;
+								#endif
+
 								for(int j = i+1; j < this->V; j++)
 								{
-									arma::cx_vec created_state_j(this->V, arma::fill::zeros);	
+									arma::Col<element_type> created_state_j(this->V, arma::fill::zeros);	
 									created_state_j(j) = 1.0;
-									arma::cx_mat Wm_cj = arma::join_rows(_matrix_state_m, created_state_j);
+									arma::Mat<element_type> Wm_cj = arma::join_rows(_matrix_state_m, created_state_j);
 
 									auto eigs = arma::eig_gen(Wm_cj.t() * Wn_ci);
-									cpx val = arma::prod(eigs);
-									
-									OneBodyDensMat(i, j) += pre * val;
-									OneBodyDensMat(j, i) += std::conj( pre * val );
+									cpx val = std::conj(arma::prod(eigs));
+
+									#if _MAT_ENSEMBLE_ == 0
+										OneBodyDensMat(i, j) += std::real( pre * val );
+										OneBodyDensMat(j, i) += std::real( std::conj( pre * val ) );
+									#else
+										OneBodyDensMat(i, j) += pre * val;
+										OneBodyDensMat(j, i) += std::conj( pre * val );
+									#endif
 								}
 							}
 						}
@@ -1066,9 +1085,9 @@ void user_interface_quadratic<Hamiltonian>::non_gaussianity()
 					std::cout << "\t\t - - - - - - Finished One-body density matrix for Gamma = " << gamma_a << " mixings with Norm = " << normalization << " in time:" << tim_s(start_G) << " s - - - - - - " << std::endl; // simuVAtion end
 					start_G = std::chrono::system_clock::now();
 
-					arma::cx_mat dist = OneBodyDensMat - OneBodyDensMat_approx;
+					arma::Mat<element_type> dist = OneBodyDensMat - OneBodyDensMat_approx;
 					dist = dist * dist;
-					auto lambdas_dist = arma::eig_sym(dist);
+					arma::vec lambdas_dist = arma::abs( arma::eig_sym(dist) );
 					TraceDistance(ii, subsystem_sizes.size()) = arma::trace(arma::sqrt(lambdas_dist)) / (2.0 * N);
 
 					Purity1(ii) = std::real( arma::trace(OneBodyDensMat * OneBodyDensMat) );
@@ -1078,7 +1097,7 @@ void user_interface_quadratic<Hamiltonian>::non_gaussianity()
 					auto lambdas = arma::eig_sym(OneBodyDensMat);
 					non_gaussianity = QHS::single_particle::entanglement::vonNeumann(lambdas);
 
-					arma::cx_mat J2 = OneBodyDensMat * OneBodyDensMat;
+					arma::Mat<element_type> J2 = OneBodyDensMat * OneBodyDensMat;
 					Trace_n1(ii, subsystem_sizes.size()) = std::real( arma::trace(J2) );
 					Trace_n2(ii, subsystem_sizes.size()) = std::real( arma::trace(J2 * J2) );
 					Trace_n3(ii, subsystem_sizes.size()) = std::real( arma::trace(J2 * J2 * J2) );
@@ -1094,7 +1113,7 @@ void user_interface_quadratic<Hamiltonian>::non_gaussianity()
 						const long VA = subsystem_sizes(VA_idx); 
 						arma::uvec row_idx = arma::regspace<arma::uvec>(this->V - VA, this->V - 1);
 						arma::uvec col_idx = arma::regspace<arma::uvec>(this->V - VA, this->V - 1);
-						arma::cx_mat ReducedOneBodyDensMat = OneBodyDensMat.submat(row_idx, col_idx);
+						arma::Mat<element_type> ReducedOneBodyDensMat = OneBodyDensMat.submat(row_idx, col_idx);
 						auto lambdas = arma::eig_sym(ReducedOneBodyDensMat);
 						entropy_corr_mat(VA_idx) = QHS::single_particle::entanglement::vonNeumann(lambdas);
 
@@ -1181,7 +1200,7 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_manybody()
 
 	int counter = 0;
 
-	std::vector<QOps::genOp> permutation_op;
+	std::vector<QOps::generic_operator<element_type>> permutation_op;
 	for(int VA_idx = 0; VA_idx < subsystem_sizes.size() - 1; VA_idx++)
 	{	
 		int VA = subsystem_sizes[VA_idx];
@@ -1192,7 +1211,7 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_manybody()
 				p[l] = (l < (VA % this->V) )? l + 1 : l;
 			}
 		}
-		auto permutation = QOps::_permutation_generator(this->L, p);
+		auto permutation = QOps::_permutation_generator<element_type>(this->L, p);
 		permutation_op.push_back(permutation);
 	}
 // #pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
@@ -1272,7 +1291,7 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_manybody()
 				int LA = subsystem_sizes[LA_idx];
 				S(n, LA_idx) = entropy::schmidt_decomposition(state, this->L - LA, this->L);	// bipartite entanglement at subsystem size LA
 				
-				arma::vec permuted_state = arma::real(permutation_op[LA_idx].multiply(state2));
+				arma::Col<element_type> permuted_state = permutation_op[LA_idx].multiply(state2);
 				S_site(n, LA_idx) = entropy::schmidt_decomposition(permuted_state, this->L - 1, this->L);	// single site entanglement at site LA
 			}
 		}
@@ -1529,7 +1548,7 @@ void user_interface_quadratic<Hamiltonian>::diagonal_matrix_elements()
 }
 
 
-// ---------------------------------------------------------------------------------------------------------------- IMPLEMENTATION OF UI
+// --------------------------------------------------------------------------------------------------------------- IMPLEMENTATION OF UI
 
 /// @brief Sets model parameters from values in command line
 /// @tparam Hamiltonian Hamiltonian template parameter for current used model

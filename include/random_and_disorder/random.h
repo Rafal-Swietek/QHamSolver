@@ -6,7 +6,8 @@
 
 enum class dist{
 	uniform,
-	normal
+	normal,
+	complex_normal
 };
 
 /// <summary>
@@ -62,18 +63,47 @@ public:
 		{ return std::uniform_real_distribution<_type>(_min, _max)(engine); }
 	
 	//<! ------------------------------------------------ NORMAL (GAUSSIAN)
-	std::complex<double> cpx_normal(double _mean = 0, double _var = 1) 
+	std::complex<double> cpx_normal(std::complex<double> _mean = 0., std::complex<double> _var = 1.) 
 	{
-		std::normal_distribution<double> dist(_mean, _var / 2.);
+		std::normal_distribution<double> dist(std::real(_mean), std::real(_var) / 2.);
 		return std::complex<double>(dist(engine), dist(engine));
 	}
 	double real_normal(double _mean = 0.0, double _var = 1.0)
 		{ return std::normal_distribution<double>(_mean, _var)(engine); }
 
 	template <typename _type> 
-	_type normal(double _mean = 0.0, double _var = 1.0)
+	_type normal(_type _mean = _type(0), _type _var = _type(1))
 		{ return std::normal_distribution<_type>(_mean, _var)(engine); }
 
+	//<! ------------------------------------------------ UNIFORM
+	template <> 
+	inline 
+	int 
+		uniform_dist<int>(
+			int _min, int _max)
+		{ return int_uniform(_min, _max); }
+
+	template <> 
+	inline 
+	unsigned long long int 
+		uniform_dist<unsigned long long int>(
+			unsigned long long int _min, unsigned long long int _max)
+		{ return int_uniform(_min, _max); }
+
+	template <> 
+	inline 
+	std::complex<double> 
+		uniform_dist<std::complex<double>>(
+			std::complex<double> _min, std::complex<double> _max)
+		{ return cpx_uniform(_min, _max); }
+
+	//<! ------------------------------------------------ NORMAL (GAUSSIAN)
+	template <>
+	inline 
+	std::complex<double> 
+		normal<std::complex<double>>(
+			std::complex<double> _mean, std::complex<double> _var)
+		{ return cpx_normal(_mean, _var); }
 
 	//<! ------------------------------------------------ HELPERS
 
@@ -83,10 +113,13 @@ public:
 			return uniform_dist<_type>(arg1, arg2);
 		else if constexpr (dist_type == dist::normal)
 			return normal<_type>(arg1, arg2);
+		else if constexpr (dist_type == dist::complex_normal)
+			return cpx_normal(std::real(arg1), std::real(arg2));
 		else
-			static_check((dist_type == dist::uniform) || (dist_type == dist::normal), 
+			static_check((dist_type == dist::uniform) || (dist_type == dist::normal) || (dist_type == dist::complex_normal),
 					"Not implemented other diatributions than uniform and normal");
 	}
+
 	//<! ------------------------------------------------ RANDOM STATES
 	/// @brief Generate Random vector with unform distribution
 	/// @tparam _type type of random numbers
@@ -158,33 +191,3 @@ public:
 		return Q;
 	};
 };
-
-//<! ------------------------------------------------ UNIFORM
-template <> 
-inline 
-int 
-	randomGen::uniform_dist<int>(
-		int _min, int _max)
-	{ return int_uniform(_min, _max); }
-
-template <> 
-inline 
-unsigned long long int 
-	randomGen::uniform_dist<unsigned long long int>(
-		unsigned long long int _min, unsigned long long int _max)
-	{ return int_uniform(_min, _max); }
-
-template <> 
-inline 
-std::complex<double> 
-	randomGen::uniform_dist<std::complex<double>>(
-		std::complex<double> _min, std::complex<double> _max)
-	{ return cpx_uniform(_min, _max); }
-
-//<! ------------------------------------------------ NORMAL (GAUSSIAN)
-template <> 
-inline 
-std::complex<double> 
-	randomGen::normal<std::complex<double>>(
-		double _mean, double _var)
-	{ return cpx_normal(_mean, _var); }

@@ -2,7 +2,7 @@
 
 namespace QOps{
 
-using genOp = generic_operator<>;
+using genOp = generic_operator<cpx>;
 using locOp = generic_operator<int>;
 using corrOp = generic_operator<int, int>;
 

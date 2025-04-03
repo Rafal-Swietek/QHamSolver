@@ -7,8 +7,10 @@ namespace QHS{
         namespace tools{
             
             /// @brief Extract the matrix of the input Gaussian state using input single-particle states
+            /// @tparam _ty typename of the input orbitals
             /// @param orbitals single particle wavefunctions
             /// @param state many-body eigenstate (configuration -- product state as boost::dynamic_bitset)
+            /// @return Slater determinant for given input state
             template <typename _ty>
             inline
             const arma::Mat<_ty> get_matrix_state(const arma::Mat<_ty>& orbitals, const boost::dynamic_bitset<>& state)
@@ -30,14 +32,16 @@ namespace QHS{
         namespace correlators{
 
             /// @brief Calculate one-body correlation matrix for eigenstate state with single particle states in orbitals. The size of matrix is set by VA
+            /// @tparam _ty typename of the input orbitals
             /// @param orbitals single particle wavefunctions
             /// @param state many-body eigenstate (configuration -- product state as boost::dynamic_bitset)
             /// @param VA subsystem size (can be whole system)
             /// @param J_m reference to one-body correlation matrix to add new entries
             /// @param lambda reference to single-site one-body correlation
             /// @param prefactor prefactor for correlation matrix (by default = 1.0)
+            template <typename _ty>
             inline
-            void one_body(const arma::cx_mat& orbitals, const boost::dynamic_bitset<>& state, int VA, arma::cx_mat& J_m, cpx& lambda, double prefactor = 1.0)
+            void one_body(const arma::Mat<_ty>& orbitals, const boost::dynamic_bitset<>& state, int VA, arma::Mat<_ty>& J_m, _ty& lambda, double prefactor = 1.0)
             {
                 arma::uvec col_idx(long(state.count()));
                 int idx = 0;
@@ -66,14 +70,16 @@ namespace QHS{
             }
 
             /// @brief Calculate one-body correlation matrix for eigenstate state with single particle states in orbitals. The size of matrix is set by VA
+            /// @tparam _ty typename of the input orbitals
             /// @param orbitals single particle wavefunctions
             /// @param state many-body eigenstate (configuration -- product state as boost::dynamic_bitset)
             /// @param VA subsystem size (can be whole system)
+            template <typename _ty>
             inline
-            std::pair<arma::cx_mat, cpx> one_body(const arma::cx_mat& orbitals, const boost::dynamic_bitset<>& state, int VA)
+            std::pair<arma::Mat<_ty>, cpx> one_body(const arma::Mat<_ty>& orbitals, const boost::dynamic_bitset<>& state, int VA)
             {
-                arma::cx_mat J_m(VA, VA, arma::fill::zeros);
-                cpx lambda = 0.0;
+                arma::Mat<_ty> J_m(VA, VA, arma::fill::zeros);
+                _ty lambda = 0.0;
                 arma::uvec col_idx(long(state.count()));
                 int idx = 0;
                 for(int q = 0; q < orbitals.n_cols; q++){

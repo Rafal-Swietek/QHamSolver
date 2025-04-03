@@ -137,17 +137,22 @@ namespace QOps {
 					};
 		};
 
-		///
+		/// @brief Permutation operator definition based on input vector p, defining permutation
+		/// @tparam _ty template parameter to deduce return type
+		/// @param L system size
+		/// @param p permutation vector (setting new order of elements )
+		/// @return 
+		template <typename _ty>
 		inline 
-		auto permutation(unsigned int L, std::vector<int> p) -> _global_fun
+		auto permutation(unsigned int L, std::vector<int> p) -> typename _func<std::pair<u64, _ty>>::global
 		{
 			auto bit = get_digit(L);
-			return [bit, L, p](u64 n)
+			return [bit, L, p](u64 n) -> std::pair<u64, _ty>
 					{
 						u64 new_state = 0;
 						for(int j = 0; j < L; j++)
 							new_state += bit(n, j) * ULLPOW(L - p[j] - 1);
-						return std::make_pair(new_state, 1.0);
+						return std::make_pair(new_state, _ty(1.0) );
 					};
 		};
 		

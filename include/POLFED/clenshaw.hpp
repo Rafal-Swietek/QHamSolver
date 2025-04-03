@@ -85,7 +85,7 @@ namespace polfed{
                 _assert_(coeff.size() == K+1, "\t\tDimension mismatch: Array of coefficients has to be of length K+1");
             #endif
             // initialize recurence objects
-            double bk_2 = 0, bk_1 = 0;
+            _ty bk_2 = 0, bk_1 = 0;
 
             // perform recurence relation in loop
             for(int n = K; n > 0; n--){

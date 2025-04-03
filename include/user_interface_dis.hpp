@@ -51,6 +51,7 @@ public:
 	virtual void check_krylov_evolution() override;
 
 	virtual void eigenstate_ergodicity_test();
+	virtual void fockspace_spreading();
 
 	virtual void entanglement_evolution() 				override;
 	virtual void eigenstate_entanglement() 				override;

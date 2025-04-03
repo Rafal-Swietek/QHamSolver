@@ -7,21 +7,22 @@ namespace QOps {
 	// decltype(std::declval<out_ty&>() * std::declval<out_ty2&>())
 	
 	//! generic class for operators (single operator or operator products)
-	template <typename... _ty>
+	template <typename _eigval_ty, typename... _ty>
 	class generic_operator{
 
 	protected:
-		typedef _func<return_type>::input<_ty...> kernel_type;	// type of callable operator kernel
+		typedef std::pair<u64, _eigval_ty> return_ty;							// return type of operator, resulting state and value
+		typedef typename _func<return_ty>::template input<_ty...> kernel_type;	// type of callable operator kernel
 
 		static
 		inline
 		const
 		kernel_type unit_kernel =
-			[](u64 num, _ty... args) -> return_type
+			[](u64 num, _ty... args) -> return_ty
 		{ return std::make_pair(num, 1.0); };
 
 		kernel_type _kernel = unit_kernel;	// callable encoding change of quantum states and return value
-		cpx opVal = 1.0;					// const return value of operator acting on given state
+		_eigval_ty opVal = 1.0;				// const return value of operator acting on given state
 		void init() {
 			CONSTRUCTOR_CALL;
 			_extra_debug(
@@ -43,18 +44,18 @@ namespace QOps {
 			: L(_L)
 		{ init(); };
 		
-		generic_operator(int _L, cpx _opVal)
+		generic_operator(int _L, _eigval_ty _opVal)
 			: L(_L), opVal(_opVal)
 		{ init(); };
 
-		explicit generic_operator(int _L, kernel_type&& new_kernel, cpx _opVal = 1.0)
+		explicit generic_operator(int _L, kernel_type&& new_kernel, _eigval_ty _opVal = 1.0)
 			: L(_L), _kernel(std::move(new_kernel)), opVal(_opVal)
 		{ init(); };
 
-		template <callable_type F>
-		explicit generic_operator(int _L, F&& new_kernel, cpx _opVal = 1.0)
-			: L(_L), _kernel(std::forward<F>(new_kernel)), opVal(_opVal)
-		{ init(); };
+		// template <callable_type F>
+		// explicit generic_operator(int _L, F&& new_kernel, _eigval_ty _opVal = 1.0)
+		// 	: L(_L), _kernel(std::forward<F>(new_kernel)), opVal(_opVal)
+		// { init(); };
 
 		// copy and move
 		generic_operator(const generic_operator& other) { *this = other; init(); };
@@ -84,7 +85,7 @@ namespace QOps {
 		auto get_operator_value()
 			const { return this->opVal; };
 
-		void set_operator_value(cpx opVal) 
+		void set_operator_value(_eigval_ty opVal) 
 			{ this->opVal = opVal; };
 
 		//! ---------------------- operator kernel
@@ -135,8 +136,8 @@ namespace QOps {
 		//! ----------------------------------------------- overloaded multiplication
 		//! -------------------- with other objects
 		friend 
-		auto operator*(cpx arg, const generic_operator<_ty...>& _operator)
-			-> generic_operator<_ty...>
+		auto operator*(_eigval_ty arg, const generic_operator<_eigval_ty, _ty...>& _operator)
+			-> generic_operator<_eigval_ty, _ty...>
 		{ 
 			generic_operator<_ty...> new_operator(_operator);
 			new_operator.opVal *= arg; 
@@ -144,35 +145,35 @@ namespace QOps {
 		}
 		
 		friend 
-		auto operator*(const generic_operator<_ty...>& _operator, cpx arg)
-			-> generic_operator<_ty...>
+		auto operator*(const generic_operator<_eigval_ty, _ty...>& _operator, _eigval_ty arg)
+			-> generic_operator<_eigval_ty, _ty...>
 		{ return arg * _operator;}
 
-		void operator*=(cpx arg)
+		void operator*=(_eigval_ty arg)
 		{ this->opVal *= arg; }
 		
 		//! -------------------- with another class instance
 		template <typename..._ty2>
-		auto operator*(const generic_operator<_ty2...>& op)
-			const -> generic_operator<_ty..., _ty2...>;
+		auto operator*(const generic_operator<_eigval_ty, _ty2...>& op)
+			const -> generic_operator<_eigval_ty, _ty..., _ty2...>;
 		
 		template <typename..._ty2>
-		auto operator*=(const generic_operator<_ty2...>& op)
+		auto operator*=(const generic_operator<_eigval_ty, _ty2...>& op)
 			{_assert_((false), 
 				"Not possible operatotion, since cannot expand variadic template on (*this) at run-time. See operator%= for possible solution!");}
 
 		//! -------------------- with another function/lambda:
 		//! --	 X = generic_operator<...> * fun<...> implementation
 		template <typename..._ty2>
-		auto operator*(const std::function<return_type(u64, _ty2...)>& opFun)
-			const -> generic_operator<_ty..., _ty2...>;
+		auto operator*(const std::function<return_ty(u64, _ty2...)>& opFun)
+			const -> generic_operator<_eigval_ty, _ty..., _ty2...>;
 
 		//! --	 X = fun<...> * generic_operator<...> implementation
 		template <typename..._ty2>
 		friend 
 		auto operator*(const kernel_type& fun,
-			const generic_operator<_ty2...>& _operator)
-			-> generic_operator<_ty..., _ty2...>
+			const generic_operator<_eigval_ty, _ty2...>& _operator)
+			-> generic_operator<_eigval_ty, _ty..., _ty2...>
 		{
 			auto fun_result = fun * _operator._kernel;
 			return generic_operator(_operator.L, std::move(fun_result), _operator.opVal);
@@ -212,7 +213,7 @@ namespace QOps {
 		/// @param op input operator
 		/// @return operator representative value (complex)
 		friend
-		cpx chi(const generic_operator& op)
+		_eigval_ty chi(const generic_operator& op)
 			{ return op.opVal; };
 
 		/// @brief Calculate operator return value after acting on state num
@@ -221,7 +222,7 @@ namespace QOps {
 		/// @param ...args additional arguments for operator (i.e. site acting on)
 		/// @return complex value
 		friend
-		cpx chi(const generic_operator& op, u64 num, _ty... args)
+		_eigval_ty chi(const generic_operator& op, u64 num, _ty... args)
 		{
 			auto [state, returnVal] = op._kernel(num, std::forward<_ty>(args)...);
 			return op.opVal * returnVal;
@@ -230,9 +231,9 @@ namespace QOps {
 		//! -------------------------------------------------------------------------- ACTING ON QUANTUM STATES
 		template <typename _ty_state>
 		auto multiply(const arma::Col<_ty_state>& state, _ty... args)
-			const -> arma::cx_vec
+			const -> arma::Col<_eigval_ty>
 			{
-				arma::cx_vec output_state(state.size(), arma::fill::zeros);
+				arma::Col<_eigval_ty> output_state(state.size(), arma::fill::zeros);
 				for(u64 k = 0; k < state.size(); k++){            
 					auto [idx, val] = this->operator()(k, args...);
 					output_state(idx) += val * state(k);
@@ -243,10 +244,10 @@ namespace QOps {
 			
 		//! -------------------------------------------------------------------------- GENERATE MATRIX ELEMENTS
 		
-		arma::sp_cx_mat to_matrix(u64 dim, _ty... args);
+		arma::SpMat<_eigval_ty> to_matrix(u64 dim, _ty... args);
 		
 		template <typename _hilbert>
-		arma::sp_cx_mat to_reduced_matrix(const _hilbert& hilbert_space, _ty... args);
+		arma::SpMat<_eigval_ty> to_reduced_matrix(const _hilbert& hilbert_space, _ty... args);
 
 		// template <typename _hilbert1, typename _hilbert2>
 		// arma::sp_cx_mat to_matrix(const _hilbert1& hilbert_space1, const _hilbert2& hilbert_space2, _ty... args);

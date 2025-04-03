@@ -43,7 +43,7 @@ namespace QHS{
             /// @param prefactor complex prefactor to state
             template <typename _ty, bool use_U1_decomp>
             inline
-            void ManyBodyState<_ty, use_U1_decomp>::convert(arma::cx_vec& many_body_state, const boost::dynamic_bitset<>& gaussian_state, cpx prefactor)
+            void ManyBodyState<_ty, use_U1_decomp>::convert(arma::Col<_ty>& many_body_state, const boost::dynamic_bitset<>& gaussian_state, _ty prefactor)
             {
                 _assert_(gaussian_state.size() == this->volume && gaussian_state.count() == this->num_particles, 
                             INCOMPATIBLE_DIMENSION "Input gaussian state does not match class' system size");
@@ -74,7 +74,7 @@ namespace QHS{
             /// @param prefactor complex prefactor to state
             template <typename _ty, bool use_U1_decomp>
             inline
-            void ManyBodyState<_ty, use_U1_decomp>::convert(arma::cx_vec& many_body_state, const boost::dynamic_bitset<>& gaussian_state, cpx prefactor, arma::vec qs, arma::vec& prs)
+            void ManyBodyState<_ty, use_U1_decomp>::convert(arma::Col<_ty>& many_body_state, const boost::dynamic_bitset<>& gaussian_state, _ty prefactor, arma::vec qs, arma::vec& prs)
             {
                 _assert_(gaussian_state.size() == this->volume && gaussian_state.count() == this->num_particles, 
                             INCOMPATIBLE_DIMENSION "Input gaussian state does not match class' system size");

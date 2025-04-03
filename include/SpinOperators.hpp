@@ -7,27 +7,31 @@
 const double _Spin = SPIN;
 
 namespace operators{
-    /// @brief Sigma X operator on input site
-	/// @param base_vec Input state to act SigmaX on
+    /// @brief Identity operator on input site
+	/// @tparam _ty template for return type
+	/// @param base_vec Input state to act Identity on
 	/// @param L system size
 	/// @param site site to act operator
 	/// @return pair of return value and resulting state
+	template <typename _ty>
 	inline
-    std::pair<cpx, u64> 
+    std::pair<_ty, u64> 
     sigma_0(u64 base_vec, unsigned int L, int site) {
-		return std::make_pair(_Spin, base_vec);
+		return std::make_pair(_ty(_Spin), base_vec);
 	};
 
 	/// @brief Sigma X operator on input site
+	/// @tparam _ty template for return type
 	/// @param base_vec Input state to act SigmaX on
 	/// @param L system size
 	/// @param site site to act operator
 	/// @return pair of return value and resulting state
+	template <typename _ty>
 	inline
-    std::pair<cpx, u64> 
+    std::pair<_ty, u64> 
     sigma_x(u64 base_vec, unsigned int L, int site) {
 		return std::make_pair(
-				_Spin, 
+				_ty(_Spin), 
 				flip(base_vec, BinaryPowers[L - 1 - site], L - 1 - site)
 				);
 	};
@@ -47,43 +51,49 @@ namespace operators{
 	};
 	
 	/// @brief SigmaZ operator on input site
+	/// @tparam _ty template for return type
 	/// @param base_vec Input state to act SigmaZ on
 	/// @param L system size
 	/// @param site site to act operator
 	/// @return pair of return value and resulting state
+	template <typename _ty>
     inline
-    std::pair<cpx, u64> 
+    std::pair<_ty, u64> 
     sigma_z(u64 base_vec, unsigned int L, int site) {
 		return std::make_pair(
-			checkBit(base_vec, L - 1 - site) ? _Spin : -_Spin,
+			checkBit(base_vec, L - 1 - site) ? _ty(_Spin) : -_ty(_Spin),
 			base_vec
 			);
 	};
 
 	/// @brief Sigma+ operator on input site
+	/// @tparam _ty template for return type
 	/// @param base_vec Input state to act Sigma+ on
 	/// @param L system size
 	/// @param site site to act operator
 	/// @return pair of return value and resulting state
+	template <typename _ty>
 	inline
-    std::pair<cpx, u64> 
+    std::pair<_ty, u64> 
     sigma_plus(u64 base_vec, unsigned int L, int site) {
 		return std::make_pair(
-			checkBit(base_vec, L - 1 - site)? 0.0 : 1.0,
+			_ty( checkBit(base_vec, L - 1 - site)? 0.0 : 1.0 ),
 			flip(base_vec, BinaryPowers[L - 1 - site], L - 1 - site)
 			);
 	};
 
 	/// @brief Sigma- operator on input site
+	/// @tparam _ty template for return type
 	/// @param base_vec Input state to act Sigma- on
 	/// @param L system size
 	/// @param site site to act operator
 	/// @return pair of return value and resulting state
+	template <typename _ty>
 	inline
-    std::pair<cpx, u64> 
+    std::pair<_ty, u64> 
     sigma_minus(u64 base_vec, unsigned int L, int site) {
 		return std::make_pair(
-			checkBit(base_vec, L - 1 - site)? 1.0 : 0.0,
+			_ty( checkBit(base_vec, L - 1 - site)? 1.0 : 0.0 ),
 			flip(base_vec, BinaryPowers[L - 1 - site], L - 1 - site)
 			);
 	};
@@ -91,7 +101,7 @@ namespace operators{
 
 	//<!------------------------------------------------------------ MULTIPLE INDICES
     // inline
-    // std::pair<cpx, u64> 
+    // std::pair<_ty, u64> 
     // sigma_x(u64 base_vec, unsigned int L, std::vector<int> sites) {
 	// 	for (auto& site : sites) 
 	// 		base_vec = flip(base_vec, BinaryPowers[L - 1 - site], L - 1 - site);
@@ -99,10 +109,10 @@ namespace operators{
 	// };
 
     // inline
-	// std::pair<cpx, u64> 
+	// std::pair<_ty, u64> 
     // sigma_y(u64 base_vec, unsigned int L, std::vector<int> sites) {
 	// 	auto tmp = base_vec;
-	// 	cpx val = 1.0;
+	// 	_ty val = 1.0;
 	// 	for (auto& site : sites) {
 	// 		val *= _Spin * (checkBit(tmp, L - 1 - site) ? im : -im);
 	// 		tmp = flip(tmp, BinaryPowers[L - 1 - site], L - 1 - site);
@@ -111,7 +121,7 @@ namespace operators{
 	// };
 	
     // inline
-    // std::pair<cpx, u64> 
+    // std::pair<_ty, u64> 
     // sigma_z(u64 base_vec, unsigned int L, std::vector<int> sites) {
 	// 	auto tmp = base_vec;
 	// 	double val = 1.0;
@@ -121,7 +131,7 @@ namespace operators{
 	// };
 
 	// inline
-    // std::pair<cpx, u64> 
+    // std::pair<_ty, u64> 
     // sigma_plus(u64 base_vec, unsigned int L, std::vector<int> sites) {
 	// 	double val = 1.0;
 	// 	for (auto& site : sites){
@@ -136,7 +146,7 @@ namespace operators{
 	// };
 
 	// inline
-    // std::pair<cpx, u64> 
+    // std::pair<_ty, u64> 
     // sigma_minus(u64 base_vec, unsigned int L, std::vector<int> sites) {
 	// 	double val = 1.0;
 	// 	for (auto& site : sites){
@@ -153,7 +163,7 @@ namespace operators{
 }
 
 
-constexpr auto I = operators::sigma_0;
-constexpr auto X = operators::sigma_x;
+constexpr auto I = operators::sigma_0<cpx>;
+constexpr auto X = operators::sigma_x<cpx>;
 constexpr auto Y = operators::sigma_y;
-constexpr auto Z = operators::sigma_z;
+constexpr auto Z = operators::sigma_z<cpx>;

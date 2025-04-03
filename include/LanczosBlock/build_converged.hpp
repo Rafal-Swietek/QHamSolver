@@ -28,7 +28,7 @@ namespace lanczos
 			arma::Row<_ty> conv2(this->lanczos_steps);
 			for(int s = 0; s < this->lanczos_steps; s++)
 				conv2(s) = arma::norm(beta * Vconv.col(s).rows(Vconv.n_rows - this->bundle_size, Vconv.n_rows - 1));
-			_error = arma::max(conv2);
+			_error = std::abs( arma::max(conv2) );
 			// _error = arma::norm(beta * Vconv.submat(Vconv.n_rows - this->bundle_size, 0, Vconv.n_rows - 1, this->lanczos_steps - 1), "inf");
 		} else{
 			static_check((converge_type == converge::energies) 

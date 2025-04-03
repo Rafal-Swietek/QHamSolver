@@ -177,11 +177,11 @@ void ui::orbital_mat_elem()
 		const arma::Col<element_type>& orbital = new_model->get_eigenState(Eav_idx);
 		mat_elem = arma::diagmat( orbital * orbital.t() );
 		
-		double _operator_HSnorm = arma::trace(mat_elem * mat_elem) / dim;
+		double _operator_HSnorm = std::abs(arma::trace(mat_elem * mat_elem)) / dim;
 		mat_elem = mat_elem / std::sqrt(_operator_HSnorm);
 
 		mat_elem = V.t() * mat_elem * V;	
-		arma::vec diag_mat_elem = arma::diagvec(mat_elem);
+		arma::Col<element_type> diag_mat_elem = arma::diagvec(mat_elem);
 		// arma::mat xx = arma::abs(mat_elem);
 		// V.save(   arma::hdf5_name("ORBITALS" + info + ".hdf5", "eigenvectors"));
 		// opmat.save(   arma::hdf5_name("ORBITALS" + info + ".hdf5", "opmat",   arma::hdf5_opts::append));
@@ -280,34 +280,37 @@ void ui::spectrals_other_operators()
 	
 	// auto _operator_names = std::vector<std::string>({"Sx_L2", "Sx1_SxL", "Sz1_SzL", "SzL1_SzL", "Sparse_Random"});
 	auto _operator_names = std::vector<std::string>({"Sx_L2", "Sx1_SxL", "Sz1_SzL", "Sparse_Random"});
-	std::vector<QOps::genOp> _operators;
+	std::vector<QOps::generic_operator<double>> _operators;
 	{
-		auto kernel = [Ll](u64 state){ 
-			auto [val1, state_X] = operators::sigma_x(state, Ll, Ll / 2 );
+		auto kernel = [Ll](u64 state) -> std::pair<u64, double> 
+			{
+			auto [val1, state_X] = operators::sigma_x<double>(state, Ll, Ll / 2 );
 			return std::make_pair(state_X, val1);
 			};
-		_operators.push_back( QOps::generic_operator<>(this->L, std::move(kernel), 1.0) );
+		_operators.push_back( QOps::generic_operator<double>(this->L, std::move(kernel), 1.0) );
 	}
 	{
-		auto kernel = [Ll](u64 state){ 
-			auto [val1, state_X] = operators::sigma_x(state, Ll, Ll-1 );
-			auto [val2, state_XX] = operators::sigma_x(state_X, Ll, 0 );
+		auto kernel = [Ll](u64 state) -> std::pair<u64, double>
+			{ 
+			auto [val1, state_X] = operators::sigma_x<double>(state, Ll, Ll-1 );
+			auto [val2, state_XX] = operators::sigma_x<double>(state_X, Ll, 0 );
 			return std::make_pair(state_XX, val1 * val2);
 			};
-		_operators.push_back( QOps::generic_operator<>(this->L, std::move(kernel), 1.0) );
+		_operators.push_back( QOps::generic_operator<double>(this->L, std::move(kernel), 1.0) );
 	}
 	{
-		auto kernel = [Ll](u64 state){ 
-			auto [val1, state_Z] = operators::sigma_z(state, Ll, Ll-1 );
-			auto [val2, state_ZZ] = operators::sigma_z(state_Z, Ll, 0 );
+		auto kernel = [Ll](u64 state) -> std::pair<u64, double>
+			{ 
+			auto [val1, state_Z] = operators::sigma_z<double>(state, Ll, Ll-1 );
+			auto [val2, state_ZZ] = operators::sigma_z<double>(state_Z, Ll, 0 );
 			return std::make_pair(state_ZZ, val1 * val2);
 			};
-		_operators.push_back( QOps::generic_operator<>(this->L, std::move(kernel), 1.0) );
+		_operators.push_back( QOps::generic_operator<double>(this->L, std::move(kernel), 1.0) );
 	}
 	// {
-	// 	auto kernel = [Ll](u64 state){ 
-	// 		auto [val1, state_Z] = operators::sigma_z(state, Ll, Ll-1 );
-	// 		auto [val2, state_ZZ] = operators::sigma_z(state_Z, Ll, Ll-2 );
+	// 	auto kernel = [Ll](u64 state) -> std::pair<u64, double> {{ 
+	// 		auto [val1, state_Z] = operators::sigma_z<double>(state, Ll, Ll-1 );
+	// 		auto [val2, state_ZZ] = operators::sigma_z<double>(state_Z, Ll, Ll-2 );
 	// 		return std::make_pair(state_ZZ, val1 * val2);
 	// 		};
 	// 	_operators.push_back( QOps::generic_operator<>(this->L, std::move(kernel), 1.0) );
@@ -361,18 +364,18 @@ void ui::spectrals_other_operators()
 
 			arma::sp_mat opmat; 
 			if(iiop < _operator_names.size() - 1)
-				opmat = arma::real(_operators[iiop].to_matrix(dim));
+				opmat = _operators[iiop].to_matrix(dim);
 			else {
 				opmat = arma::sprandu<arma::sp_mat>(dim, dim, 0.15);// - arma::sprandu<arma::sp_mat>(dim, dim, 0.15);
 				opmat -= arma::diagmat(opmat);
 				opmat = (opmat + opmat.t()) / 2;
 			}
-			std::cout << "(Sparse) Hilbert-Schmidt norm of operator " << _op_name << " is ||O||^2=" << arma::trace(opmat * opmat) / dim << std::endl;
-			double _operator_HSnorm = arma::trace(opmat * opmat) / dim;
+			std::cout << "(Sparse) Hilbert-Schmidt norm of operator " << _op_name << " is ||O||^2=" << arma::trace(opmat * opmat) / double(dim) << std::endl;
+			double _operator_HSnorm = arma::trace(opmat * opmat) / double(dim);
 			arma::Mat<element_type> mat_elem = V.t() * opmat * V / std::sqrt(_operator_HSnorm);
-			std::cout << "(Dense) Hilbert-Schmidt norm of operator " << _op_name << " is ||O||^2=" << arma::trace(mat_elem * mat_elem) / dim << std::endl;
+			std::cout << "(Dense) Hilbert-Schmidt norm of operator " << _op_name << " is ||O||^2=" << arma::trace(mat_elem * mat_elem) / double(dim) << std::endl;
 
-			arma::vec diag_mat_elem = arma::diagvec(mat_elem);
+			arma::Col<element_type> diag_mat_elem = arma::diagvec(mat_elem);
 
 			std::cout << " - - - - - - finished matrix elements in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
 			start = std::chrono::system_clock::now();
@@ -547,12 +550,13 @@ void ui::spectrals()
 
 		start = std::chrono::system_clock::now();
 		// arma::Mat<element_type> mat_elem = V * Sz_ops[i] * V.t();
-		auto kernel = [Ll](u64 state){ 
-			auto [val1, tmp22] = operators::sigma_z(state, Ll, Ll - 1 );
+		auto kernel = [Ll](u64 state) -> std::pair<u64, double>
+			{ 
+			auto [val1, tmp22] = operators::sigma_z<double>(state, Ll, Ll - 1 );
 			return std::make_pair(state, val1);
 			};
-		auto _operator = QOps::generic_operator<>(this->L, std::move(kernel), 1.0);
-		arma::sp_mat opmat = arma::real(_operator.to_matrix(dim));
+		auto _operator = QOps::generic_operator<double>(this->L, std::move(kernel), 1.0);
+		arma::sp_mat opmat = _operator.to_matrix(dim);
 		arma::Mat<element_type> mat_elem = V.t() * opmat * V;
 		// std::cout << mat_elem << std::endl;
 		// arma::mat xx = arma::abs(mat_elem);
@@ -702,16 +706,16 @@ void ui::quench()
 		createDirs(dir_realis);
 		E.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "energies"));
 		
-		arma::vec Hdiagonal = arma::diagvec( this->ptr_to_model->get_dense_hamiltonian() );
+		arma::Col<element_type> Hdiagonal = arma::diagvec( this->ptr_to_model->get_dense_hamiltonian() );
 
 		double E_av = arma::trace(E) / double(dim);
-		auto i = min_element(begin(Hdiagonal), end(Hdiagonal), [=](double x, double y) {
-			return abs(x - E_av) < abs(y - E_av);
+		auto i = min_element(begin(Hdiagonal), end(Hdiagonal), [=](element_type x, element_type y) {
+			return std::abs(x - E_av) < std::abs(y - E_av);
 		});
 		const u64 idx = i - begin(Hdiagonal);
-		double quench_E = Hdiagonal(idx);
+		double quench_E = std::real( Hdiagonal(idx) );
 
-		arma::vec coeff = V.row(idx).t();
+		arma::Col<element_type> coeff = V.row(idx).t();
 		coeff.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "coefficients", arma::hdf5_opts::append));
 
 		arma::vec quench(times.size(), arma::fill::zeros);
@@ -735,14 +739,15 @@ void ui::quench()
 		std::cout << " - - - - - - finished preparing initial states for all times in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
 		
 		start = std::chrono::system_clock::now();
-		auto kernel = [Ll](u64 state){ 
-			auto [val1, tmp22] = operators::sigma_z(state, Ll, Ll - 1 );
+		auto kernel = [Ll](u64 state) -> std::pair<u64, double>
+			{
+			auto [val1, tmp22] = operators::sigma_z<double>(state, Ll, Ll - 1 );
 			return std::make_pair(state, val1);
 			};
-		auto _operator = QOps::generic_operator<>(this->L, std::move(kernel), 1.0);
-		arma::sp_mat op = arma::real(_operator.to_matrix(dim));
+		auto _operator = QOps::generic_operator<double>(this->L, std::move(kernel), 1.0);
+		arma::sp_mat op = _operator.to_matrix(dim);
 		arma::Mat<element_type> mat_elem = V.t() * op * V;
-		arma::vec diag_mat_elem = arma::diagvec(mat_elem);
+		arma::Col<element_type> diag_mat_elem = arma::diagvec(mat_elem);
 		std::cout << " - - - - - - finished Sz_L matrix elements in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
 
 		start = std::chrono::system_clock::now();
@@ -816,15 +821,16 @@ void ui::quench_fourier()
 		const auto& V = this->ptr_to_model->get_eigenvectors();
 		double E_av = arma::trace(E) / double(dim);
 
-		arma::vec Hdiagonal = arma::diagvec( this->ptr_to_model->get_dense_hamiltonian() );
+		arma::Col<element_type> Hdiagonal = arma::diagvec( this->ptr_to_model->get_dense_hamiltonian() );
 
-		auto i = min_element(begin(Hdiagonal), end(Hdiagonal), [=](double x, double y) {
-			return abs(x - E_av) < abs(y - E_av);
+		auto i = min_element(begin(Hdiagonal), end(Hdiagonal), [=](element_type x, element_type y) {
+			return std::abs(x - E_av) < std::abs(y - E_av);
 		});
 		const u64 idx = i - begin(Hdiagonal);
-		double quench_E = Hdiagonal(idx);
+		double quench_E = std::real( Hdiagonal(idx) );
 
-		arma::vec coeff = V.row(idx).t();
+
+		arma::Col<element_type> coeff = V.row(idx).t();
 
 		arma::vec quench(times.size(), arma::fill::zeros);
 		arma::cx_mat psi(dim, times.size(), arma::fill::zeros);
@@ -849,23 +855,25 @@ void ui::quench_fourier()
 		start = std::chrono::system_clock::now();
 		arma::sp_mat op;
 		if(this->op==1){
-			auto kernel = [Ll](u64 state){ 
-				auto [val1, state_x] = operators::sigma_x(state, Ll, Ll - 1 );
-				auto [val2, state_xx] = operators::sigma_x(state_x, Ll, Ll - 2 );
-				return std::make_pair(state_xx, val1* val2);
+			auto kernel = [Ll](u64 state) -> std::pair<u64, double>
+				{ 
+				auto [val1, state_x] = operators::sigma_x<double>(state, Ll, Ll - 1 );
+				auto [val2, state_xx] = operators::sigma_x<double>(state_x, Ll, Ll - 2 );
+				return std::make_pair(state_xx, val1 * val2);
 				};
-			auto _operator = QOps::generic_operator<>(this->L, std::move(kernel), 1.0);
-			op = arma::real(_operator.to_matrix(dim));
+			auto _operator = QOps::generic_operator<double>(this->L, std::move(kernel), 1.0);
+			op = _operator.to_matrix(dim);
 		} else {
-			auto kernel = [Ll](u64 state){ 
-				auto [val1, state_z] = operators::sigma_z(state, Ll, Ll - 1 );
+			auto kernel = [Ll](u64 state) -> std::pair<u64, double>
+				{ 
+				auto [val1, state_z] = operators::sigma_z<double>(state, Ll, Ll - 1 );
 				return std::make_pair(state_z, val1);
 				};
-			auto _operator = QOps::generic_operator<>(this->L, std::move(kernel), 1.0);
+			auto _operator = QOps::generic_operator<double>(this->L, std::move(kernel), 1.0);
 			op = arma::real(_operator.to_matrix(dim));
 		}
 		arma::Mat<element_type> mat_elem = V.t() * op * V;
-		arma::vec diag_mat_elem = arma::diagvec(mat_elem);
+		arma::Col<element_type> diag_mat_elem = arma::diagvec(mat_elem);
 		std::cout << " - - - - - - finished Sz_L matrix elements in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
 
 		start = std::chrono::system_clock::now();
@@ -929,18 +937,20 @@ void ui::total_spin()
 			for (int j = 0; j < this->L; j++) 
 			{
 				u64 state, state_tmp;
-				cpx val, val2;
-				std::tie(val, state_tmp)   = operators::sigma_x(base_state, this->L, i);
-				std::tie(val2, state)      = operators::sigma_x(state_tmp, this->L, j);
-				total_spin(state, k) += std::real(val * val2);
+				double val, val2;
 
-				std::tie(val, state_tmp)   = operators::sigma_y(base_state, this->L, i);
-				std::tie(val2, state)      = operators::sigma_y(state_tmp, this->L, j);
-				total_spin(state, k) += std::real(val * val2);
+				std::tie(val, state_tmp)   = operators::sigma_x<double>(base_state, this->L, i);
+				std::tie(val2, state)      = operators::sigma_x<double>(state_tmp, this->L, j);
+				total_spin(state, k) += val * val2;
 
-				std::tie(val, state_tmp)   = operators::sigma_z(base_state, this->L, i);
-				std::tie(val2, state)      = operators::sigma_z(state_tmp, this->L, j);
-				total_spin(state, k) += std::real(val * val2);
+				cpx val_cpx, val2_cpx;
+				std::tie(val_cpx, state_tmp)   = operators::sigma_y(base_state, this->L, i);
+				std::tie(val2_cpx, state)      = operators::sigma_y(state_tmp, this->L, j);
+				total_spin(state, k) += std::real(val_cpx * val2_cpx);
+
+				std::tie(val, state_tmp)   = operators::sigma_z<double>(base_state, this->L, i);
+				std::tie(val2, state)      = operators::sigma_z<double>(state_tmp, this->L, j);
+				total_spin(state, k) += val * val2;
 			}
 		}
 	}
@@ -983,16 +993,16 @@ void ui::total_spin()
 
 		start = std::chrono::system_clock::now();
 		
-		arma::vec Hdiagonal = arma::diagvec( this->ptr_to_model->get_dense_hamiltonian() );
+		arma::Col<element_type> Hdiagonal = arma::diagvec( this->ptr_to_model->get_dense_hamiltonian() );
 
-		auto i2 = min_element(begin(Hdiagonal), end(Hdiagonal), [=](double x, double y) {
+		auto i2 = min_element(begin(Hdiagonal), end(Hdiagonal), [=](element_type x, element_type y) {
 			return abs(x - E_av) < abs(y - E_av);
 		});
 		const u64 idx = i2 - begin(Hdiagonal);
-		double quench_E = Hdiagonal(idx);
+		double quench_E = std::real( Hdiagonal(idx) );
 		double tot_spin_init = total_spin(idx, idx);
 
-		arma::vec coeff = V.row(idx).t();
+		arma::Col<element_type> coeff = V.row(idx).t();
 
 		arma::vec quench(times.size(), arma::fill::zeros);
 		arma::cx_mat psi(dim, times.size(), arma::fill::zeros);
@@ -1014,7 +1024,7 @@ void ui::total_spin()
 
 		std::cout << " - - - - - - finished preparing initial states for all times in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
 		arma::Mat<element_type> mat_elem = V.t() * total_spin * V;
-		arma::vec diag_mat_elem = arma::diagvec(mat_elem);
+		arma::Col<element_type> diag_mat_elem = arma::diagvec(mat_elem);
 		// arma::mat xx = arma::abs(mat_elem);
 		// xx.save(   arma::hdf5_name("MAT_ELEM" + info + ".hdf5", "mat_elem"));
 		// xx = ( arma::mat(total_spin) );
@@ -1190,7 +1200,15 @@ void ui::parse_cmd_options(int argc, std::vector<std::string> argv)
 			default:
 				folder += "PBC" + kPSep; 
 				break;
-			
+		}
+	#else
+		switch(_mat_ensemble){
+			case 0: folder += "GOE" + kPSep; break;
+			case 1: folder += "GUE" + kPSep; break;
+			case 2: folder += "CUE" + kPSep; break;
+			default:
+				folder += "GOE" + kPSep; 
+				break;
 		}
 	#endif
 
@@ -1373,7 +1391,7 @@ std::string ui::set_info(std::vector<std::string> skip, std::string sep) const
 // 		{
 // 			start = std::chrono::system_clock::now();
 // 			auto kernel = [Ll, Lhalf](u64 state){ 
-// 					auto [val, temporary] = operators::sigma_z(state, Ll, Lhalf );
+// 					auto [val, temporary] = operators::sigma_z<double>(state, Ll, Lhalf );
 // 					return std::make_pair(state, val);
 // 					};
 // 			auto _operator = QOps::generic_operator<>(this->L, std::move(kernel), 1.0);
@@ -1385,7 +1403,7 @@ std::string ui::set_info(std::vector<std::string> skip, std::string sep) const
 // 			start = std::chrono::system_clock::now();
 // 			for(int site = 0; site < this->L; site++){
 // 				auto kernel = [Ll, site, q](u64 state){ 
-// 						auto [val, temporary] = operators::sigma_z(state, Ll, site );
+// 						auto [val, temporary] = operators::sigma_z<double>(state, Ll, site );
 // 						return std::make_pair( state, val * std::cos(q * site) );
 // 						};
 // 				auto _operator = QOps::generic_operator<>(this->L, std::move(kernel), 1.0);
@@ -1418,8 +1436,8 @@ std::string ui::set_info(std::vector<std::string> skip, std::string sep) const
 // 		// 	start = std::chrono::system_clock::now();
 // 		// 	// arma::Mat<element_type> mat_elem = V * Sz_ops[i] * V.t();
 // 		// 	auto kernel = [Ll, ](u64 state){ 
-// 		// 		auto [val1, tmp22] = operators::sigma_z(state, Ll, site_1 );
-// 		// 		auto [val2, tmp33] = operators::sigma_z(state, Ll, site_2 );
+// 		// 		auto [val1, tmp22] = operators::sigma_z<double>(state, Ll, site_1 );
+// 		// 		auto [val2, tmp33] = operators::sigma_z<double>(state, Ll, site_2 );
 // 		// 		return std::make_pair(state, val1 * val2);
 // 		// 		};
 // 		// 	auto _operator = QOps::generic_operator<>(this->L, std::move(kernel), 1.0);
@@ -1439,7 +1457,7 @@ std::string ui::set_info(std::vector<std::string> skip, std::string sep) const
 // 		// start = std::chrono::system_clock::now();
 // 		// // arma::Mat<element_type> mat_elem = V * Sz_ops[i] * V.t();
 // 		// auto kernel = [Ll, N](u64 state){ 
-// 		// 	auto [val1, tmp22] = operators::sigma_z(state, Ll, Ll - 1 );
+// 		// 	auto [val1, tmp22] = operators::sigma_z<double>(state, Ll, Ll - 1 );
 // 		// 	return std::make_pair(state, val1);
 // 		// 	};
 // 		// auto _operator = QOps::generic_operator<>(this->L, std::move(kernel), 1.0);

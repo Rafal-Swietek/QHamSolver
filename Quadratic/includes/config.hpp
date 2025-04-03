@@ -7,6 +7,27 @@
 #undef NODEBUG
 #define CONFIG 2
 
+#ifndef _MAT_ENSEMBLE_
+    #define _MAT_ENSEMBLE_ 1
+    constexpr int _mat_ensemble = _MAT_ENSEMBLE_;
+#endif
+
+#if _MAT_ENSEMBLE_ == 0
+    #define ENSEMBLE GOE
+    #define print_ensemble  "Chosen GOE ensemble!"
+    const auto _ensemble_ = "GOE";
+#elif _MAT_ENSEMBLE_ == 1
+    #define ENSEMBLE GUE
+    #define print_ensemble  "Chosen GUE ensemble!"
+    const auto _ensemble_ = "GUE";
+#elif _MAT_ENSEMBLE_ == 2
+    #define ENSEMBLE CUE
+    #define print_ensemble  "Chosen CUE ensemble! Haar random distirbuted coefficients"
+    const auto _ensemble_ = "CUE";
+#else
+    static_assert(false, "Not chosen any random ensemble! Chosse GOE (0), GUE (1) oe CUE (2)!");
+#endif
+
 #ifndef DIM
     #define DIM 1
 #endif
@@ -56,3 +77,4 @@
 
 
 #pragma message(pprint_model(DIM))
+#pragma message(print_ensemble)

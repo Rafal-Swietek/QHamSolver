@@ -61,8 +61,8 @@ namespace QHS{
                 //------------------------------------------------------------------------------------------------ CAST STATES TO FULL HILBERT SPACE:
 
                 void convert(arma::Col<_ty>& many_body_state,   const boost::dynamic_bitset<>& gaussian_state);
-                void convert(arma::cx_vec& many_body_state,     const boost::dynamic_bitset<>& gaussian_state, cpx prefactor);
-                void convert(arma::cx_vec& many_body_state,     const boost::dynamic_bitset<>& gaussian_state, cpx prefactor, arma::vec qs, arma::vec& prs);
+                void convert(arma::Col<_ty>& many_body_state,   const boost::dynamic_bitset<>& gaussian_state, _ty prefactor);
+                void convert(arma::Col<_ty>& many_body_state,   const boost::dynamic_bitset<>& gaussian_state, _ty prefactor, arma::vec qs, arma::vec& prs);
 
                 arma::Col<_ty> convert(const boost::dynamic_bitset<>& gaussian_state);
                 

@@ -10,15 +10,15 @@ namespace QOps {
 	//! function behavior: f*g == f(g(n,...),...)
 	//! f*g |n> = f*g_nm |m> = f_mk * g_nm |k>
 	// multiplication for generic input functions
-	template <typename... _Type1, typename... _Type2 >
+	template <typename return_ty, typename... _Type1, typename... _Type2 >
 	inline auto operator*(
-		_func< return_type >::input< _Type1... > f,
-		_func< return_type >::input< _Type2... > g
+		typename _func< return_ty >::template input< _Type1... > f,
+		typename _func< return_ty >::template input< _Type2... > g
 		)
 	{
 		return [f, g](u64 num,
 			_Type1... args1,
-			_Type2... args2) -> return_type
+			_Type2... args2) -> return_ty
 		{
 			auto [state, val] = g(num, args2...);
 			auto [state_final, ret_final] = f(state, args1...);
@@ -27,14 +27,14 @@ namespace QOps {
 	};
 
 	// without template expansion
-	template <typename... _Type>
+	template <typename return_ty, typename... _Type>
 	inline auto operator%(
-		_func< return_type >::input< _Type... > f,
-		_func< return_type >::input< _Type... > g
+		typename _func< return_ty >::template input< _Type... > f,
+		typename _func< return_ty >::template input< _Type... > g
 		)
 	{
 		return [f, g](u64 num,
-			_Type... args) -> return_type
+			_Type... args) -> return_ty
 		{
 			auto [state, val] = g(num, args...);
 			auto [state_final, ret_final] = f(state, args...);
