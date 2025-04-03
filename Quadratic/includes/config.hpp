@@ -9,8 +9,8 @@
 
 #ifndef _MAT_ENSEMBLE_
     #define _MAT_ENSEMBLE_ 1
-    constexpr int _mat_ensemble = _MAT_ENSEMBLE_;
 #endif
+constexpr int _mat_ensemble = _MAT_ENSEMBLE_;
 
 #if _MAT_ENSEMBLE_ == 0
     #define ENSEMBLE GOE
