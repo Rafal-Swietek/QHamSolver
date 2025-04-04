@@ -13,7 +13,7 @@ void ui::make_sim(){
 	
 	// fockspace_spreading();
 	// return;
-
+	
 	clk::time_point start = std::chrono::system_clock::now();
     switch (this->fun)
 	{
