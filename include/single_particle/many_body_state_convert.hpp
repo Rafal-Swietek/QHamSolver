@@ -21,7 +21,7 @@ namespace QHS{
                 
                 arma::uvec set_q = this->_set_indices(gaussian_state);
 
-            #pragma omp parallel for// num_threads(outer_threads) schedule(dynamic)
+            #pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
                 for(long k = 0; k < this->_hilbert_space.get_hilbert_space_size(); k++){
                     u64 state_idx = this->_hilbert_space(k);
                 
@@ -52,7 +52,7 @@ namespace QHS{
                 
                 arma::uvec set_q = this->_set_indices(gaussian_state);
 
-            #pragma omp parallel for// num_threads(outer_threads) schedule(dynamic)
+            #pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
                 for(long k = 0; k < this->_hilbert_space.get_hilbert_space_size(); k++){
                     u64 state_idx = this->_hilbert_space(k);
                 
@@ -83,7 +83,7 @@ namespace QHS{
                 
                 arma::uvec set_q = this->_set_indices(gaussian_state);
 
-            #pragma omp parallel for// num_threads(outer_threads) schedule(dynamic)
+            #pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
                 for(long k = 0; k < this->_hilbert_space.get_hilbert_space_size(); k++){
                     u64 state_idx = this->_hilbert_space(k);
                 
@@ -120,7 +120,7 @@ namespace QHS{
 
                 arma::uvec set_q = this->_set_indices(gaussian_state);
                 std::cout << set_q.t();
-            #pragma omp parallel for// num_threads(outer_threads) schedule(dynamic)
+            #pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
                 for(long k = 0; k < this->_hilbert_space.get_hilbert_space_size(); k++){
                     u64 state_idx = this->_hilbert_space(k);
                     

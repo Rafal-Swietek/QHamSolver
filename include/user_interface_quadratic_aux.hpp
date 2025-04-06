@@ -258,7 +258,7 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
 		Gammas = arma::Col<u64>({1, 2, 4, 10, u64(this->V / 2), u64(this->V), u64(2 * this->V), u64(this->V * std::log(this->V))});
 		// subsystem_sizes_MB = subsystem_sizes;
 	}
-	arma::vec zetas = arma::linspace(0.05, 0.95, 19);
+	arma::vec zetas = arma::linspace(0.15, 0.95, 17);
 	Gammas = arma::Col<u64>(zetas.size(), arma::fill::zeros);
 	for(int iiz = 0; iiz < zetas.size(); iiz++)
 		Gammas(iiz) = u64( std::pow(dim, zetas(iiz)) );
@@ -534,6 +534,8 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
 					std::cout << "\t- - - - - - finished preamble Gamma = " << gamma_a << " mixings in time:" << tim_s(start_G) << " s - - - - - - " << std::endl; // simuVAtion end
 					start_G = std::chrono::system_clock::now();
 					
+					outer_threads = this->thread_number;
+					omp_set_num_threads(1);
 					arma::Col<element_type> fullstate(ULLPOW(this->V), arma::fill::zeros);
 					for(int n = 0; n < gamma_a; n++)
 					{
@@ -543,6 +545,7 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
 						SlaterConverter.convert(fullstate, states_for_superposition[n], coeff(n));
 						// --------------------------------------------------------------------------------------
 					}
+					omp_set_num_threads(this->thread_number);
 					
 					fullstate = arma::normalise(fullstate);
 					// entropy = entropy::schmidt_decomposition(fullstate, this->V / 2, this->V);
@@ -610,20 +613,23 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
 					std::cout << "\t\t - - - - - - finished Schmidt-decompositions from Many-Body state for Gamma = " << gamma_a << " mixings in time:" << tim_s(start_G) << " s - - - - - - " << std::endl; // simuVAtion end
 					start_G = std::chrono::system_clock::now();
 
-					double normalization = 0;
-					for(int n = 0; n < gamma_a; n++)
-					{
-						auto _matrix_state_n = QHS::single_particle::tools::get_matrix_state(_orbitals_[n], states_for_superposition[n]);
-						normalization += std::abs( std::conj(coeff(n)) * coeff(n));
-						for(int m = n+1; m < gamma_a; m++)
+					double normalization = 1.0;
+					if(this->op == 0){
+						normalization = 0;
+						for(int n = 0; n < gamma_a; n++)
 						{
-							auto _matrix_state_m = QHS::single_particle::tools::get_matrix_state(_orbitals_[m], states_for_superposition[m]);
-							arma::cx_vec eigs = arma::eig_gen(_matrix_state_n.t() * _matrix_state_m);
-							cpx val = arma::prod(eigs) * std::conj(coeff(n)) * coeff(m);
-							normalization += 2 * std::real(val);
+							auto _matrix_state_n = QHS::single_particle::tools::get_matrix_state(_orbitals_[n], states_for_superposition[n]);
+							normalization += std::abs( std::conj(coeff(n)) * coeff(n));
+							for(int m = n+1; m < gamma_a; m++)
+							{
+								auto _matrix_state_m = QHS::single_particle::tools::get_matrix_state(_orbitals_[m], states_for_superposition[m]);
+								arma::cx_vec eigs = arma::eig_gen(_matrix_state_n.t() * _matrix_state_m);
+								cpx val = arma::prod(eigs) * std::conj(coeff(n)) * coeff(m);
+								normalization += 2 * std::real(val);
+							}
 						}
+						coeff = coeff / std::sqrt( normalization);
 					}
-					coeff = coeff / std::sqrt( normalization);
 					std::cout << "\t\t - - - - - - Found normalization for Gamma = " << gamma_a << " mixings with Norm = " << normalization << " in time:" << tim_s(start_G) << " s - - - - - - " << std::endl; // simuVAtion end
 					start_G = std::chrono::system_clock::now();
 
