@@ -224,7 +224,7 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
 {
     clk::time_point start = std::chrono::system_clock::now();
 	
-	std::string dir = this->saving_dir + "Entropy" + kPSep + "MixingExpMany" + kPSep;
+	std::string dir = this->saving_dir + "Entropy" + kPSep + "MixingExpMany2" + kPSep;
 	if(this->op)	dir += "RandomChoice" + kPSep + "SameHamiltonian" + kPSep;
 	else 			dir += "RandomChoice" + kPSep + "DifferentHamiltonian" + kPSep;
 	// #ifdef FREE_FERMIONS
@@ -258,10 +258,13 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
 		Gammas = arma::Col<u64>({1, 2, 4, 10, u64(this->V / 2), u64(this->V), u64(2 * this->V), u64(this->V * std::log(this->V))});
 		// subsystem_sizes_MB = subsystem_sizes;
 	}
-	arma::vec zetas = arma::linspace(0.15, 0.95, 17);
+	// arma::vec zetas = arma::linspace(0.15, 0.95, 17);
+	arma::vec zetas = arma::vec({0.01, 0.02, 0.05, 0.1, 0.2, 0.25, 0.5, 0.75, 1.0});
 	Gammas = arma::Col<u64>(zetas.size(), arma::fill::zeros);
-	for(int iiz = 0; iiz < zetas.size(); iiz++)
-		Gammas(iiz) = u64( std::pow(dim, zetas(iiz)) );
+	for(int iiz = 0; iiz < zetas.size(); iiz++){
+		// Gammas(iiz) = u64( std::pow(dim, zetas(iiz)) );
+		Gammas(iiz) = u64( zetas(iiz) * dim );
+	}
 
 	const int Gamma_max = Gammas.size();
 	std::cout << dim << "\n\n" << Gammas << std::endl;
@@ -497,8 +500,12 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
 				// {
 					auto start_G = std::chrono::system_clock::now();
 					arma::Col<int> indices = random_integers.uniform(20 * Gammas(Gamma_max-1), 0, num_states - 1);
-					indices = arma::unique(indices);
-					indices = indices.rows(0, gamma_a - 1);
+					if(gamma_a < dim){
+						indices = arma::unique(indices);
+						indices = indices.rows(0, gamma_a - 1);
+					} else {
+						indices = arma::conv_to<arma::Col<int>>::from(arma::linspace(0, dim-1, dim));
+					}
 					_extra_debug_(  std::cout << arma::sort(indices) << std::endl; )
 					int id = random_integers.uniform_dist<int>(0, gamma_a-1);
 					
