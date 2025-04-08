@@ -51,6 +51,7 @@ namespace QuadraticUI{
         void spectrals_other_operators();
         void spectrals();
         void quench();
+        void eigenstate_overlap_amplitude_fun();
 
         void quench_fourier();
         

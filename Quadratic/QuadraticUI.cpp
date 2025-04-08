@@ -39,8 +39,9 @@ void ui::make_sim(){
 		eigenstate_entanglement_manybody();
 		break;
 	case 7:
-		quench_fourier();
+		// quench_fourier();
 		// quench();
+		eigenstate_overlap_amplitude_fun();
 		break;
 	case 8:
 		spectrals_other_operators();
@@ -902,7 +903,91 @@ void ui::quench_fourier()
 	}
 }
 
+void ui::eigenstate_overlap_amplitude_fun(){
+	std::string dir = this->saving_dir + "K_EOA" + kPSep;
+	createDirs(dir);
+	
+	size_t dim = this->ptr_to_model->get_hilbert_size();
+	std::string info = this->set_info();
 
+	const size_t size = dim > 1e5? this->l_steps : dim;
+
+	arma::vec energies(size, arma::fill::zeros);
+
+	int Ll = this->L;
+	
+	const double _bandwidth_def = RP_data::default_pars::getBandwidth(this->g, this->L);
+	const arma::vec omegax = arma::logspace(std::log10(1.0/dim) - 2, std::log10( _bandwidth_def ) + 1, 40 * this->L);
+	const arma::vec energy_density = arma::regspace(0.05, 0.02, 0.95);
+	arma::Mat<element_type> K_EOA(omegax.size()-1, energy_density.size(), arma::fill::zeros);
+	arma::Mat<element_type> element_count(omegax.size()-1, energy_density.size(), arma::fill::zeros);
+	arma::Col<element_type> K_EOA_all(omegax.size()-1, arma::fill::zeros);
+	arma::Col<element_type> element_count_all(omegax.size()-1, arma::fill::zeros);
+
+	double window_width = 0.04;
+
+	std::vector<int> realis_vec;
+	int counter = 0;
+	for(int realis = 0; realis < this->realisations; realis++)
+	{
+		clk::time_point start = std::chrono::system_clock::now();
+		arma::vec E;
+		arma::Col<element_type> Cn;
+		std::string dir_realis = this->saving_dir + "Quench" + kPSep + "realisation=" + std::to_string(this->jobid + realis) + kPSep;
+		bool loaded1 = E.load(arma::hdf5_name(dir_realis + info + ".hdf5", "energies"));
+		bool loaded2 = Cn.load(arma::hdf5_name(dir_realis + info + ".hdf5", "coefficients"));
+		if(loaded1 && loaded2)
+		{
+			realis_vec.push_back(this->jobid + realis);
+			counter++;
+
+			arma::Mat<element_type> mat_elem = Cn * Cn.t();
+			const double bandwidth = E(E.size() - 1) - E(0);
+			{
+				spectrals::preset_omega set_omega(E, 1e10, arma::mean(E));
+				arma::vec omegas_i, matter;
+				std::tie(omegas_i, matter) = set_omega.get_matrix_elements(mat_elem);
+				for(int k = 0; k < omegax.size() - 1; k++){
+					arma::uvec indices = arma::find(omegas_i >= omegax[k] && omegas_i < omegax[k+1]);
+					if(indices.size() > 0){
+						element_count_all(k) += indices.size();
+						arma::vec x = arma::vec( omegas_i.elem(indices) );
+						arma::vec y = arma::vec( matter.elem(indices) );
+						K_EOA_all(k) += arma::accu( y );
+					}
+				}
+				std::cout << " - - - - - - finished K_EAO at all energy density for realis = " << realis << "in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
+			}
+		#pragma omp parallel for
+			for(int ii = 0; ii < energy_density.size(); ii++){
+				const double eps = energy_density(ii);
+				const double energyx = eps * bandwidth + E(0);
+				spectrals::preset_omega set_omega = spectrals::preset_omega(E, window_width, energyx);
+				arma::vec omegas_i, matter;
+				std::tie(omegas_i, matter) = set_omega.get_matrix_elements(mat_elem);
+				for(int k = 0; k < omegax.size() - 1; k++){
+					arma::uvec indices = arma::find(omegas_i >= omegax[k] && omegas_i < omegax[k+1]);
+					if(indices.size() > 0){
+						element_count(k, ii) += indices.size();
+						arma::vec x = arma::vec( omegas_i.elem(indices) );
+						arma::vec y = arma::vec( matter.elem(indices) );
+						K_EOA(k, ii) += arma::accu( y );
+					}
+				}
+			}
+			std::cout << " - - - - - - finished K_EAO at finite energy density for realis = " << realis << " in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
+		}
+	}
+	energy_density.save(   arma::hdf5_name(dir + info + ".hdf5", "energy_density"));
+	omegax.save(   		arma::hdf5_name(dir + info + ".hdf5", "omegax",   arma::hdf5_opts::append));
+	K_EOA.save(	arma::hdf5_name(dir + info + ".hdf5", "K_EOA",   arma::hdf5_opts::append));
+	K_EOA_all.save(	arma::hdf5_name(dir + info + ".hdf5", "K_EOA_all",   arma::hdf5_opts::append));
+	element_count.save(	arma::hdf5_name(dir + info + ".hdf5", "element_count",   arma::hdf5_opts::append));
+	element_count_all.save(	arma::hdf5_name(dir + info + ".hdf5", "element_count_all",   arma::hdf5_opts::append));
+	arma::vec({(double)counter}).save(	arma::hdf5_name(dir + info + ".hdf5", "realisations",   arma::hdf5_opts::append));
+	arma::vec realis = arma::conv_to<arma::vec>::from(realis_vec);
+	realis.save(	arma::hdf5_name(dir + info + ".hdf5", "realisations numbers",   arma::hdf5_opts::append));
+}
 void ui::total_spin()
 {
 	std::string dir = this->saving_dir + "TotalSpin" + kPSep;
