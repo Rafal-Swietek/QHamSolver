@@ -919,8 +919,10 @@ void ui::eigenstate_overlap_amplitude_fun(){
 	const double _bandwidth_def = RP_data::default_pars::getBandwidth(this->g, this->L);
 	const arma::vec omegax = arma::logspace(std::log10(1.0/dim) - 2, std::log10( _bandwidth_def ) + 1, 40 * this->L);
 	const arma::vec energy_density = arma::regspace(0.05, 0.02, 0.95);
+
 	arma::Mat<element_type> K_EOA(omegax.size()-1, energy_density.size(), arma::fill::zeros);
 	arma::Mat<element_type> element_count(omegax.size()-1, energy_density.size(), arma::fill::zeros);
+
 	arma::Col<element_type> K_EOA_all(omegax.size()-1, arma::fill::zeros);
 	arma::Col<element_type> element_count_all(omegax.size()-1, arma::fill::zeros);
 
@@ -943,41 +945,47 @@ void ui::eigenstate_overlap_amplitude_fun(){
 
 			arma::Mat<element_type> mat_elem = Cn * Cn.t();
 			const double bandwidth = E(E.size() - 1) - E(0);
+			const double dw_log = std::log10(omegax[1]) - std::log10(omegax[0]);
+			const double w0_log = std::log10(omegax[0]);
 			{
-				spectrals::preset_omega set_omega(E, 1e10, arma::mean(E));
-				arma::vec omegas_i, matter;
-				std::tie(omegas_i, matter) = set_omega.get_matrix_elements(mat_elem);
-				for(int k = 0; k < omegax.size() - 1; k++){
-					arma::uvec indices = arma::find(omegas_i >= omegax[k] && omegas_i < omegax[k+1]);
-					if(indices.size() > 0){
-						element_count_all(k) += indices.size();
-						arma::vec x = arma::vec( omegas_i.elem(indices) );
-						arma::vec y = arma::vec( matter.elem(indices) );
-						K_EOA_all(k) += arma::accu( y );
-					}
+				for(int n = 0; n < E.size() - 1; n++){
+					for(int m = n+1; m < E.size() - 1; m++){
+						double wnm = E(m) - E(n);
+						const auto idx = int( (std::log10(wnm) - w0_log) / dw_log);
+						if(idx < omegax.size() && idx >= 0){
+							K_EOA_all(idx) += 2 * std::abs(mat_elem(n, m) * mat_elem(m, n));
+							element_count_all(idx) += 2;
+						}
+					}	
 				}
-				std::cout << " - - - - - - finished K_EAO at all energy density for realis = " << realis << "in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
+				std::cout << " - - - - - - finished K_EAO at all energy density for realis = " << realis << " in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
+				start = std::chrono::system_clock::now();
 			}
 		#pragma omp parallel for
-			for(int ii = 0; ii < energy_density.size(); ii++){
+			for(int ii = 0; ii < energy_density.size(); ii++)
+			{
 				const double eps = energy_density(ii);
 				const double energyx = eps * bandwidth + E(0);
-				spectrals::preset_omega set_omega = spectrals::preset_omega(E, window_width, energyx);
-				arma::vec omegas_i, matter;
-				std::tie(omegas_i, matter) = set_omega.get_matrix_elements(mat_elem);
-				for(int k = 0; k < omegax.size() - 1; k++){
-					arma::uvec indices = arma::find(omegas_i >= omegax[k] && omegas_i < omegax[k+1]);
-					if(indices.size() > 0){
-						element_count(k, ii) += indices.size();
-						arma::vec x = arma::vec( omegas_i.elem(indices) );
-						arma::vec y = arma::vec( matter.elem(indices) );
-						K_EOA(k, ii) += arma::accu( y );
-					}
+				for(int n = 0; n < E.size() - 1; n++)
+				{
+					for(int m = n+1; m < E.size() - 1; m++){
+						if (abs((E(n) + E(m)) / 2. - energyx) < window_width / 2.){
+							double wnm = E(m) - E(n);
+							const auto idx = int( (std::log10(wnm) - w0_log) / dw_log);
+							if(idx < omegax.size() && idx >= 0){
+								K_EOA(idx, ii) += 2 * std::abs(mat_elem(n, m) * mat_elem(m, n));
+								element_count(idx, ii) += 2;
+							}
+						}
+					}	
 				}
 			}
 			std::cout << " - - - - - - finished K_EAO at finite energy density for realis = " << realis << " in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
 		}
 	}
+	K_EOA = K_EOA / element_count;
+	K_EOA_all = K_EOA_all / element_count_all;
+
 	energy_density.save(   arma::hdf5_name(dir + info + ".hdf5", "energy_density"));
 	omegax.save(   		arma::hdf5_name(dir + info + ".hdf5", "omegax",   arma::hdf5_opts::append));
 	K_EOA.save(	arma::hdf5_name(dir + info + ".hdf5", "K_EOA",   arma::hdf5_opts::append));
