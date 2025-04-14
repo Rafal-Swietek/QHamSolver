@@ -140,7 +140,7 @@ void ui::eigenstate_entanglement()
     
     #else
         // const int size = dim;
-        const int size = min(200, int(0.05 * dim));
+        const int size = min(200, int(0.1 * dim));
         this->ptr_to_model->diagonalization();
     #endif
 
@@ -584,6 +584,7 @@ void ui::parse_cmd_options(int argc, std::vector<std::string> argv)
             break;
         
     }
+	folder = this->dir_prefix + folder;
     if (fs::create_directories(folder) || fs::is_directory(folder)) // creating the directory for saving the files with results
     	this->saving_dir = folder;									// if can create dir this is is
 }
