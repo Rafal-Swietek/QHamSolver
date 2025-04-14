@@ -20,7 +20,7 @@ void ui::make_sim(){
     printAllOptions();
     
     this->ptr_to_model = this->create_new_model_pointer();
-    
+
     // compare_energies();
     // return;
 	
@@ -129,20 +129,15 @@ void ui::eigenstate_entanglement()
         emtpy_vec.save(arma::hdf5_name(dir + filename + ".hdf5", "nope"));
         return;
     }
-    
-    #ifdef ARMA_USE_SUPERLU
-        const int size = this->ch? 500 : dim;
-        if(this->ch){
-            this->ptr_to_model->hamiltonian();
-            this->ptr_to_model->diag_sparse(true);
-        } else
-            this->ptr_to_model->diagonalization();
-    
-    #else
-        // const int size = dim;
-        const int size = min(200, int(0.1 * dim));
+    const size_t dim_cut = 1e5;
+
+    if(dim > dim_cut){
+        double error = this->ptr_to_model->diag_sparse(this->l_steps, this->l_bundle, this->tol, this->seed);
+        _assert_(error < 1e-10, "POLFED FAILED: Maximal Error = ");
+	}else{
         this->ptr_to_model->diagonalization();
-    #endif
+    }
+    const int size = (dim > dim_cut)? 20 : min(200, int(0.1 * dim));
 
     std::cout << " - - - - - - FINISHED DIAGONALIZATION IN : " << tim_s(start) << " seconds - - - - - - " << std::endl; // simulation end
     
@@ -307,6 +302,7 @@ std::string ui::set_info(std::vector<std::string> skip, std::string sep) const
 void ui::compare_energies()
 {                
     v_1d<double> Esym;
+    v_1d<double> k_sectors;
 	v_1d<std::string> symms;
     auto kernel = [&](int k, int p, int zx)
     {
@@ -315,8 +311,10 @@ void ui::compare_energies()
             symmetric_model->diagonalization(false);
             arma::vec E = symmetric_model->get_eigenvalues();
             
-            // std::cout << "Gap ratio = " << statistics::eigenlevel_statistics(E);
-
+            printSeparated(std::cout, "\t", 20, true, "Sector:", k, p, zx, "Gap Ratio=", statistics::eigenlevel_statistics(E));
+            std::vector<double> ksec(E.size(), k);
+            k_sectors.insert(k_sectors.end(), std::make_move_iterator(ksec.begin()), std::make_move_iterator(ksec.end()));
+            
             Esym.insert(Esym.end(), std::make_move_iterator(E.begin()), std::make_move_iterator(E.end()));
             v_1d<std::string> temp_str = v_1d<std::string>(E.size(), "k=" + std::to_string(k) + ",p=" + to_string(p) + ",zx=" + to_string(zx));
             symms.insert(symms.end(), std::make_move_iterator(temp_str.begin()), std::make_move_iterator(temp_str.end()));
@@ -325,18 +323,35 @@ void ui::compare_energies()
     loopSymmetrySectors(kernel);
 
     auto full_model = std::make_unique<QHS::QHamSolver<Fermions>>(this->boundary_conditions, this->L, this->syms.N, this->t1, this->t2, this->V1, this->V2, this->mu, this->syms.k_sym, this->syms.p_sym, this->syms.zx_sym, 0);
-    full_model->diagonalization(false);
+    full_model->diagonalization(true);
     arma::vec E_dis = full_model->get_eigenvalues();
-    
+    arma::Mat<element_type> V = full_model->get_eigenvectors();
+
+    auto U1sector = U1Hilbert(this->L, this->syms.N);
+    auto Jsh = (QOps::_spin_flip_x_symmetry<QOps::particle::fermion>(this->L, this->syms.zx_sym)).to_reduced_matrix(U1sector);
+    auto P = (QOps::_parity_symmetry<QOps::particle::fermion>(this->L, this->syms.p_sym)).to_reduced_matrix(U1sector);
+    auto T = (QOps::_translation_symmetry<QOps::particle::fermion>(this->L, this->syms.k_sym)).to_reduced_matrix(U1sector);
+    arma::cx_vec Jsh_value(E_dis.size()), P_value(E_dis.size()), T_value(E_dis.size());
+    for(u64 k = 0; k < E_dis.size(); k++){
+        Jsh_value(k) = arma::cdot(V.col(k), Jsh * V.col(k));
+        P_value(k) = arma::cdot(V.col(k), P * V.col(k));
+        T_value(k) = arma::cdot(V.col(k), T * V.col(k));
+    }
     auto permut = sort_permutation(Esym, [](const double a, const double b)
 								   { return a < b; });
 	apply_permutation(Esym, permut);
 	apply_permutation(symms, permut);
+    apply_permutation(k_sectors, permut);
 	std::cout << std::endl << Esym.size() << std::endl << E_dis.size() << std::endl;
-	printSeparated(std::cout, "\t", 20, true, "symmetry sector", "Energy sym", "Energy total", "difference");
-	for (int k = 0; k < min((int)E_dis.size(), (int)Esym.size()); k++)
-        if(std::abs(Esym[k] - E_dis(k)) > 1e-14)
-		    printSeparated(std::cout, "\t", 20, true, symms[k], Esym[k], E_dis(k), Esym[k] - E_dis(k));
+	printSeparated(std::cout, "\t", 20, true, "symmetry sector", "Energy sym", "Energy total", "difference", "Shiba eigenvalue", "Parity eigenvalue", "Translation eigenvalue");
+    // for( int q = 0; q < this->L; q++)
+    {
+        for (int k = 0; k < min((int)E_dis.size(), (int)Esym.size()); k++){
+            // if(k_sectors[k] != q) continue;
+            if(std::abs(Esym[k] - E_dis(k)) > 1e-18)
+                printSeparated(std::cout, "\t", 20, true, symms[k], Esym[k], E_dis(k), Esym[k] - E_dis(k), std::abs(Jsh_value(k)), P_value(k), T_value(k));
+        }
+    }
 }
 
 /// @brief Compaer full hamiltonian to the reconstructed one from symmetry sectors

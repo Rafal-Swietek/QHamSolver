@@ -105,8 +105,9 @@ void Fermions::set_symmetry_generators()
     // parity symmetry
     this->symmetry_generators.emplace_back(QOps::_parity_symmetry<QOps::particle::fermion>(this->system_size, this->syms.p_sym));
     
-    if(this->syms.N == this->system_size / 2 && this->_mu == 0)
-        this->symmetry_generators.emplace_back(QOps::_spin_flip_x_symmetry<QOps::particle::fermion>(this->system_size, this->syms.zx_sym));
+    // if(this->syms.N == this->system_size / 2. && (this->syms.k_sym == this->system_size / 4.  || this->syms.k_sym == 3 *this->system_size / 4. ) ){
+    //     this->symmetry_generators.emplace_back( QOps::_spin_flip_x_symmetry<QOps::particle::fermion>(this->system_size, this->syms.zx_sym));
+    // }
 }
 
 //<! ------------------------------------------------------------------------------ HAMILTONIAN BUILDERS
@@ -153,9 +154,6 @@ void Fermions::create_hamiltonian()
 		for (int j = 0; j < this->system_size; j++) {
 			n_i = check_spin(base_state, j) ? 1 : 0;				// true - spin up, false - spin down
             
-            // Chemical potential shift
-            this->H(k, k) += this->_mu * n_i;
-            
 			for(int a = 0; a < neighbor_distance.size(); a++){
                 int r = neighbor_distance[a];
                 int nei = j + r;
@@ -170,19 +168,20 @@ void Fermions::create_hamiltonian()
                         auto [val, state_tmp]   = operators::fermions::spinless::anihilate<elem_ty>(base_state, this->system_size, nei);
                         auto [val2, state]      = operators::fermions::spinless::create<elem_ty>(state_tmp, this->system_size, j);
                         
-                        // 0.5 cause flip 0.5*(S+S- + S-S+)
                         this->set_hamiltonian_elements(k, coupling[a] * val * val2, state);
                     }
                     else if(n_i == 1 && n_j == 0){
                         auto [val, state_tmp]   = operators::fermions::spinless::anihilate<elem_ty>(base_state, this->system_size, j);
                         auto [val2, state]      = operators::fermions::spinless::create<elem_ty>(state_tmp, this->system_size, nei);
                         
-                        // 0.5 cause flip 0.5*(S+S- + S-S+)
                         this->set_hamiltonian_elements(k, coupling[a] * val * val2, state);
                     }
                     
-                    //<! Interaction (spin correlations) with neighbour at distance r
-                    this->H(k, k) += interaction[a] * n_i * n_j;
+                    //<! Interaction with neighbour at distance r
+                    if(n_i > 0 && n_j > 0){
+                        this->H(k, k) += interaction[a] * n_i * n_j;
+                        // this->H(k, k) += interaction[a] * (n_i - 0.5) * (n_j - 0.5);
+                    }
                 }
             }
 		}

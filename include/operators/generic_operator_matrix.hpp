@@ -43,9 +43,9 @@ namespace QOps{
 				matrix(idx, k) += value;
 			} 
 			catch (const std::exception& err) {
-				std::cout << "Exception:\t" << err.what() << "\n";
-				std::cout << "SHit ehhh..." << std::endl;
-				printSeparated(std::cout, "\t", 14, true, new_idx, idx, hilbert_space(k), value);
+				// std::cout << "Exception:\t" << err.what() << "\n";
+				// std::cout << "SHit ehhh..." << std::endl;
+				// printSeparated(std::cout, "\t", 14, true, new_idx, idx, hilbert_space(k), value);
 			}
 		};
         for(u64 k = 0; k < dim; k++){            

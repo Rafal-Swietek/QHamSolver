@@ -41,7 +41,7 @@ namespace Fermions_UI{
         
         /// @brief 
         /// @return 
-        bool use_flip_X() const { return ( this->syms.N == this->L / 2 && this->mu == 0); }
+        bool use_flip_X(int ks = 0) const { return false; }//( this->syms.N == this->L / 2. && (ks == this->L / 4. || ks == 3*this->L / 4.)); }
 
         
         typedef typename user_interface_sym<Fermions>::model_pointer model_pointer;
@@ -84,7 +84,6 @@ namespace Fermions_UI{
 		) {
             
 			// const int k_end = (this->boundary_conditions) ? 1 : this->L;
-			v_1d<int> zxsec = (this->use_flip_X())? v_1d<int>({-1, 1}) : v_1d<int>({1});
             
             // std::cout << this->L << "\t\t" << this->hx << "\t\t" << zxsec << std::endl;
             // std::cout << this->L << "\t\t" << this->hz << "\t\t" << zzsec << std::endl;
@@ -94,8 +93,9 @@ namespace Fermions_UI{
         // #else
 		// 	for (int ks = 1; ks < this->L/2.0; ks++) {
         // #endif
-        for (int ks = 0; ks < this->L; ks++) {
+        for (int ks = 0; ks <= (this->L-1) * (1-this->boundary_conditions); ks++) {
 				v_1d<int> psec = k_real_sec(ks)? v_1d<int>({-1, 1}) : v_1d<int>({1});
+                v_1d<int> zxsec = (this->use_flip_X(ks))? v_1d<int>({-1, 1}) : v_1d<int>({1});
                 std::cout << ks << "\t\t" << psec << std::endl;
                 for(auto& ps : psec){
                     for(auto& zxs : zxsec){

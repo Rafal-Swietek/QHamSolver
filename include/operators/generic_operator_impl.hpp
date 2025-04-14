@@ -144,7 +144,7 @@ namespace QOps {
 		auto operator*(_eigval_ty arg, const generic_operator<_eigval_ty, _ty...>& _operator)
 			-> generic_operator<_eigval_ty, _ty...>
 		{ 
-			generic_operator<_ty...> new_operator(_operator);
+			generic_operator<_eigval_ty, _ty...> new_operator(_operator);
 			new_operator.opVal *= arg; 
 			return std::move(new_operator); 
 		}
