@@ -202,7 +202,7 @@ namespace QHS{
 	/// @return SEC
 	template <QOps::particle _particle_type>
 	inline
-	point_symmetric<_particle_type>::return_type
+	typename point_symmetric<_particle_type>::return_type
 	point_symmetric<_particle_type>::find_SEC_representative(u64 base_idx) const 
 	{
 		u64 SEC = INT64_MAX;
@@ -280,7 +280,7 @@ namespace QHS{
 	/// @return tuple with SEC state and symmetry return value
 	template <QOps::particle _particle_type>
 	inline
-	point_symmetric<_particle_type>::return_type 
+	typename  point_symmetric<_particle_type>::return_type 
 	point_symmetric<_particle_type>::find_matrix_element(u64 new_state, elem_ty norm) const
 	{
 		if( std::abs( get_symmetry_normalization(new_state) ) < 1e-12 )
