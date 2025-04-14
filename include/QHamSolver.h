@@ -57,6 +57,7 @@
 
 //<! MAIN HEADERS
 #include "SpinOperators.hpp"
+#include "FermionOperators.hpp"
 #include "hilbert_space/_base.hpp"
 #include "operators/operator_base.h"
 
