@@ -972,7 +972,7 @@ void user_interface_dis<Hamiltonian>::eigenstate_entanglement_degenerate()
 				// realisations to draw states randomly
 				double E = 0;
 			#pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
-				for(u64 unused = 0; unused < this->mu; unused++)
+				for(u64 unused = 0; unused < 1; unused++)
 				{
 					arma::Col<int> indices = random_generator.create_random_vec<int, dist::uniform>(gamma_a, min_idx, max_idx);
 					int id = random_generator.uniform_dist<int>(1, gamma_a-1);
@@ -1002,9 +1002,9 @@ void user_interface_dis<Hamiltonian>::eigenstate_entanglement_degenerate()
 			}
     		std::cout << " - - - - - - finished entropy size LA: " << LA << " in time:" << tim_s(start_LA) << " s - - - - - - " << std::endl; // simulation end
 		}
-    	E_av = E_av / double(this->mu);
-		S_site /= double(this->mu);
-		S /= double(this->mu);
+    	// E_av = E_av / double(this->mu);
+		// S_site /= double(this->mu);
+		// S /= double(this->mu);
 		if(this->realisations > 1){
 			std::string dir_realis = dir + "realisation=" + std::to_string(this->jobid + realis) + kPSep;
 			createDirs(dir_realis);

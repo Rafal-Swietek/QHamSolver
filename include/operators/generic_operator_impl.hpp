@@ -12,14 +12,15 @@ namespace QOps {
 
 	protected:
 		typedef std::pair<u64, _eigval_ty> return_ty;							// return type of operator, resulting state and value
-		typedef typename _func<return_ty>::template input<_ty...> kernel_type;	// type of callable operator kernel
+		// typedef typename _func<return_ty>::template input<_ty...> kernel_type;	// type of callable operator kernel
+		using kernel_type = Kernel<return_ty, _ty...>;
 
 		static
 		inline
 		const
-		kernel_type unit_kernel =
+		kernel_type unit_kernel = kernel_type(
 			[](u64 num, _ty... args) -> return_ty
-		{ return std::make_pair(num, 1.0); };
+		{ return std::make_pair(num, 1.0); });
 
 		kernel_type _kernel = unit_kernel;	// callable encoding change of quantum states and return value
 		_eigval_ty opVal = 1.0;				// const return value of operator acting on given state
@@ -50,6 +51,10 @@ namespace QOps {
 
 		explicit generic_operator(int _L, kernel_type&& new_kernel, _eigval_ty _opVal = 1.0)
 			: L(_L), _kernel(std::move(new_kernel)), opVal(_opVal)
+		{ init(); };
+
+		explicit generic_operator(int _L, std::function<return_ty(u64, _ty...)>&& new_kernel, _eigval_ty _opVal = 1.0)
+			: L(_L), _kernel(Kernel{std::move(new_kernel)}), opVal(_opVal)
 		{ init(); };
 
 		// template <callable_type F>

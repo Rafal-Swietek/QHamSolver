@@ -67,7 +67,7 @@ protected:
     double q_ipr;										// q for participation ratio calculation
     double beta;										// inverse temperature
     
-	int mu;												// small bucket for the operator fluctuations to be averaged onto
+	// int mu;												// small bucket for the operator fluctuations to be averaged onto
 	int num_of_points;									// number of points for time evolution/spectral functions/SFF/etc..
     double tol;											// tolerance for iterative procedures (i.e. Lanczos)
 	

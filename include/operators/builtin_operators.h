@@ -3,6 +3,7 @@
 //! --------------------------------------------------------------------------------
 //! --------------------------------------------------------BUILT-IN OPERATORS CLASS
 namespace QOps {
+    enum class particle {boson, fermion};
 
 	enum class __builtin_operators {
 		e,		  // neutral element
@@ -59,8 +60,9 @@ namespace QOps {
 		//! ---------------------------------------------- SYMMETRY GENERATORS
 		//! 
 		//! parity generator: inverse order of binary/octal/.. string, i.e->binary-> P * |010111> = |111010>
+		template <particle _particle_type = particle::boson>
 		inline
-		auto parity(unsigned int L) -> _global_fun
+		auto parity(unsigned int L) -> _func<std::pair<u64, cpx>>::global
 		{
 			return [L](u64 n)
 			{
@@ -71,17 +73,40 @@ namespace QOps {
 					n = (n >> block_size);
 					--dummy;
 				}
-				return std::make_pair(m, 1.0);
+				// return std::make_pair(m, 1.0);
+				if constexpr(_particle_type == particle::fermion){
+					// only working for spinless fermions for now
+					const int N_2 = __builtin_popcountll(n) / 2;
+					double sign = (N_2 & 1) == 0? 1.0 : -1.0; // is N/2 even? cause sign is (-1)^{N-1}
+					return std::make_pair(m, sign);
+				} else
+					return std::make_pair(m, 1.0);
 			};
 		};
 		//!
 		//! spin-flip generator: flip all digits of binary/octal/.. string, i.e->binary-> Z * |010111> = |101000>
+		template <particle _particle_type = particle::boson>
 		inline
-		auto spin_flip_x(unsigned int L) -> _global_fun
-			{ return [L](u64 n) { return std::make_pair(powers[L] - 1 - n, 1.0); }; };
+		auto spin_flip_x(unsigned int L) -> _func<std::pair<u64, cpx>>::global
+			{ 	
+				if constexpr(_particle_type == particle::fermion){
+					return [L](u64 n) { 
+						u64 odd_mask = 0;
+						for (int i = 1; i < L; i += 2)
+							odd_mask |= (1ULL << i);
+						int odd_count = __builtin_popcount(n & odd_mask);
+						double sign = (odd_count & 1) ? 1.0 : 1.0;
+						// printSeparated(std::cout, "\t", 20, true, n, odd_count, boost::dynamic_bitset<>(L, n), boost::dynamic_bitset<>(L, odd_mask), boost::dynamic_bitset<>(L, n & odd_mask), sign);
+						u64 mask = (L >= 64) ? ~0ULL : ((1ULL << L) - 1);
+						return std::make_pair((~n) & mask, sign); 
+					}; 
+				} else
+					return [L](u64 n) { return std::make_pair(powers[L] - 1 - n, 1.0); }; 
+			};
 		
+		template <particle _particle_type = particle::boson>
 		inline
-		auto spin_flip_y(unsigned int L) -> _global_fun
+		auto spin_flip_y(unsigned int L) -> _func<std::pair<u64, cpx>>::global
 			{ 
 				static_check((config == 2), ONLY_SPIN_HALF_OEPRATOR);
 				return [L](u64 n) { 
@@ -91,8 +116,9 @@ namespace QOps {
 						}; 
 			};
 		
+		template <particle _particle_type = particle::boson>
 		inline
-		auto spin_flip_z(unsigned int L) -> _global_fun
+		auto spin_flip_z(unsigned int L) -> _func<std::pair<u64, cpx>>::global
 			{ 
 				static_check((config == 2), ONLY_SPIN_HALF_OEPRATOR);
 				return [L](u64 n) { 
@@ -104,8 +130,9 @@ namespace QOps {
 		
 
 		//! inverse translation generator: shift order of binary/octal/.. string to the left, i.e->binary-> T * |010111> = |101110>
+		template <particle _particle_type = particle::boson>
 		inline
-		auto translation_inv(unsigned int L, int shift = 1) -> _global_fun
+		auto translation_inv(unsigned int L, int shift = 1) -> _func<std::pair<u64, cpx>>::global
 		{
 			return [L, shift](u64 n)
 					{
@@ -117,13 +144,21 @@ namespace QOps {
 						u64 final_state = (other_digit << (shift * block_size) )
 							| (first_digit >> rotate);			// first part rotates the remaining digits (or block of bits) by left_shift by 'blocks' positions\
 																							(equivalent to one position in octal code), while the latter shifts the first digit to the end
-						return std::make_pair(final_state, 1.0);
+						if constexpr(_particle_type == particle::fermion){
+							// only working for spinless fermions for now
+							const int N = __builtin_popcountll(n);
+							double sign = (N & 1) == 0? -1.0 : 1.0; // is N even? cause sign is (-1)^{N-1}
+							// printSeparated(std::cout, "\t", 20, true, n, first_digit, boost::dynamic_bitset<>(L, n), boost::dynamic_bitset<>(L, final_state), boost::dynamic_bitset<>(L, first_digit), sign);
+							return std::make_pair(final_state, first_digit / ULLPOW(block_size * (L - 1ULL * shift))? sign : 1.0);
+						} else
+							return std::make_pair(final_state, 1.0);
 					};
 		};
 		
-		//! translation generator: shift order of binary/octal/.. string to the left, i.e->binary-> T * |010111> = |101110>
+		//! translation generator: shift order of binary/octal/.. string to the right, i.e->binary-> T * |010111> = |101011>
+		template <particle _particle_type = particle::boson>
 		inline
-		auto translation(unsigned int L, int shift = 1) -> _global_fun
+		auto translation(unsigned int L, int shift = 1) -> _func<std::pair<u64, cpx>>::global
 		{
 			return [L, shift](u64 n)
 					{
@@ -133,7 +168,14 @@ namespace QOps {
 						u64 final_state = (other_digit >> (shift * block_size))
 							| (first_digit << rotate);				// first part rotates the remaining digits (or block of bits) by right shift by 'blocks' positions\
 																							(equivalent to one position in binary code), while the latter shifts the first digit to the end
-						return std::make_pair(final_state, 1.0);
+						if constexpr(_particle_type == particle::fermion){
+							// only working for spinless fermions for now
+							const int N = __builtin_popcountll(n);
+							double sign = (N & 1) == 0? -1.0 : 1.0; // is N even? cause sign is (-1)^{N-1}
+							// printSeparated(std::cout, "\t", 20, true, n, first_digit, boost::dynamic_bitset<>(L, n), boost::dynamic_bitset<>(L, final_state), boost::dynamic_bitset<>(L, first_digit), sign);
+							return std::make_pair(final_state, first_digit? sign : 1.0);
+						} else
+							return std::make_pair(final_state, 1.0);
 					};
 		};
 
@@ -165,17 +207,18 @@ namespace QOps {
 	/// @param L system size
 	/// @param arg additional argument, some generators might use (is not necessary)
 	/// @return chosen symmetry generator
+	template <particle _particle_type = particle::boson>
 	inline
 	auto
 	choose_symmetry(__builtin_operators sym, unsigned int L, int arg = 1)
 	{
 		switch(sym){
-			case __builtin_operators::T: 		return __builtins::translation(L, arg);
-			case __builtin_operators::Tinv: 	return __builtins::translation_inv(L, arg);
-			case __builtin_operators::P: 		return __builtins::parity(L);
-			case __builtin_operators::Zx: 		return __builtins::spin_flip_x(L);
-			case __builtin_operators::Zy: 		return __builtins::spin_flip_y(L);
-			case __builtin_operators::Zz: 		return __builtins::spin_flip_z(L);
+			case __builtin_operators::T: 		return __builtins::translation<_particle_type>(L, arg);
+			case __builtin_operators::Tinv: 	return __builtins::translation_inv<_particle_type>(L, arg);
+			case __builtin_operators::P: 		return __builtins::parity<_particle_type>(L);
+			case __builtin_operators::Zx: 		return __builtins::spin_flip_x<_particle_type>(L);
+			case __builtin_operators::Zy: 		return __builtins::spin_flip_y<_particle_type>(L);
+			case __builtin_operators::Zz: 		return __builtins::spin_flip_z<_particle_type>(L);
 			default:
 				std::cout << "No other operator implemented. Using translation as default" << std::endl;
 				return __builtins::translation(L);

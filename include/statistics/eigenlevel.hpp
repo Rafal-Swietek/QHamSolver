@@ -29,7 +29,7 @@ namespace statistics{
             const double min = std::min(delta_n, delta_n_next);
             const double max = std::max(delta_n, delta_n_next);
             
-            if (abs(delta_n) <= 1e-15){ 
+            if (abs(delta_n) <= 1e-14){ 
                 std::cout << "Index: " << it << std::endl;
                 for (auto it = first; it != last; ++it)
                     std::cout << *it << std::endl; 

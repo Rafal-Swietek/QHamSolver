@@ -254,7 +254,7 @@ void user_interface_sym<Hamiltonian>::eigenstate_entanglement_degenerate()
         // realisations to draw states randomly
         double E = 0;
     #pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
-        for(u64 unused = 0; unused < this->mu; unused++)
+        for(u64 unused = 0; unused < 1; unused++)
         {
             arma::Col<int> indices = random_generator.uniform(gamma_a, min_idx, max_idx);
             int id = random_generator.uniform_dist<int>(0, gamma_a-1);
@@ -278,8 +278,8 @@ void user_interface_sym<Hamiltonian>::eigenstate_entanglement_degenerate()
             }
         }
     }
-    E_av = E_av / double(this->mu);
-    S /= double(this->mu);
+    // E_av = E_av / double(this->mu);
+    // S /= double(this->mu);
     // std::cout << S.col(this->L / 2 - 1).t() << std::endl;
     
     std::cout << " - - - - - - FINISHED ENTROPY CALCULATION IN : " << tim_s(start) << " seconds - - - - - - " << std::endl; // simulation end
@@ -383,8 +383,8 @@ void user_interface_sym<Hamiltonian>::diagonal_matrix_elements(){
                     
                     if( (!Si) && S_nei )
                     {
-                        auto [val, state_tmp]   = operators::sigma_minus(k, this->L, nei);
-                        auto [val2, new_idx]      = operators::sigma_plus(state_tmp, this->L, i);
+                        auto [val, state_tmp]   = operators::sigma_minus<cpx>(k, this->L, nei);
+                        auto [val2, new_idx]    = operators::sigma_plus<cpx>(state_tmp, this->L, i);
                         if(val != 0.0 && val2 != 0.0){
                             KineticEnergy(n) += 2.0 * std::real(std::conj(full_state(new_idx)) * full_state(k));   // because z + z* = 2 Re(z)
                             // KineticEnergy_dis(n) += 2.0 * dis_K(i) * std::real(std::conj(full_state(new_idx)) * full_state(k));
@@ -400,8 +400,8 @@ void user_interface_sym<Hamiltonian>::diagonal_matrix_elements(){
                     int S_nei = check_spin(k, nei);
                     if( (!Si) && S_nei )
                     {
-                        auto [val, state_tmp]   = operators::sigma_minus(k, this->L, nei);
-                        auto [val2, new_idx]      = operators::sigma_plus(state_tmp, this->L, i);
+                        auto [val, state_tmp]   = operators::sigma_minus<cpx>(k, this->L, nei);
+                        auto [val2, new_idx]      = operators::sigma_plus<cpx>(state_tmp, this->L, i);
                         if(val != 0.0 && val2 != 0.0){
                             NextHopping(n) += 2.0 * std::real(std::conj(full_state(new_idx)) * full_state(k)); // because z + z* = 2 Re(z)
                             // NextHopping_dis(n) += 2.0 * dis_K2(i) * std::real(std::conj(full_state(new_idx)) * full_state(k));
@@ -419,8 +419,8 @@ void user_interface_sym<Hamiltonian>::diagonal_matrix_elements(){
                 {
                     int Sj = check_spin(k, j);
                     if( (!Si) && Sj ){
-                        auto [val, state_tmp]   = operators::sigma_minus(k, this->L, j);
-                        auto [val2, new_idx]      = operators::sigma_plus(state_tmp, this->L, i);
+                        auto [val, state_tmp]   = operators::sigma_minus<cpx>(k, this->L, j);
+                        auto [val2, new_idx]      = operators::sigma_plus<cpx>(state_tmp, this->L, i);
                         if(val != 0.0 && val2 != 0.0)
                             Sq0_diagmat(n) += std::real(std::conj(full_state(new_idx)) * full_state(k));
                     }

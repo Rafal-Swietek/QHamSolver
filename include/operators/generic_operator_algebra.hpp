@@ -22,7 +22,7 @@ namespace QOps {
 	{
 		assert_hilbert_space(_operator);
 		auto new_kernel = this->_kernel * _operator._kernel;	// new operator kernel
-		return generic_operator<_ty..., _ty2...>
+		return generic_operator<_eigval_ty, _ty..., _ty2...>
 			(
 				this->L,
 				std::move(new_kernel),
@@ -68,7 +68,7 @@ namespace QOps {
 	{
 		assert_hilbert_space(_operator);
 		auto new_kernel = this->_kernel % _operator._kernel;	// new operator kernel
-		return generic_operator<_ty...>
+		return generic_operator<_eigval_ty, _ty...>
 			(
 				this->L,
 				std::move(new_kernel),

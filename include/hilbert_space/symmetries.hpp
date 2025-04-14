@@ -18,8 +18,9 @@ namespace QHS{
 	#endif
 
 	/// @brief 
+	template <QOps::particle _particle_type = QOps::particle::boson>
 	class point_symmetric : public hilbert_space_base{
-		v_1d<QOps::genOp> _symmetry_group;
+		v_1d<QOps::generic_operator<cpx>> _symmetry_group;
 		v_1d<elem_ty> _normalisation;
 		v_1d<int> _sectors;
 
@@ -29,7 +30,7 @@ namespace QHS{
 		int _pos_of_parity = -1;	//<! position of parity generator in input symmetries (if not present put -1)
 		bool _real_k_sector = 1;	//<! is the k_sector real or complex?, i.e. k = 0, pi
 		
-		void generate_symmetry_group(const v_1d<QOps::genOp>& sym_gen);
+		void generate_symmetry_group(const v_1d<QOps::generic_operator<cpx>>& sym_gen);
 		auto get_symmetry_normalization(u64 base_idx) const -> elem_ty;
 
 		/// @brief 
@@ -39,7 +40,7 @@ namespace QHS{
 		typedef std::pair<u64, elem_ty> return_type;		// return type of operator, resulting state and value
 	public:
 		point_symmetric() = default;
-		point_symmetric(unsigned int L, const v_1d<QOps::genOp>& sym_gen, int _BC = 1, int k_sector = 0, int pos_of_parity = -1, int trans_shift = 1);
+		point_symmetric(unsigned int L, const v_1d<QOps::generic_operator<cpx>>& sym_gen, int _BC = 1, int k_sector = 0, int pos_of_parity = -1, int trans_shift = 1);
 		
 		virtual void create_basis() override;
 
@@ -115,8 +116,9 @@ namespace QHS{
 	/// @param _BC boundary condition (0-PBC, 1-OBC, ...) (default = 1)
 	/// @param k_sec quasimomentum symmetyr sector
 	/// @param pos_of_parity position of parity in sym_gen (if not present -> -1, by default -1)
+	template <QOps::particle _particle_type>
 	inline
-	point_symmetric::point_symmetric(unsigned int L, const v_1d<QOps::genOp>& sym_gen, int _BC, int k_sec, int pos_of_parity, int trans_shift)
+	point_symmetric<_particle_type>::point_symmetric(unsigned int L, const v_1d<QOps::generic_operator<cpx>>& sym_gen, int _BC, int k_sec, int pos_of_parity, int trans_shift)
 	{
 		this->system_size = L;
 		this->_boundary_cond = _BC;
@@ -138,12 +140,12 @@ namespace QHS{
 	//<! ------------------------------------------------------------------------------------------ SYMMETRY GROUP
 	/// @brief Generate symmetry group with all combinations of symmetry generators
 	/// @param sym_gen list of symmetry generators (shall not include translation! )
+	template <QOps::particle _particle_type>
 	inline
-	void 
-	point_symmetric::generate_symmetry_group(const v_1d<QOps::genOp>& sym_gen_in)
+	void point_symmetric<_particle_type>::generate_symmetry_group(const v_1d<QOps::generic_operator<cpx>>& sym_gen_in)
 	{
-		this->_symmetry_group = v_1d<QOps::genOp>();
-		v_1d<QOps::genOp> sym_gen = sym_gen_in;
+		this->_symmetry_group = v_1d<QOps::generic_operator<cpx>>();
+		v_1d<QOps::generic_operator<cpx>> sym_gen = sym_gen_in;
 
 		// remove parity for complex quasimomentum sectors
 		if (!this->_real_k_sector && this->_pos_of_parity >= 0){
@@ -156,7 +158,7 @@ namespace QHS{
 			this->_sectors.emplace_back((int)std::real(chi(G)));
 
 		// add neutral element
-		this->_symmetry_group.push_back(QOps::genOp(this->system_size));
+		this->_symmetry_group.push_back(QOps::generic_operator<cpx>(this->system_size));
 		
 		// set combinations of available symmetries
 		const int NUM_OF_GENERATORS = sym_gen.size();
@@ -166,7 +168,7 @@ namespace QHS{
 			// std:: cout << k << "\t\t" << bitmask << std::endl;
 			// std:: cout << "aa\t" << k << std::endl;
 			do {
-				QOps::genOp sym_temp(this->system_size);
+				QOps::generic_operator<cpx> sym_temp(this->system_size);
 				for (int i = 0; i < NUM_OF_GENERATORS; ++i) // [0..N-1] integers
 					if (bitmask[i] == 1)
 						sym_temp %= sym_gen[i];
@@ -178,15 +180,15 @@ namespace QHS{
 		
 		// set combination of all syms with all translations
 		if (this->_boundary_cond == 0) {
-			v_1d<QOps::genOp> sym_group_copy = this->_symmetry_group;
-			QOps::genOp translation = QOps::_translation_symmetry(this->system_size, this->k_sector);
+			v_1d<QOps::generic_operator<cpx>> sym_group_copy = this->_symmetry_group;
+			QOps::generic_operator<cpx> translation = QOps::_translation_symmetry<_particle_type>(this->system_size, this->k_sector);
 			for (int l = 1; l < this->system_size; l++) 
 			{
-				// QOps::genOp translation = QOps::_translation_symmetry(this->system_size, this->k_sector, l);
+				// QOps::generic_operator<cpx> translation = QOps::_translation_symmetry(this->system_size, this->k_sector, l);
 				for (auto& G : sym_group_copy)
 					this->_symmetry_group.push_back(translation % G);
 
-				translation %= QOps::_translation_symmetry(this->system_size, this->k_sector);
+				translation %= QOps::_translation_symmetry<_particle_type>(this->system_size, this->k_sector);
 			}
 
 			//<! append quasimomentum sector
@@ -198,9 +200,10 @@ namespace QHS{
 	/// @brief Find super-equivalent class (SEC) representative for given set of states related by symmetry transformations
 	/// @param base_idx find SEC for given input state
 	/// @return SEC
+	template <QOps::particle _particle_type>
 	inline
-	point_symmetric::return_type 
-	point_symmetric::find_SEC_representative(u64 base_idx) const 
+	point_symmetric<_particle_type>::return_type
+	point_symmetric<_particle_type>::find_SEC_representative(u64 base_idx) const 
 	{
 		u64 SEC = INT64_MAX;
 		cpx return_val = 1.0;
@@ -221,9 +224,10 @@ namespace QHS{
 	/// @brief Calculate normalisation for input state (sum off all symmetry eigenvalues for generators not changing input state)
 	/// @param base_idx input state
 	/// @return normalisation
+	template <QOps::particle _particle_type>
 	inline
 	elem_ty 
-	point_symmetric::get_symmetry_normalization(u64 base_idx) const 
+	point_symmetric<_particle_type>::get_symmetry_normalization(u64 base_idx) const 
 	{
 		elem_ty normalisation = 0.0;
 		//for (unsigned int L = 0; l < this->_symmetry_group.size(); l++) {
@@ -245,9 +249,10 @@ namespace QHS{
 
 	/// @brief Generate Unitary transformation to full hilbert space from reduced basis
 	/// @return unitary transformation U
+	template <QOps::particle _particle_type>
 	inline
 	arma::SpMat<elem_ty>
-	point_symmetric::symmetry_rotation() const
+	point_symmetric<_particle_type>::symmetry_rotation() const
 	{
 		const u64 dim_tot = ULLPOW(this->system_size);
 		arma::SpMat<elem_ty> U(dim_tot, this->dim);
@@ -273,9 +278,10 @@ namespace QHS{
 	/// @brief Find symmetry generator returning to SEC state
 	/// @param new_state input state
 	/// @return tuple with SEC state and symmetry return value
+	template <QOps::particle _particle_type>
 	inline
-	point_symmetric::return_type 
-	point_symmetric::find_matrix_element(u64 new_state, elem_ty norm) const
+	point_symmetric<_particle_type>::return_type 
+	point_symmetric<_particle_type>::find_matrix_element(u64 new_state, elem_ty norm) const
 	{
 		if( std::abs( get_symmetry_normalization(new_state) ) < 1e-12 )
 			return std::make_pair(0, 0.0);
@@ -304,8 +310,9 @@ namespace QHS{
 
 	//<! ------------------------------------------------------------------------------------------ BASIS CONSTRUCTION
 	/// @brief Creates hilbert space basis with given point symmetries
+	template <QOps::particle _particle_type>
 	inline
-	void point_symmetric::create_basis()
+	void point_symmetric<_particle_type>::create_basis()
 	{
 		//<! kernel for multithreaded mapping generation
 		auto mapping_kernel = [this](u64 start, u64 stop, std::vector<u64>& map_threaded, std::vector<elem_ty>& norm_threaded)
@@ -359,9 +366,10 @@ namespace QHS{
 	/// @brief Overloaded operator to access elements in hilbert space
 	/// @param idx Index of element in hilbert space
 	/// @return Element of hilbert space at position 'index'
+	template <QOps::particle _particle_type>
 	inline
 	u64 
-	point_symmetric::operator()(u64 idx) const
+	point_symmetric<_particle_type>::operator()(u64 idx) const
 	{ 
 		_assert_((idx < this->dim), OUT_OF_MAP);
 		return this->mapping[idx]; 
@@ -371,9 +379,10 @@ namespace QHS{
 	/// @brief Find index of element in hilbert space
 	/// @param element element to find its index
 	/// @return index of element 'element'
+	template <QOps::particle _particle_type>
 	inline
 	u64 
-	point_symmetric::find(u64 element) const
+	point_symmetric<_particle_type>::find(u64 element) const
 		{ return binary_search(this->mapping, 0, this->dim - 1, element); }
 
 

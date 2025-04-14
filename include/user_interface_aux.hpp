@@ -72,7 +72,6 @@ void user_interface<Hamiltonian>::print_help() const {
 		" The input can be both introduced with [options] described below or with giving the input directory(which also is the flag in the options)\n"
 		" options:\n"
 		"-f input file for all of the options : (default none)\n"
-		"-mu bucket size for ergodic coefficients (default 5)\n"
 		"-L system size length minimum: bigger than 0 (default 8)\n"
 		"-Ls system size length step: bigger equal than 0 (default 0)\n"
 		"-Ln system size length number: bigger than 0 (default 1)\n"
@@ -132,7 +131,6 @@ void user_interface<Hamiltonian>::set_default(){
 	this->site = 0;
 	this->op = 0;
 	this->fun = INT_MAX;
-	this->mu = 5;
 	this->tol = 1e-14;
 	
 	this->q_ipr = 1.0;
@@ -173,7 +171,6 @@ void user_interface<Hamiltonian>::printAllOptions() const {
 		  << "thread_num = " << this->thread_number << std::endl
 		  << "site = " << this->site << std::endl
 		  << "operator = " << opName << std::endl
-		  << "bucket size = " << this->mu << std::endl
 		  << "boolean value = " << this->ch << std::endl
 		  << "q_ipr = " << this->q_ipr << std::endl
 		  << "\u03B2 = " << this->beta << std::endl
@@ -271,9 +268,6 @@ void user_interface<Hamiltonian>::parse_cmd_options(int argc, std::vector<std::s
 	choosen_option = "-tend";
 	this->set_option(this->tend, argv, choosen_option, false);
 
-	// buckets
-	choosen_option = "-mu";
-	this->set_option(this->mu, argv, choosen_option, true);
 	choosen_option = "-num_of_points";
 	this->set_option(this->num_of_points, argv, choosen_option, true);
 
