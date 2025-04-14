@@ -332,11 +332,11 @@ void ui::compare_energies()
     auto P = (QOps::_parity_symmetry<QOps::particle::fermion>(this->L, this->syms.p_sym)).to_reduced_matrix(U1sector);
     auto T = (QOps::_translation_symmetry<QOps::particle::fermion>(this->L, this->syms.k_sym)).to_reduced_matrix(U1sector);
     arma::cx_vec Jsh_value(E_dis.size()), P_value(E_dis.size()), T_value(E_dis.size());
-    for(u64 k = 0; k < E_dis.size(); k++){
-        Jsh_value(k) = arma::cdot(V.col(k), Jsh * V.col(k));
-        P_value(k) = arma::cdot(V.col(k), P * V.col(k));
-        T_value(k) = arma::cdot(V.col(k), T * V.col(k));
-    }
+    // for(u64 k = 0; k < E_dis.size(); k++){
+    //     Jsh_value(k) = arma::cdot(V.col(k), Jsh * V.col(k));
+    //     P_value(k) = arma::cdot(V.col(k), P * V.col(k));
+    //     T_value(k) = arma::cdot(V.col(k), T * V.col(k));
+    // }
     auto permut = sort_permutation(Esym, [](const double a, const double b)
 								   { return a < b; });
 	apply_permutation(Esym, permut);
