@@ -137,7 +137,7 @@ void ui::eigenstate_entanglement()
 	}else{
         this->ptr_to_model->diagonalization();
     }
-    const int size = (dim > dim_cut)? 20 : min(200, int(0.1 * dim));
+    const int size = (dim > dim_cut)? 10 : min(200, int(0.1 * dim));
 
     std::cout << " - - - - - - FINISHED DIAGONALIZATION IN : " << tim_s(start) << " seconds - - - - - - " << std::endl; // simulation end
     
@@ -166,6 +166,8 @@ void ui::eigenstate_entanglement()
     arma::mat Scorr(size, subsystem_sizes.size(), arma::fill::zeros);
     arma::mat Scorr_site(size, subsystem_sizes.size(), arma::fill::zeros);
     arma::mat Purity(size, subsystem_sizes.size()+1, arma::fill::zeros);
+    arma::mat Trace4(size, subsystem_sizes.size()+1, arma::fill::zeros);
+    arma::mat Trace6(size, subsystem_sizes.size()+1, arma::fill::zeros);
     arma::vec NonGauss(size, arma::fill::zeros);
 
     // outer_threads = this->thread_number;
@@ -227,12 +229,15 @@ void ui::eigenstate_entanglement()
         }
         // std::cout << arma::abs(J_m_MB) << std::endl;
         // std::cout << arma::abs(J_m_MB2) << std::endl << std::endl;
-        auto lambdas = arma::eig_sym(J_m_MB);
-        NonGauss(n) = QHS::single_particle::entanglement::vonNeumann(lambdas);
 
         J_m_MB = 2.0 * J_m_MB - arma::eye(this->L, this->L);
 
+        auto lambdas = arma::eig_sym(J_m_MB);
+        NonGauss(n) = QHS::single_particle::entanglement::vonNeumann(lambdas);
+
         Purity(n, subsystem_sizes.size()) = std::real( arma::trace(J_m_MB * J_m_MB) );
+        Trace4(n, subsystem_sizes.size()) = std::real( arma::trace(J_m_MB * J_m_MB * J_m_MB * J_m_MB) );
+        Trace6(n, subsystem_sizes.size()) = std::real( arma::trace(J_m_MB * J_m_MB * J_m_MB * J_m_MB * J_m_MB * J_m_MB) );
 
         for(int iiLA = 0; iiLA < subsystem_sizes.size(); iiLA++){
             int LA = subsystem_sizes[iiLA];
@@ -248,6 +253,8 @@ void ui::eigenstate_entanglement()
             Scorr_site(n, iiLA) = QHS::single_particle::entanglement::vonNeumann_helper(lambda);
 
             Purity(n, iiLA) = std::real( arma::trace(J_m_VA * J_m_VA) );
+            Trace4(n, iiLA) = std::real( arma::trace(J_m_VA * J_m_VA * J_m_VA * J_m_VA) );
+            Trace6(n, iiLA) = std::real( arma::trace(J_m_VA * J_m_VA * J_m_VA * J_m_VA * J_m_VA * J_m_VA) );
         }
         std::cout << " - - - - - - Finished state n = " << n << " in: " << tim_s(start_n) << " seconds - - - - - - " << std::endl; // simulation end
     }
@@ -262,6 +269,8 @@ void ui::eigenstate_entanglement()
     Scorr_site.save(arma::hdf5_name(dir + filename + ".hdf5", "entropy_single_site_corr_mat", arma::hdf5_opts::append));
     NonGauss.save(arma::hdf5_name(dir + filename + ".hdf5", "Non-Gaussianity", arma::hdf5_opts::append));
     Purity.save(arma::hdf5_name(dir + filename + ".hdf5", "Purity", arma::hdf5_opts::append));
+    Trace4.save(arma::hdf5_name(dir + filename + ".hdf5", "Trace4", arma::hdf5_opts::append));
+    Trace6.save(arma::hdf5_name(dir + filename + ".hdf5", "Trace6", arma::hdf5_opts::append));
     arma::uvec({dim}).save(arma::hdf5_name(dir + filename + ".hdf5", "D", arma::hdf5_opts::append));
 }
 /// @brief 
