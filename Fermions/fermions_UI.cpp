@@ -129,7 +129,7 @@ void ui::eigenstate_entanglement()
         emtpy_vec.save(arma::hdf5_name(dir + filename + ".hdf5", "nope"));
         return;
     }
-    const size_t dim_cut = 1e5;
+    const size_t dim_cut = 7e4;
 
     if(dim > dim_cut){
         double error = this->ptr_to_model->diag_sparse(this->l_steps, this->l_bundle, this->tol, this->seed);
