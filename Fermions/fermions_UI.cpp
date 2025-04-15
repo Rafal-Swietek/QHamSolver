@@ -262,6 +262,7 @@ void ui::eigenstate_entanglement()
     Scorr_site.save(arma::hdf5_name(dir + filename + ".hdf5", "entropy_single_site_corr_mat", arma::hdf5_opts::append));
     NonGauss.save(arma::hdf5_name(dir + filename + ".hdf5", "Non-Gaussianity", arma::hdf5_opts::append));
     Purity.save(arma::hdf5_name(dir + filename + ".hdf5", "Purity", arma::hdf5_opts::append));
+    arma::uvec({dim}).save(arma::hdf5_name(dir + filename + ".hdf5", "D", arma::hdf5_opts::append));
 }
 /// @brief 
 /// @param skip 
