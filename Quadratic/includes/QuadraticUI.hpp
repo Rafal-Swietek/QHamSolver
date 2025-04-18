@@ -59,6 +59,8 @@ namespace QuadraticUI{
 
         void orbital_mat_elem();
 	    virtual double rescaling_for_coefficients() override;
+
+        void geometric_tensor();
     };
 }
 
