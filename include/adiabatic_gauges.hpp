@@ -238,4 +238,50 @@ namespace adiabatics{
 
 
 
+	/// @brief 
+	/// @tparam _ty 
+	/// @param mat_elem 
+	/// @param eigenvalues 
+	/// @param L 
+	/// @return 
+	template <typename _ty>
+	inline
+	auto 
+	geometric_tensor(
+    	const std::vector<arma::Mat<_ty>>& mat_elements,
+    	const arma::vec& eigenvalues,
+		int L = 1,
+		double lambda = -1
+    ) -> arma::cx_mat 
+	{
+		const long N = eigenvalues.size();
+		if( lambda < 0 )
+			lambda = L / double(N);
+		
+		int size_tens = mat_elements.size();
+		arma::cx_mat G(size_tens, size_tens, arma::fill::zeros);
+    // #pragma omp parallel for
+		for (long int i = 0; i < N; i++)
+		{
+			for (long int j = 0; j < N; j++)
+			{
+				const double omega_ij = eigenvalues(j) - eigenvalues(i);
+				const double denominator = omega_ij * omega_ij + lambda * lambda;
+				for(int alfa = 0; alfa < size_tens; alfa++)
+				{
+					cpx nominator = std::abs(mat_elements[alfa](i, j) * std::conj(mat_elements[alfa](i, j)));
+					cpx value = omega_ij * omega_ij * nominator / (denominator * denominator);
+					G(alfa, alfa) += value;
+					for(int beta = alfa+1; beta < size_tens; beta++)
+					{
+						nominator = mat_elements[alfa](i, j) * mat_elements[beta](j, i);
+						value = omega_ij * omega_ij * nominator / (denominator * denominator);
+						G(alfa, beta) += value;
+						G(beta, alfa) += std::conj(value);
+					}
+				}
+			}
+		}
+        return G / double(N);
+    }
 };
