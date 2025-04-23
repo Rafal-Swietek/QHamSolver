@@ -114,7 +114,7 @@ void ui::make_sim(){
 		ground_state();
 		break;
 	case 14:
-		eigenstate_ergodicity_test();
+		geometric_tensor();
 		break;
 	default:
 		#define generate_scaling_array(name) arma::linspace(this->name, this->name + this->name##s * (this->name##n - 1), this->name##n);
@@ -150,6 +150,9 @@ void ui::make_sim(){
 								std::cout << " - - START NEW ITERATION:\t\t par = "; // simulation end
 								printSeparated(std::cout, "\t", 16, true, this->L_loc, this->J, this->alfa, this->h, this->w, this->gamma);
 								this->reset_model_pointer();
+
+								geometric_tensor(); continue;
+
 								ground_state(); continue;
 								agp(); continue;
 
@@ -162,10 +165,10 @@ void ui::make_sim(){
 	u64 dim = this->ptr_to_model->get_hilbert_size();
 
 	auto kernel = [Ll](u64 state){ 
-			auto [val1, tmp22] = operators::sigma_z(state, Ll, Ll - 1 );
+			auto [val1, tmp22] = operators::sigma_z<cpx>(state, Ll, Ll - 1 );
 			return std::make_pair(state, val1);
 			};
-	auto _operator = QOps::generic_operator<>(this->L, std::move(kernel), 1.0);
+	auto _operator = QOps::genOp(this->L, std::move(kernel), 1.0);
 	arma::sp_mat Sz = arma::real(_operator.to_matrix(dim));
 	
 	arma::mat H = this->ptr_to_model->get_dense_hamiltonian();
@@ -174,7 +177,7 @@ void ui::make_sim(){
 		for (int j = this->grain_size; j < this->L; j++)  // sum over spin d.o.f
 		{
 			const int pos_in_array = j - this->grain_size;                // array index of localised spin
-			auto [val, Sz_k] = operators::sigma_z(k, this->L, j);
+			auto [val, Sz_k] = operators::sigma_z<cpx>(k, this->L, j);
 			H(k, k) += disorder_base(pos_in_array) * std::real(val);
 		}
 	}
@@ -197,7 +200,7 @@ void ui::make_sim(){
 			for (int ell = this->grain_size; ell < this->L; ell++)  // sum over spin d.o.f
 			{
 				const int pos_in_array = ell - this->grain_size;                // array index of localised spin
-				auto [val, Sz_k] = operators::sigma_z(base_state, this->L, ell);
+				auto [val, Sz_k] = operators::sigma_z<cpx>(base_state, this->L, ell);
 			    H(k, k) += disorder(pos_in_array) * real(val);
 			}
 		}
@@ -268,7 +271,7 @@ void ui::ground_state(){
 			}
 		}
 		// std::cout << LA << "\t\t" << p << "\t\t" << p2 << std::endl;
-		auto permutation = QOps::_permutation_generator(this->L, p);
+		auto permutation = QOps::_permutation_generator<cpx>(this->L, p);
 		permutation_op.push_back(permutation);
 
 		std::cout << " - - - - - - set permutation matrix for LA = " << LA << " in : " << tim_s(start_LA) << " s - - - - - - " << std::endl;
@@ -282,24 +285,24 @@ void ui::ground_state(){
 	for(int i = 0; i < this->L; i++)
 	{
 		auto kernel_Sx = [Ll, N, i](u64 state){ 
-					auto [val1, state_X] = operators::sigma_x(state, Ll, i );
+					auto [val1, state_X] = operators::sigma_x<cpx>(state, Ll, i );
 					return std::make_pair(state_X, val1);
 					};
-		QOps::generic_operator<> _operator = QOps::generic_operator<>(this->L, std::move(kernel_Sx), 1.0);
+		QOps::genOp _operator = QOps::genOp(this->L, std::move(kernel_Sx), 1.0);
 		Sx_list.push_back(_operator);
 
 		auto kernel_Sy = [Ll, N, i](u64 state){ 
 					auto [val1, state_Y] = operators::sigma_y(state, Ll, i );
 					return std::make_pair(state_Y, val1);
 					};
-		_operator = QOps::generic_operator<>(this->L, std::move(kernel_Sy), 1.0);
+		_operator = QOps::genOp(this->L, std::move(kernel_Sy), 1.0);
 		Sy_list.push_back(_operator);
 
 		auto kernel_Sz = [Ll, N, i](u64 state){ 
-					auto [val1, state_Z] = operators::sigma_z(state, Ll, i );
+					auto [val1, state_Z] = operators::sigma_z<cpx>(state, Ll, i );
 					return std::make_pair(state_Z, val1);
 					};
-		_operator = QOps::generic_operator<>(this->L, std::move(kernel_Sz), 1.0);
+		_operator = QOps::genOp(this->L, std::move(kernel_Sz), 1.0);
 		Sz_list.push_back(_operator);
 
 		std::vector<QOps::genOp> Sxx_list_temp;
@@ -308,25 +311,25 @@ void ui::ground_state(){
 		for(int j = 0; j < this->L; j++)
 		{
 			auto kernel_SxSx = [Ll, N, i, j](u64 state){ 
-					auto [val1, state_X] = operators::sigma_x(state, Ll, i );
-					auto [val2, state_XX] = operators::sigma_x(state_X, Ll, j );
+					auto [val1, state_X] = operators::sigma_x<cpx>(state, Ll, i );
+					auto [val2, state_XX] = operators::sigma_x<cpx>(state_X, Ll, j );
 					return std::make_pair(state_XX, val1 * val2);
 					};
-			_operator = QOps::generic_operator<>(this->L, std::move(kernel_SxSx), 1.0);
+			_operator = QOps::genOp(this->L, std::move(kernel_SxSx), 1.0);
 			Sxx_list_temp.push_back(_operator);
 			auto kernel_SySy = [Ll, N, i, j](u64 state){ 
 					auto [val1, state_Y] = operators::sigma_y(state, Ll, i );
 					auto [val2, state_YY] = operators::sigma_y(state_Y, Ll, j );
 					return std::make_pair(state_YY, val1 * val2);
 					};
-			_operator = QOps::generic_operator<>(this->L, std::move(kernel_SySy), 1.0);
+			_operator = QOps::genOp(this->L, std::move(kernel_SySy), 1.0);
 			Syy_list_temp.push_back(_operator);
 			auto kernel_SzSz = [Ll, N, i, j](u64 state){ 
-					auto [val1, state_Z] = operators::sigma_z(state, Ll, i );
-					auto [val2, state_ZZ] = operators::sigma_z(state_Z, Ll, j );
+					auto [val1, state_Z] = operators::sigma_z<cpx>(state, Ll, i );
+					auto [val2, state_ZZ] = operators::sigma_z<cpx>(state_Z, Ll, j );
 					return std::make_pair(state_ZZ, val1 * val2);
 					};
-			_operator = QOps::generic_operator<>(this->L, std::move(kernel_SzSz), 1.0);
+			_operator = QOps::genOp(this->L, std::move(kernel_SzSz), 1.0);
 			Szz_list_temp.push_back(_operator);
 		}
 		SxSx_list.push_back(Sxx_list_temp);
@@ -618,75 +621,75 @@ void ui::agp()
 		
 		start = std::chrono::system_clock::now();
 		// arma::Mat<element_type> mat_elem = V * Sz_ops[i] * V.t();
-		auto _operator = QOps::generic_operator<>();
+		auto _operator = QOps::genOp();
 		switch(this->op){
 			case 0:
 			{
 				auto kernel_def = [Ll, N](u64 state){ 
-					auto [val1, tmp22] = operators::sigma_z(state, Ll, Ll - 1 );
+					auto [val1, tmp22] = operators::sigma_z<cpx>(state, Ll, Ll - 1 );
 					return std::make_pair(state, val1);
 					};
-				_operator = QOps::generic_operator<>(this->L, std::move(kernel_def), 1.0);
+				_operator = QOps::genOp(this->L, std::move(kernel_def), 1.0);
 			}
 			case 1:
 			{
 					auto kernel = [Ll, N, &neighbor_generator](u64 state){ 
 						int nei = neighbor_generator.uniform_dist<int>(0, N-1);
-						auto [val1, state_out1] = operators::sigma_x(state, Ll, nei );
-						auto [val2, state_out2] = operators::sigma_x(state_out1, Ll, Ll - 1 );
+						auto [val1, state_out1] = operators::sigma_x<cpx>(state, Ll, nei );
+						auto [val2, state_out2] = operators::sigma_x<cpx>(state_out1, Ll, Ll - 1 );
 						return std::make_pair(state_out2, val1 * val2);
 					};
-					_operator = QOps::generic_operator<>(this->L, std::move(kernel), 1.0);
+					_operator = QOps::genOp(this->L, std::move(kernel), 1.0);
 			}
 				break;
 			case 2:
 			{
 				auto kernel = [Ll, N, &neighbor_generator](u64 state){ 
 						int nei = neighbor_generator.uniform_dist<int>(0, N-1);
-						auto [val1, state_out1] = operators::sigma_z(state, Ll, nei );
-						auto [val2, state_out2] = operators::sigma_z(state_out1, Ll, Ll - 1 );
+						auto [val1, state_out1] = operators::sigma_z<cpx>(state, Ll, nei );
+						auto [val2, state_out2] = operators::sigma_z<cpx>(state_out1, Ll, Ll - 1 );
 						return std::make_pair(state_out2, val1 * val2);
 				};
-				_operator = QOps::generic_operator<>(this->L, std::move(kernel), 1.0);
+				_operator = QOps::genOp(this->L, std::move(kernel), 1.0);
 			}
 				break;
 			case 3:
 			{
 				auto kernel = [Ll, N](u64 state){ 
-					auto [val1, state_out1] = operators::sigma_z(state, Ll, Ll - 2 );
-					auto [val2, state_out2] = operators::sigma_z(state_out1, Ll, Ll - 1 );
+					auto [val1, state_out1] = operators::sigma_z<cpx>(state, Ll, Ll - 2 );
+					auto [val2, state_out2] = operators::sigma_z<cpx>(state_out1, Ll, Ll - 1 );
 					return std::make_pair(state_out2, val1 * val2);
 				};
-				_operator = QOps::generic_operator<>(this->L, std::move(kernel), 1.0);
+				_operator = QOps::genOp(this->L, std::move(kernel), 1.0);
 			}
 				break;
 			case 4:
 			{
 				auto kernel = [Ll, N](u64 state){ 
-					auto [val1, state_out1] = operators::sigma_x(state, Ll, Ll - 2 );
-					auto [val2, state_out2] = operators::sigma_x(state_out1, Ll, Ll - 1 );
+					auto [val1, state_out1] = operators::sigma_x<cpx>(state, Ll, Ll - 2 );
+					auto [val2, state_out2] = operators::sigma_x<cpx>(state_out1, Ll, Ll - 1 );
 					return std::make_pair(state_out2, val1 * val2);
 				};
-				_operator = QOps::generic_operator<>(this->L, std::move(kernel), 1.0);
+				_operator = QOps::genOp(this->L, std::move(kernel), 1.0);
 			}
 				break;
 			default:
 			{
 				auto kernel_def = [Ll, N](u64 state){ 
-					auto [val1, tmp22] = operators::sigma_z(state, Ll, Ll - 1 );
+					auto [val1, tmp22] = operators::sigma_z<cpx>(state, Ll, Ll - 1 );
 					return std::make_pair(state, val1);
 					};
-				_operator = QOps::generic_operator<>(this->L, std::move(kernel_def), 1.0);
+				_operator = QOps::genOp(this->L, std::move(kernel_def), 1.0);
 			}
 		}
 		arma::sp_mat oper(dim, dim);
 		if(this->op == 5){
 			for(int j = N; j < this->L; j++){
 				auto kernel_def = [Ll, j](u64 state){ 
-					auto [val1, tmp22] = operators::sigma_z(state, Ll, j );
+					auto [val1, tmp22] = operators::sigma_z<cpx>(state, Ll, j );
 					return std::make_pair(state, val1);
 					};
-				_operator = QOps::generic_operator<>(this->L, std::move(kernel_def), 1.0);
+				_operator = QOps::genOp(this->L, std::move(kernel_def), 1.0);
 				oper += arma::real(_operator.to_matrix(dim));
 			}
 			oper = oper / std::sqrt(this->L_loc);
@@ -807,10 +810,10 @@ void ui::agp_save()
 
 		start = std::chrono::system_clock::now();
 		auto kernel_def = [Ll, N](u64 state){ 
-					auto [val1, tmp22] = operators::sigma_z(state, Ll, Ll - 1 );
+					auto [val1, tmp22] = operators::sigma_z<cpx>(state, Ll, Ll - 1 );
 					return std::make_pair(state, val1);
 					};
-		auto _operator = QOps::generic_operator<>(this->L, std::move(kernel_def), 1.0);
+		auto _operator = QOps::genOp(this->L, std::move(kernel_def), 1.0);
 		arma::sp_mat oper = arma::real(_operator.to_matrix(dim));
 		
 		arma::Mat<element_type> mat_elem = V.t() * oper * V;
@@ -866,10 +869,10 @@ void ui::agp_mu()
 	int counter = 0;
 
 	auto kernel_def = [Ll, N](u64 state){ 
-				auto [val1, tmp22] = operators::sigma_z(state, Ll, Ll - 1 );
+				auto [val1, tmp22] = operators::sigma_z<cpx>(state, Ll, Ll - 1 );
 				return std::make_pair(state, val1);
 				};
-	auto _operator = QOps::generic_operator<>(this->L, std::move(kernel_def), 1.0);
+	auto _operator = QOps::genOp(this->L, std::move(kernel_def), 1.0);
 	arma::sp_mat oper = arma::real(_operator.to_matrix(dim));
 
 // #pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
@@ -1010,10 +1013,10 @@ void ui::matrix_elements()
 			start = std::chrono::system_clock::now();
 			// arma::Mat<element_type> mat_elem = V * Sz_ops[i] * V.t();
 			auto kernel_Sz = [Ll, site](u64 state){ 
-				auto [val, tmp11] = operators::sigma_z(state, Ll, site ); 
+				auto [val, tmp11] = operators::sigma_z<cpx>(state, Ll, site ); 
 				return std::make_pair(state, val); 
 				};
-			auto _operator = QOps::generic_operator<>(this->L, std::move(kernel_Sz), 1.0);
+			auto _operator = QOps::genOp(this->L, std::move(kernel_Sz), 1.0);
 			arma::sp_mat op = arma::real(_operator.to_matrix(dim));
 			arma::Mat<element_type> mat_elem = V.t() * op * V;
 			arma::Mat<element_type> _submat_ = mat_elem.submat(idx_min, idx_min, idx_max -1, idx_max - 1);
@@ -1028,10 +1031,10 @@ void ui::matrix_elements()
 			start = std::chrono::system_clock::now();
 			// arma::Mat<element_type> mat_elem = V * Sz_ops[i] * V.t();
 			auto kernel_Sx = [Ll, site](u64 state){ 
-				auto [val, num] = operators::sigma_x(state, Ll, site ); 
+				auto [val, num] = operators::sigma_x<cpx>(state, Ll, site ); 
 				return std::make_pair(num, val); 
 				};
-			_operator = QOps::generic_operator<>(this->L, std::move(kernel_Sx), 1.0);
+			_operator = QOps::genOp(this->L, std::move(kernel_Sx), 1.0);
 			op = arma::real(_operator.to_matrix(dim));
 			mat_elem = V.t() * op * V;
 			_submat_ = mat_elem.submat(idx_min, idx_min, idx_max -1, idx_max - 1);
@@ -1046,11 +1049,11 @@ void ui::matrix_elements()
 				start = std::chrono::system_clock::now();
 				auto kernel_SzSz = [Ll, N, site, &neighbor_generator](u64 state){ 
 					int nei = neighbor_generator.uniform_dist<int>(0, N-1);
-					auto [val1, tmp22] = operators::sigma_z(state, Ll, site );
-					auto [val2, tmp33] = operators::sigma_z(state, Ll, nei );
+					auto [val1, tmp22] = operators::sigma_z<cpx>(state, Ll, site );
+					auto [val2, tmp33] = operators::sigma_z<cpx>(state, Ll, nei );
 					return std::make_pair(state, val1 * val2);
 					};
-				_operator = QOps::generic_operator<>(this->L, std::move(kernel_SzSz), 1.0);
+				_operator = QOps::genOp(this->L, std::move(kernel_SzSz), 1.0);
 				op = arma::real(_operator.to_matrix(dim));
 				mat_elem = V.t() * op * V;
 				_submat_ = mat_elem.submat(idx_min, idx_min, idx_max -1, idx_max - 1);
@@ -1064,16 +1067,16 @@ void ui::matrix_elements()
 				start = std::chrono::system_clock::now();
 				auto kernel_kin = [Ll, N, site, &neighbor_generator](u64 state){ 
 					int nei = neighbor_generator.uniform_dist<int>(0, N-1);
-					auto [spin1, tmp11] = operators::sigma_z(state, Ll, site );
-					auto [spin2, tmp22] = operators::sigma_z(state, Ll, nei );
+					auto [spin1, tmp11] = operators::sigma_z<cpx>(state, Ll, site );
+					auto [spin2, tmp22] = operators::sigma_z<cpx>(state, Ll, nei );
 					if(std::real(spin1 * spin2) < 0){
-						auto [val1, num] = operators::sigma_x(state, Ll, site );
-						auto [val2, num2] = operators::sigma_x(num, Ll, nei );
+						auto [val1, num] = operators::sigma_x<cpx>(state, Ll, site );
+						auto [val2, num2] = operators::sigma_x<cpx>(num, Ll, nei );
 						return std::make_pair(num2, val1 * val2); 
 					} else 
 						return std::make_pair(state, cpx(0.0));
 					};
-				_operator = QOps::generic_operator<>(this->L, std::move(kernel_kin), 1.0);
+				_operator = QOps::genOp(this->L, std::move(kernel_kin), 1.0);
 				op = arma::real(_operator.to_matrix(dim));
 				mat_elem = V.t() * op * V;
 				_submat_ = mat_elem.submat(idx_min, idx_min, idx_max -1, idx_max - 1);
@@ -1301,11 +1304,11 @@ void ui::correlators()
 			start = std::chrono::system_clock::now();
 			// arma::Mat<element_type> mat_elem = V * Sz_ops[i] * V.t();
 			auto kernel = [Ll, N, site_1, site_2](u64 state){ 
-				auto [val1, tmp22] = operators::sigma_z(state, Ll, site_1 );
-				auto [val2, tmp33] = operators::sigma_z(state, Ll, site_2 );
+				auto [val1, tmp22] = operators::sigma_z<cpx>(state, Ll, site_1 );
+				auto [val2, tmp33] = operators::sigma_z<cpx>(state, Ll, site_2 );
 				return std::make_pair(state, val1 * val2);
 				};
-			auto _operator = QOps::generic_operator<>(this->L, std::move(kernel), 1.0);
+			auto _operator = QOps::genOp(this->L, std::move(kernel), 1.0);
 			arma::sp_mat op = arma::real(_operator.to_matrix(dim));
 			arma::Mat<element_type> mat_elem = V.t() * op * V;
 			std::tie(_agp, _typ_susc, _susc, tmp) = adiabatics::gauge_potential(mat_elem, E, this->L);
@@ -1337,10 +1340,10 @@ void ui::correlators()
 		start = std::chrono::system_clock::now();
 		// arma::Mat<element_type> mat_elem = V * Sz_ops[i] * V.t();
 		auto kernel = [Ll, N](u64 state){ 
-			auto [val1, tmp22] = operators::sigma_z(state, Ll, Ll - 1 );
+			auto [val1, tmp22] = operators::sigma_z<cpx>(state, Ll, Ll - 1 );
 			return std::make_pair(state, val1);
 			};
-		auto _operator = QOps::generic_operator<>(this->L, std::move(kernel), 1.0);
+		auto _operator = QOps::genOp(this->L, std::move(kernel), 1.0);
 		arma::sp_mat op = arma::real(_operator.to_matrix(dim));
 		arma::Mat<element_type> mat_elem = V.t() * op * V;
 		auto [_agp, _typ_susc, _susc, tmp] = adiabatics::gauge_potential(mat_elem, E, this->L);
@@ -1476,10 +1479,10 @@ void ui::spectral_function()
 		start = std::chrono::system_clock::now();
 		// arma::Mat<element_type> mat_elem = V * Sz_ops[i] * V.t();
 		auto kernel = [Ll, N](u64 state){ 
-			auto [val1, tmp22] = operators::sigma_z(state, Ll, Ll - 1 );
+			auto [val1, tmp22] = operators::sigma_z<cpx>(state, Ll, Ll - 1 );
 			return std::make_pair(state, val1);
 			};
-		auto _operator = QOps::generic_operator<>(this->L, std::move(kernel), 1.0);
+		auto _operator = QOps::genOp(this->L, std::move(kernel), 1.0);
 		arma::sp_mat opmat = arma::real(_operator.to_matrix(dim));
 		arma::Mat<element_type> mat_elem = V.t() * opmat * V;
 		std::cout << " - - - - - - finished matrix elements in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
@@ -1620,10 +1623,10 @@ void ui::quench()
 		
 		start = std::chrono::system_clock::now();
 		auto kernel = [Ll, N](u64 state){ 
-			auto [val1, tmp22] = operators::sigma_z(state, Ll, Ll - 1 );
+			auto [val1, tmp22] = operators::sigma_z<cpx>(state, Ll, Ll - 1 );
 			return std::make_pair(state, val1);
 			};
-		auto _operator = QOps::generic_operator<>(this->L, std::move(kernel), 1.0);
+		auto _operator = QOps::genOp(this->L, std::move(kernel), 1.0);
 		arma::sp_mat op = arma::real(_operator.to_matrix(dim));
 		arma::Mat<element_type> mat_elem = V.t() * op * V;
 		arma::vec diag_mat_elem = arma::diagvec(mat_elem);
@@ -1760,6 +1763,133 @@ void ui::multifractality(){
     std::cout << " - - - - - - FINISHED IPR CALCULATION IN : " << tim_s(start) << " seconds - - - - - - " << std::endl; // simulation end
 }
 
+
+void ui::geometric_tensor(){
+	std::string dir = this->saving_dir + "GeometricTensor" + kPSep;
+	createDirs(dir);
+	
+	size_t dim = this->ptr_to_model->get_hilbert_size();
+	std::string info = this->set_info();
+
+	const size_t size = dim > 1e5? this->l_steps : dim;
+
+	arma::vec energies(size, arma::fill::zeros);
+
+	int Ll = this->L;
+	int counter = 0;
+	
+	arma::vec omegax = arma::logspace(int(std::log10(0.1/dim)), int(std::log10( 5 + this->L )), 20 * this->L);
+	const arma::vec energy_density = arma::regspace(0.05, 0.02, 0.95);
+
+	arma::Mat<element_type> spectral_fun(omegax.size()-1, energy_density.size(), arma::fill::zeros);
+	arma::Mat<element_type> spectral_fun_typ(omegax.size()-1, energy_density.size(), arma::fill::zeros);
+	arma::Mat<element_type> element_count(omegax.size()-1, energy_density.size(), arma::fill::zeros);
+	
+	double window_width = 0.04;
+
+	int N = this->grain_size;
+	auto neighbor_generator = disorder<int>(this->seed);
+// #pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
+	for(int realis = 0; realis < this->realisations; realis++)
+	{
+		clk::time_point start_re = std::chrono::system_clock::now();
+		if(realis > 0)
+			this->ptr_to_model->generate_hamiltonian();
+		
+		clk::time_point start = std::chrono::system_clock::now();
+		if(dim > 1e5){
+			this->ptr_to_model->diag_sparse(this->l_steps, this->l_bundle, this->tol, this->seed);	
+		}
+		else{
+        	this->ptr_to_model->diagonalization();
+		}
+		std::cout << " - - - - - - finished diagonalization in : " << tim_s(start) << " s for realis = " << realis << " - - - - - - " << std::endl; // simulation end
+		start = std::chrono::system_clock::now();
+		
+		const arma::vec E = this->ptr_to_model->get_eigenvalues();
+		const auto& V = this->ptr_to_model->get_eigenvectors();
+		double E_av = arma::trace(E) / double(dim);
+
+		auto i = std::min_element(std::begin(E), std::end(E), [=](double x, double y) {
+			return abs(x - E_av) < abs(y - E_av);
+		});
+		const long Eav_idx = i - std::begin(E);
+
+		
+		long int E_min = dim < 0? 0 : Eav_idx - long(dim / 4);
+		long int E_max = dim > 1e5? dim : Eav_idx + long(dim / 4);
+
+		double cutoff = std::sqrt(this->L) / double(dim);
+
+		std::vector<arma::Mat<element_type>> mat_elements;
+		start = std::chrono::system_clock::now();
+		// arma::Mat<element_type> mat_elem = V * Sz_ops[i] * V.t();
+		auto kernel = [Ll](u64 state) -> std::pair<u64, double>
+			{ 
+			auto [val1, tmp22] = operators::sigma_z<double>(state, Ll, Ll - 1 );
+			return std::make_pair(state, val1);
+			};
+		auto _operator = QOps::generic_operator<double>(this->L, std::move(kernel), 1.0);
+		arma::sp_mat opmat = _operator.to_matrix(dim);
+		// arma::mat opmat = arma::diagmat( arma::vec(dim, arma::fill::randn) );
+		double _operator_HSnorm = arma::trace(opmat * opmat) / double(dim);
+		opmat /= std::sqrt(_operator_HSnorm);
+		mat_elements.push_back( V.t() * opmat * V );
+
+		auto kernel_SxSx = [Ll, N, &neighbor_generator](u64 state) -> std::pair<u64, double>
+		{ 
+			int nei = neighbor_generator.uniform_dist<int>(0, N-1);
+			auto [val1, Sx] = operators::sigma_x<double>(state, Ll, Ll - 1 );
+			auto [val2, SxSx] = operators::sigma_x<double>(Sx, Ll, nei );
+			return std::make_pair(SxSx, val1 * val2);
+		};
+		_operator = QOps::generic_operator<double>(this->L, std::move(kernel_SxSx), 1.0);
+		opmat = _operator.to_matrix(dim);
+		// ENSEMBLE random_matrix;
+		// opmat = random_matrix.generate_matrix(dim);
+		_operator_HSnorm = arma::trace(opmat * opmat) / double(dim);
+		opmat /= std::sqrt(_operator_HSnorm);
+		mat_elements.push_back( V.t() * opmat * V );
+		
+		std::cout << " - - - - - - finished matrix elements in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
+		start = std::chrono::system_clock::now();
+
+		// auto [_Z, _count, _count_proj,AGP_T, AGP_T_reg, AGP_E, AGP_E_proj] = adiabatics::gauge_potential_finite_T(mat_elem, E, betas, energy_density);
+		auto [_susc, _susc_r] = adiabatics::gauge_potential_save(mat_elements[0], E, this->L, cutoff);
+		auto [_susc2, _susc_r2] = adiabatics::gauge_potential_save(mat_elements[1], E, this->L, cutoff);
+		
+		#if _MAT_ENSEMBLE_ == 0
+			arma::mat geometric_tensor = arma::real(adiabatics::geometric_tensor(mat_elements, E, this->L, cutoff));
+			arma::vec chi; arma::mat chi_states;
+			arma::eig_sym(chi, chi_states, geometric_tensor);
+		#else
+			auto geometric_tensor = adiabatics::geometric_tensor(mat_elements, E, this->L, cutoff);
+			arma::vec chi; arma::cx_mat chi_states;
+			arma::eig_sym(chi, chi_states, geometric_tensor);
+		#endif
+
+		std::cout << " - - - - - - finished AGP in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
+
+		std::string dir_realis = dir + "realisation=" + std::to_string(this->jobid + realis) + kPSep;
+		createDirs(dir_realis);
+		E.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "energies"));
+		omegax.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "omegas",   arma::hdf5_opts::append));
+		energy_density.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "energy_density",   arma::hdf5_opts::append));
+
+		_susc.save(	 arma::hdf5_name(dir_realis + info + ".hdf5", "Sz/susc",     arma::hdf5_opts::append));
+		_susc_r.save(arma::hdf5_name(dir_realis + info + ".hdf5", "Sz/susc_reg", arma::hdf5_opts::append));
+		_susc2.save(  arma::hdf5_name(dir_realis + info + ".hdf5", "SxSx/susc",     arma::hdf5_opts::append));
+		_susc_r2.save(arma::hdf5_name(dir_realis + info + ".hdf5", "SxSx/susc_reg", arma::hdf5_opts::append));
+		geometric_tensor.save(arma::hdf5_name(dir_realis + info + ".hdf5", "geometric_tensor", arma::hdf5_opts::append));
+		chi.save(arma::hdf5_name(dir_realis + info + ".hdf5", "susceptibilities", arma::hdf5_opts::append));
+		chi_states.save(arma::hdf5_name(dir_realis + info + ".hdf5", "chi states", arma::hdf5_opts::append));
+		double phi_min = std::acos( arma::cdot(chi_states.col(0), arma::vec({0,1})) );
+		arma::vec({phi_min}).save(arma::hdf5_name(dir_realis + info + ".hdf5", "phi_min", arma::hdf5_opts::append));
+		double phi_max = std::acos( arma::cdot(chi_states.col(1), arma::vec({0,1})) );
+		arma::vec({phi_max}).save(arma::hdf5_name(dir_realis + info + ".hdf5", "phi_max", arma::hdf5_opts::append));
+		std::cout << " - - - - - - finished realisation realis = " << realis << " in : " << tim_s(start_re) << " s - - - - - - " << std::endl; // simulation end
+	}
+}
 // -------------------------------------------------------------------------------------------------------------------------------------
 // ---------------------------------------------------------------------------------------------------------------- IMPLEMENTATION OF UI
 

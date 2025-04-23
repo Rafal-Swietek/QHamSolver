@@ -60,6 +60,7 @@ namespace QSunUI{
         void agp_mu();
         void agp_save();
         void ground_state();
+        void geometric_tensor();
     };
 }
 
