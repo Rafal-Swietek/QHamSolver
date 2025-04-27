@@ -4,13 +4,91 @@ int outer_threads = 1;
 int num_of_threads = 1;
 
 
+#include "../include/hilbert_space/symmetries.hpp"
+#include "../include/hilbert_space/constrained.hpp"
+
 namespace QuadraticUI{
 
 void ui::make_sim(){
     printAllOptions();
 	
 	this->ptr_to_model = this->create_new_model_pointer();
-	
+	// auto do_stuff = [&]()
+	// {
+	// 	auto some_kernel = [](u64 n){
+	// 		return (n & 1);
+	// 	};
+	// 	auto _hilbert_GoldenChain = QHS::constrained_hilbert_space(this->L, std::move(some_kernel));
+		
+	// 	v_1d<QOps::genOp> symmetry_generators;
+	// 	symmetry_generators.emplace_back(QOps::_spin_flip_x_symmetry(this->L, -1));
+	// 	symmetry_generators.emplace_back(QOps::_parity_symmetry(this->L, 1));
+	// 	auto _second_hilbert = QHS::point_symmetric( this->L, symmetry_generators, 1, 1, 0);
+
+	// 	auto _hilbert_space = tensor(_second_hilbert, _hilbert_GoldenChain);
+	// 	const u64 dim = _hilbert_space.get_hilbert_space_size(); //ULLPOW(this->L);
+	// 	// printSeparated(std::cout, "\t", 20, true, "Params=", this->L, this->w, this->g, dim);
+
+	// 	disorder<double> disorder_generator;
+	// 	double gap_ratio = 0;
+	// 	for(int realis = 0; realis < this->realisations; realis++){
+	// 		arma::vec _disorder = disorder_generator.uniform(this->L, this->J - this->w, this->J + this->w);
+			
+			
+	// 		arma::cx_mat H(dim, dim, arma::fill::zeros);
+	// 		for (u64 k = 0; k < dim; k++) 
+	// 		{
+	// 			u64 base_state = _hilbert_space(k);
+	// 			for (int j = 0; j < this->L; j++)  // sum over spin d.o.f
+	// 			{
+	// 				/* disorder on localised spins */
+	// 				{
+	// 					auto [val, Sz_k] = operators::sigma_z<double>(base_state, this->L, j);
+	// 					// this->set_hamiltonian_elements(k, this->_disorder(pos_in_array) * real(val), Sz_k);
+	// 					// H(Sz_k, k) += _disorder(j) * val;
+						
+	// 					auto [state, sym_eig] = _hilbert_space.find_matrix_element(Sz_k, _hilbert_space.get_norm(k));
+	// 					H(state, k) += _disorder(j) * val * std::conj(sym_eig);
+	// 				}
+
+	// 				/* coupling of localised spins to GOE grain */
+	// 				for(int i = 0; i < this->L && i != j; i++)
+	// 				{
+	// 					auto [val1, Sx_k] = operators::sigma_x<double>(base_state, this->L, j);
+	// 					auto [val2, SxSx_k] = operators::sigma_x<double>(Sx_k, this->L, i);
+	// 					// this->set_hamiltonian_elements(k, this->_J * this->_long_range_couplings(pos_in_array) * real(val1 * val2), SxSx_k);
+	// 					// H(SxSx_k, k) += val1 * val2 / double(this->L) / std::pow(std::abs(i - j), this->g);
+						
+	// 					auto [state, sym_eig] = _hilbert_space.find_matrix_element(SxSx_k, _hilbert_space.get_norm(k));
+	// 					H(state, k) += val1 * val2 / double(this->L) / std::pow(std::abs(i - j), this->g) * std::conj(sym_eig);
+	// 				}
+	// 			}
+	// 		}
+	// 		// std::cout << H << std::endl;
+	// 		arma::vec E = arma::eig_sym(H);
+	// 		u64 E_av_idx = spectrals::get_mean_energy_index(E);
+	// 		const u64 num = std::min( u64(500), dim/10);
+	// 		double r_tmp = 0;
+	// 		int count = 0;
+	// 		for(int i = E_av_idx - num / 2; i < E_av_idx + num / 2; i++){
+	// 			const double gap1 = E(i) - E(i - 1);
+	// 			const double gap2 = E(i + 1) - E(i);
+	// 			const double min = std::min(gap1, gap2);
+	// 			const double max = std::max(gap1, gap2);
+				
+	// 			if (abs(gap1) <= 1e-15 || abs(gap2) <= 1e-15){ 
+	// 				std::cout << "Index: " << i << std::endl;
+	// 				_assert_(false, "Found degeneracy, while doing r-statistics!\n");
+	// 			}
+	// 			r_tmp += min / max;
+				
+	// 			count++;
+	// 		}
+	// 		gap_ratio += r_tmp / double(count);
+			
+	// 	}
+	// 	printSeparated(std::cout, "\t", 20, true, "h = ", this->J, "alfa = ", this->g, "Gap Ratio=", gap_ratio / double(this->realisations));
+	// };
 	// fockspace_spreading();
 	// return;
 	
@@ -79,10 +157,12 @@ void ui::make_sim(){
 						this->w = wx;
 						this->g = gx;
 						this->site = this->L / 2.;
-						this->reset_model_pointer();
+						// this->reset_model_pointer();
 						const auto start_loop = std::chrono::system_clock::now();
-						std::cout << " - - START NEW ITERATION:\t\t par = "; // simuVAtion end
-						printSeparated(std::cout, "\t", 16, true, this->L, this->J, this->w, this->g);
+						// std::cout << " - - START NEW ITERATION:\t\t par = "; // simuVAtion end
+						// printSeparated(std::cout, "\t", 16, true, this->L, this->J, this->w, this->g);
+						do_stuff(); continue;
+
 						geometric_tensor(); continue;
 
 						quench_fourier(); continue;
@@ -93,7 +173,7 @@ void ui::make_sim(){
 						eigenstate_entanglement(); continue;
 						// eigenstate_entanglement_degenerate();
 						// average_sff();
-						std::cout << "\t\t - - - - - - FINISHED ITERATION IN : " << tim_s(start_loop) << " seconds\n\t\t\t Total time : " << tim_s(start) << " s - - - - - - " << std::endl; // simuVAtion end
+						// std::cout << "\t\t - - - - - - FINISHED ITERATION IN : " << tim_s(start_loop) << " seconds\n\t\t\t Total time : " << tim_s(start) << " s - - - - - - " << std::endl; // simuVAtion end
 		}}}}
         std::cout << "Add default function" << std::endl;
 	}
@@ -1202,7 +1282,7 @@ void ui::total_spin()
 
 
 void ui::geometric_tensor(){
-	std::string dir = this->saving_dir + "GeometricTensor" + kPSep;
+	std::string dir = this->saving_dir + "GeometricTensor2" + kPSep;
 	createDirs(dir);
 	
 	size_t dim = this->ptr_to_model->get_hilbert_size();
@@ -1261,22 +1341,29 @@ void ui::geometric_tensor(){
 		std::vector<arma::Mat<element_type>> mat_elements;
 		start = std::chrono::system_clock::now();
 		// arma::Mat<element_type> mat_elem = V * Sz_ops[i] * V.t();
-		auto kernel = [Ll](u64 state) -> std::pair<u64, double>
-			{ 
-			auto [val1, tmp22] = operators::sigma_z<double>(state, Ll, 0 );
-			return std::make_pair(state, val1);
-			};
-		auto _operator = QOps::generic_operator<double>(this->L, std::move(kernel), 1.0);
-		arma::sp_mat opmat = _operator.to_matrix(dim);
+		// auto kernel = [Ll](u64 state) -> std::pair<u64, double>
+		// 	{ 
+		// 	auto [val1, tmp22] = operators::sigma_z<double>(state, Ll, 0 );
+		// 	return std::make_pair(state, val1);
+		// 	};
+		// auto _operator = QOps::generic_operator<double>(this->L, std::move(kernel), 1.0);
+		// arma::sp_mat opmat = _operator.to_matrix(dim);
+		arma::mat opmat = arma::diagmat( arma::vec(dim, arma::fill::randn) );
+		double _operator_HSnorm = arma::trace(opmat * opmat) / double(dim);
+		opmat /= std::sqrt(_operator_HSnorm);
 		mat_elements.push_back( V.t() * opmat * V );
 
-		auto kernel2 = [Ll](u64 state) -> std::pair<u64, double>
-			{ 
-			auto [val1, stateX] = operators::sigma_x<double>(state, Ll, 0 );
-			return std::make_pair(stateX, val1);
-			};
-		_operator = QOps::generic_operator<double>(this->L, std::move(kernel2), 1.0);
-		opmat = _operator.to_matrix(dim);
+		// auto kernel2 = [Ll](u64 state) -> std::pair<u64, double>
+		// 	{ 
+		// 	auto [val1, stateX] = operators::sigma_x<double>(state, Ll, 0 );
+		// 	return std::make_pair(stateX, val1);
+		// 	};
+		// _operator = QOps::generic_operator<double>(this->L, std::move(kernel2), 1.0);
+		// opmat = _operator.to_matrix(dim);
+		ENSEMBLE random_matrix;
+		opmat = random_matrix.generate_matrix(dim);
+		_operator_HSnorm = arma::trace(opmat * opmat) / double(dim);
+		opmat /= std::sqrt(_operator_HSnorm);
 		mat_elements.push_back( V.t() * opmat * V );
 		
 		std::cout << " - - - - - - finished matrix elements in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
@@ -1415,12 +1502,12 @@ void ui::parse_cmd_options(int argc, std::vector<std::string> argv)
 	#define set_param(name) _set_param_(name, false);
     
 	set_param(J);
-	#if defined(ANDERSON) || defined(AUBRY_ANDRE)
+	// #if defined(ANDERSON) || defined(AUBRY_ANDRE)
 		set_param(w);
-	#endif
-	#if defined(AUBRY_ANDRE) || defined(PLRB) || defined(RP)
+	// #endif
+	// #if defined(AUBRY_ANDRE) || defined(PLRB) || defined(RP)
 		set_param(g);
-	#endif
+	// #endif
 
 	set_volume();
 	
