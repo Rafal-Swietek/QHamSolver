@@ -161,7 +161,7 @@ void ui::make_sim(){
 						const auto start_loop = std::chrono::system_clock::now();
 						// std::cout << " - - START NEW ITERATION:\t\t par = "; // simuVAtion end
 						// printSeparated(std::cout, "\t", 16, true, this->L, this->J, this->w, this->g);
-						do_stuff(); continue;
+						// do_stuff(); continue;
 
 						geometric_tensor(); continue;
 
