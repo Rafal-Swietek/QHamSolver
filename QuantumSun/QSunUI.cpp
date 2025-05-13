@@ -1771,6 +1771,8 @@ void ui::multifractality(){
 		
 		arma::vec part_ratio_d2(size, arma::fill::zeros);
 		arma::vec info_ent_d2(size, arma::fill::zeros);
+		arma::vec part_ratio_d2_comp(size, arma::fill::zeros);
+		arma::vec info_ent_d2_comp(size, arma::fill::zeros);
 
 		outer_threads = this->thread_number;
 		omp_set_num_threads(1);
@@ -1810,6 +1812,10 @@ void ui::multifractality(){
 			double _pr_ = statistics::participation_ratio(eigenstate, V0, 2);
 			part_ratio_d2(n) = _pr_;
 			info_ent_d2(n) = -std::log(_pr_);
+
+			_pr_ = statistics::participation_ratio(eigenstate, 2);
+			part_ratio_d2_comp(n) = _pr_;
+			info_ent_d2_comp(n) = -std::log(_pr_);
 		}
 		std::cout << " - - - - - - finished IPR all for q=2 in : " << tim_s(start) << " s for realis = " << realis << " - - - - - - " << std::endl; // simulation end
 
@@ -1824,6 +1830,8 @@ void ui::multifractality(){
 		info_ent.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "info", arma::hdf5_opts::append));
 		part_ratio_d2.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "pr_d2", arma::hdf5_opts::append));
 		info_ent_d2.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "info_d2", arma::hdf5_opts::append));
+		part_ratio_d2_comp.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "pr_d2_comp", arma::hdf5_opts::append));
+		info_ent_d2_comp.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "info_d2_comp", arma::hdf5_opts::append));
 		
 		std::cout << " - - - - - - finished realisation realis = " << realis << " in : " << tim_s(start_loop) << " s - - - - - - " << std::endl; // simulation end
 	};
