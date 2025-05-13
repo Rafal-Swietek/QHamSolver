@@ -1679,9 +1679,78 @@ void ui::multifractality(){
 			this->ptr_to_model->generate_hamiltonian();
 		
     	clk::time_point start_loop = std::chrono::system_clock::now();
-		this->ptr_to_model->diagonalization();
+		// this->ptr_to_model->diagonalization();
+		const size_t dim_loc = ULLPOW( (this->L_loc) );
+		const size_t dim_erg = ULLPOW( (this->grain_size) );
+		disorder<double> disorder_generator = disorder<double>(this->seed);
 
-		const arma::vec E = this->ptr_to_model->get_eigenvalues();
+		arma::mat H = arma::mat(dim, dim, arma::fill::zeros);
+		arma::mat H0 = arma::mat(dim, dim, arma::fill::zeros);
+		auto _disorder = disorder_generator.uniform(this->L_loc, this->h - this->w, this->h + this->w);
+		std::cout << "AAAAA: " << _disorder.t() << std::endl;
+		
+		/* Create random neighbours for coupling hamiltonian */
+		auto random_neigh = disorder<int>(this->seed).uniform(this->L_loc, 0, this->grain_size - 1);
+
+		/* Create GOE Matrix */
+		arma::mat H_grain = this->gamma * GOE(this->seed).generate_matrix(dim_erg);
+		H_grain /= std::sqrt(ULLPOW(this->grain_size) + 1);
+
+		/* Create random couplings */
+		auto _long_range_couplings = arma::vec(this->L_loc, arma::fill::zeros);
+		if(this->alfa > 0){
+			
+			if( std::abs(this->alfa - 1) < 1e-10){
+				_long_range_couplings = arma::vec(this->L_loc, arma::fill::ones);
+			} else {
+				double u_j = 1 + disorder_generator.uniform_dist<double>(-this->zeta, this->zeta);
+				_long_range_couplings(0) = 1.0;
+				for (int j = 1; j < this->L_loc; j++){
+					int pos = j;
+					double u_j = pos + disorder_generator.uniform_dist<double>(-this->zeta, this->zeta);
+					_long_range_couplings(j) = std::pow(this->alfa, u_j);
+				}
+			}
+		}
+		_extra_debug(
+			std::cout << "disorder: \t\t" << this->_disorder.t() << std::endl;   
+			std::cout << "couplings: \t\t" << this->_long_range_couplings.t() << std::endl;
+			std::cout << "random_neigh: \t\t" << random_neigh.t() << std::endl;
+			std::cout << "Grain matrix: \t\t" << H_grain << std::endl;
+		)
+
+		/* Generate coupling and spin hamiltonian */
+		clk::time_point start = std::chrono::system_clock::now();
+		for (u64 k = 0; k < dim; k++) {
+			u64 base_state = k;
+			for (int j = this->grain_size; j < this->L; j++)  // sum over spin d.o.f
+			{
+				const int pos_in_array = j - this->grain_size;                // array index of localised spin
+
+				/* disorder on localised spins */
+				auto [val, Sz_k] = operators::sigma_z<double>(base_state, this->L, j);
+				H(k, k) += _disorder(pos_in_array) * (val);
+				H0(k, k) += _disorder(pos_in_array) * (val);
+			
+				/* coupling of localised spins to GOE grain */
+				int nei = random_neigh(pos_in_array);
+				auto [val1, Sx_k] = operators::sigma_x<double>(base_state, this->L, j);
+				auto [val2, SxSx_k] = operators::sigma_x<double>(Sx_k, this->L, nei);
+				double mat_element = this->J * _long_range_couplings(pos_in_array) * (val1 * val2);
+				H(SxSx_k, k) += mat_element;
+				if(j < this->L - 1)
+					H0(SxSx_k, k) += mat_element;
+			}
+		}
+		std::cout << " - - - - - - finished Hamiltonian in : " << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
+		H = H + arma::kron<arma::mat>(arma::mat(H_grain), arma::eye<arma::mat>(dim_loc, dim_loc));
+		H0 = H0 + arma::kron<arma::mat>(arma::mat(H_grain), arma::eye<arma::mat>(dim_loc, dim_loc));
+
+		arma::vec E;
+		arma::mat V;
+		arma::eig_sym(E, V, H);
+		
+
 		u64 E_av_idx = spectrals::get_mean_energy_index(E);
 
 		u64 num_of_states = std::min( u64(this->l_steps), u64(0.1*dim) );
@@ -1689,13 +1758,10 @@ void ui::multifractality(){
 		u64	Emax = E_av_idx + num_of_states / 2;
 		std::cout << " - - - - - - finished diagonalization in : " << tim_s(start) << " s for realis = " << realis << " - - - - - - " << std::endl; // simulation end
 		start = std::chrono::system_clock::now();
-
-		auto new_model = std::make_unique<QHS::QHamSolver<QuantumSun>>(this->L_loc-1, this->J, this->alfa, this->gamma, this->w, this->h, 
-																	this->seed, this->grain_size, this->zeta, this->initiate_avalanche, normalize_grain);
-		new_model->diagonalization();
-
-		const arma::mat V = arma::kron(new_model->get_eigenvectors(), arma::eye<arma::mat>(2, 2));
-		// const arma::mat V = arma::kron(arma::eye<arma::mat>(2, 2), new_model->get_eigenvectors()) / std::sqrt(2) ;
+		
+		arma::vec E0;
+		arma::mat V0;
+		arma::eig_sym(E0, V0, H0);
 
 		std::cout << " - - - - - - finished diagonalization of L-1 sized matrix in : " << tim_s(start) << " s for realis = " << realis << " - - - - - - " << std::endl; // simulation end
 		start = std::chrono::system_clock::now();
@@ -1714,12 +1780,12 @@ void ui::multifractality(){
 		#pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
 			for(int n = 0; n < num_of_states; n++)
 			{
-				arma::Col<element_type> eigenstate = arma::normalise(this->ptr_to_model->get_eigenState(n + Emin));
+				arma::Col<element_type> eigenstate = arma::normalise(V.col(n + Emin));
 				if(q_ipr_list(iq) == 1)
 				{
 					double _pr_ = 0;
 					for (int k = 0; k < eigenstate.size(); k++) {
-						arma::vec state_k = arma::normalise(V.col(k));
+						arma::vec state_k = arma::normalise(V0.col(k));
 						auto c_k = dot_prod( state_k, eigenstate);
 						double value = std::abs(std::conj(c_k) * c_k);
 						_pr_ += (std::abs(value) > 0) ? -value * std::log(value) : 0;
@@ -1728,7 +1794,7 @@ void ui::multifractality(){
 					info_ent(n, iq) = _pr_;
 				}
 				else{
-					double _pr_ = statistics::participation_ratio(eigenstate, V, q_ipr_list(iq));
+					double _pr_ = statistics::participation_ratio(eigenstate, V0, q_ipr_list(iq));
 					part_ratio(n, iq) = _pr_;
 					info_ent(n, iq) = std::log(_pr_) / (1 - q_ipr_list(iq));
 				}
@@ -1740,8 +1806,8 @@ void ui::multifractality(){
 	#pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
 		for(int n = 0; n < dim; n++)
 		{
-			arma::Col<element_type> eigenstate = arma::normalise(this->ptr_to_model->get_eigenState(n));
-			double _pr_ = statistics::participation_ratio(eigenstate, V, 2);
+			arma::Col<element_type> eigenstate = arma::normalise(V.col(n));
+			double _pr_ = statistics::participation_ratio(eigenstate, V0, 2);
 			part_ratio_d2(n) = _pr_;
 			info_ent_d2(n) = -std::log(_pr_);
 		}
@@ -1753,6 +1819,7 @@ void ui::multifractality(){
 		createDirs(dir_realis);
 		q_ipr_list.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "qs"));
 		E.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "energies", arma::hdf5_opts::append));
+		E0.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "unperturbed energies", arma::hdf5_opts::append));
 		part_ratio.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "pr", arma::hdf5_opts::append));
 		info_ent.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "info", arma::hdf5_opts::append));
 		part_ratio_d2.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "pr_d2", arma::hdf5_opts::append));
