@@ -151,6 +151,8 @@ void ui::make_sim(){
 								printSeparated(std::cout, "\t", 16, true, this->L_loc, this->J, this->alfa, this->h, this->w, this->gamma);
 								this->reset_model_pointer();
 
+								multifractality(); continue;
+
 								geometric_tensor(); continue;
 
 								ground_state(); continue;
@@ -1672,6 +1674,8 @@ void ui::multifractality(){
 	const int size = dim;	
 	// arma::vec q_ipr_list = arma::linspace(2.0 / double(this->num_of_points), 2.0, this->num_of_points);
 	arma::vec q_ipr_list = {0.5, 1.0, 1.5, 2, 3.0};
+	double energy_window = 0.01;
+	arma::vec energy_density = arma::vec({0.0, 0.1752, 0.213, 0.237, 0.2552, 0.2699, 0.2825, 0.2935, 0.3034, 0.3124, 0.3207, 0.3284, 0.3356, 0.3424, 0.3488, 0.355, 0.3608, 0.3665, 0.3719, 0.3772, 0.3822, 0.3872, 0.3919, 0.3966, 0.4012, 0.4056, 0.41, 0.4142, 0.4184, 0.4226, 0.4266, 0.4306, 0.4345, 0.4384, 0.4423, 0.4461, 0.4498, 0.4536, 0.4572, 0.4609, 0.4645, 0.4682, 0.4717, 0.4753, 0.4789, 0.4824, 0.4859, 0.4895, 0.493, 0.4965, 0.5, 0.5035, 0.507, 0.5105, 0.5141, 0.5176, 0.5211, 0.5247, 0.5283, 0.5318, 0.5355, 0.5391, 0.5428, 0.5464, 0.5502, 0.5539, 0.5577, 0.5616, 0.5655, 0.5694, 0.5734, 0.5774, 0.5816, 0.5858, 0.59, 0.5944, 0.5988, 0.6034, 0.6081, 0.6128, 0.6178, 0.6228, 0.6281, 0.6335, 0.6392, 0.645, 0.6512, 0.6576, 0.6644, 0.6716, 0.6793, 0.6876, 0.6966, 0.7065, 0.7175, 0.7301, 0.7448, 0.763, 0.787, 0.8248, 1.0});
 
 	for(int realis = 0; realis < this->realisations; realis++)
 	{
@@ -1753,7 +1757,7 @@ void ui::multifractality(){
 
 		u64 E_av_idx = spectrals::get_mean_energy_index(E);
 
-		u64 num_of_states = std::min( u64(this->l_steps), u64(0.1*dim) );
+		u64 num_of_states = std::min( u64(this->l_steps), u64(0.02*dim) );
 		u64	Emin = E_av_idx - num_of_states / 2;
 		u64	Emax = E_av_idx + num_of_states / 2;
 		std::cout << " - - - - - - finished diagonalization in : " << tim_s(start) << " s for realis = " << realis << " - - - - - - " << std::endl; // simulation end
@@ -1762,6 +1766,7 @@ void ui::multifractality(){
 		arma::vec E0;
 		arma::mat V0;
 		arma::eig_sym(E0, V0, H0);
+		double dE0 = E0(E0.size()-1) - E0(0);
 
 		std::cout << " - - - - - - finished diagonalization of L-1 sized matrix in : " << tim_s(start) << " s for realis = " << realis << " - - - - - - " << std::endl; // simulation end
 		start = std::chrono::system_clock::now();
@@ -1773,6 +1778,7 @@ void ui::multifractality(){
 		arma::vec info_ent_d2(size, arma::fill::zeros);
 		arma::vec part_ratio_d2_comp(size, arma::fill::zeros);
 		arma::vec info_ent_d2_comp(size, arma::fill::zeros);
+		arma::vec ldos(energy_density.size()-1, arma::fill::zeros);
 
 		outer_threads = this->thread_number;
 		omp_set_num_threads(1);
@@ -1816,6 +1822,19 @@ void ui::multifractality(){
 			_pr_ = statistics::participation_ratio(eigenstate, 2);
 			part_ratio_d2_comp(n) = _pr_;
 			info_ent_d2_comp(n) = -std::log(_pr_);
+
+			//!------- LDOS CALCULATION
+			if(n >= Emin && n < Emax){
+				const auto idx = int( (std::log10(E0(n)) - E0(0)) / energy_window);
+				arma::vec overlaps = V0.t() * eigenstate;
+				for(int e = 0; e < energy_density.size()-1; e++)
+				{
+					double E_minus = energy_density(e) * dE0 + E0(0);
+					double E_plus = energy_density(e+1) * dE0 + E0(0);
+					arma::uvec indices = arma::find(E0 >= E_minus && E0 < E_plus);
+					ldos(e) = arma::accu( arma::square(overlaps.rows(indices)) );
+				}
+			}
 		}
 		std::cout << " - - - - - - finished IPR all for q=2 in : " << tim_s(start) << " s for realis = " << realis << " - - - - - - " << std::endl; // simulation end
 
@@ -1824,6 +1843,8 @@ void ui::multifractality(){
 		std::string dir_realis = dir + "realisation=" + std::to_string(realis + this->jobid) + kPSep;
 		createDirs(dir_realis);
 		q_ipr_list.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "qs"));
+		ldos.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "LDOS", arma::hdf5_opts::append));
+		energy_density.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "energy_density", arma::hdf5_opts::append));
 		E.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "energies", arma::hdf5_opts::append));
 		E0.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "unperturbed energies", arma::hdf5_opts::append));
 		part_ratio.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "pr", arma::hdf5_opts::append));
