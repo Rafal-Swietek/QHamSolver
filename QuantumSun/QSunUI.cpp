@@ -1779,8 +1779,8 @@ void ui::multifractality(){
 		arma::vec info_ent_d2(size, arma::fill::zeros);
 		arma::vec part_ratio_d2_comp(size, arma::fill::zeros);
 		arma::vec info_ent_d2_comp(size, arma::fill::zeros);
-		arma::vec ldos(energy_density.size()-1, arma::fill::zeros);
-		arma::vec ldos2(energy_density.size()-1, arma::fill::zeros);
+		arma::mat ldos(num_of_states, energy_density.size()-1, arma::fill::zeros);
+		arma::mat ldos2(num_of_states, energy_density.size()-1, arma::fill::zeros);
 
 		outer_threads = this->thread_number;
 		omp_set_num_threads(1);
@@ -1834,12 +1834,12 @@ void ui::multifractality(){
 					double E_minus = energy_density(e) * dE0 + E0(0);
 					double E_plus = energy_density(e+1) * dE0 + E0(0);
 					arma::uvec indices = arma::find(E0 >= E_minus && E0 < E_plus);
-					ldos(e) += arma::accu( arma::square(overlaps.rows(indices)) );
+					ldos(n-Emin, e) = arma::accu( arma::square(overlaps.rows(indices)) );
 
 					E_minus = energy_density2(e) * dE0 + E0(0);
 					E_plus = energy_density2(e+1) * dE0 + E0(0);
 					indices = arma::find(E0 >= E_minus && E0 < E_plus);
-					ldos2(e) += arma::accu( arma::square(overlaps.rows(indices)) );
+					ldos2(n-Emin, e) = arma::accu( arma::square(overlaps.rows(indices)) );
 				}
 			}
 		}
@@ -1850,10 +1850,12 @@ void ui::multifractality(){
 		std::string dir_realis = dir + "realisation=" + std::to_string(realis + this->jobid) + kPSep;
 		createDirs(dir_realis);
 		q_ipr_list.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "qs"));
+
 		ldos.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "LDOS", arma::hdf5_opts::append));
 		energy_density.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "energy_density", arma::hdf5_opts::append));
 		ldos2.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "LDOS2", arma::hdf5_opts::append));
 		energy_density2.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "energy_density2", arma::hdf5_opts::append));
+
 		E.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "energies", arma::hdf5_opts::append));
 		E0.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "unperturbed energies", arma::hdf5_opts::append));
 		part_ratio.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "pr", arma::hdf5_opts::append));
