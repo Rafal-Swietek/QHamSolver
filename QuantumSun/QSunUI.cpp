@@ -1676,6 +1676,7 @@ void ui::multifractality(){
 	arma::vec q_ipr_list = {0.5, 1.0, 1.5, 2, 3.0};
 	double energy_window = 0.01;
 	arma::vec energy_density = arma::vec({0.0, 0.0831, 0.1265, 0.1572, 0.1814, 0.2017, 0.2194, 0.235, 0.2493, 0.2623, 0.2744, 0.2857, 0.2964, 0.3065, 0.3162, 0.3254, 0.3343, 0.3429, 0.3512, 0.3592, 0.367, 0.3747, 0.3821, 0.3894, 0.3965, 0.4036, 0.4105, 0.4172, 0.4239, 0.4306, 0.4371, 0.4436, 0.45, 0.4563, 0.4627, 0.4689, 0.4752, 0.4814, 0.4876, 0.4938, 0.5, 0.5062, 0.5124, 0.5186, 0.5248, 0.5311, 0.5373, 0.5437, 0.55, 0.5564, 0.5629, 0.5694, 0.5761, 0.5828, 0.5895, 0.5964, 0.6035, 0.6106, 0.6179, 0.6253, 0.633, 0.6408, 0.6488, 0.6571, 0.6657, 0.6746, 0.6838, 0.6935, 0.7036, 0.7143, 0.7256, 0.7377, 0.7507, 0.765, 0.7806, 0.7983, 0.8186, 0.8428, 0.8735, 0.9169, 1.0	});
+	arma::vec energy_density2 = arma::sort(0.5 - arma::logspace(-3, int(std::log(0.5)), 81));
 
 	for(int realis = 0; realis < this->realisations; realis++)
 	{
@@ -1779,6 +1780,7 @@ void ui::multifractality(){
 		arma::vec part_ratio_d2_comp(size, arma::fill::zeros);
 		arma::vec info_ent_d2_comp(size, arma::fill::zeros);
 		arma::vec ldos(energy_density.size()-1, arma::fill::zeros);
+		arma::vec ldos2(energy_density.size()-1, arma::fill::zeros);
 
 		outer_threads = this->thread_number;
 		omp_set_num_threads(1);
@@ -1832,7 +1834,12 @@ void ui::multifractality(){
 					double E_minus = energy_density(e) * dE0 + E0(0);
 					double E_plus = energy_density(e+1) * dE0 + E0(0);
 					arma::uvec indices = arma::find(E0 >= E_minus && E0 < E_plus);
-					ldos(e) = arma::accu( arma::square(overlaps.rows(indices)) );
+					ldos(e) += arma::accu( arma::square(overlaps.rows(indices)) );
+
+					E_minus = energy_density2(e) * dE0 + E0(0);
+					E_plus = energy_density2(e+1) * dE0 + E0(0);
+					indices = arma::find(E0 >= E_minus && E0 < E_plus);
+					ldos2(e) += arma::accu( arma::square(overlaps.rows(indices)) );
 				}
 			}
 		}
@@ -1845,6 +1852,8 @@ void ui::multifractality(){
 		q_ipr_list.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "qs"));
 		ldos.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "LDOS", arma::hdf5_opts::append));
 		energy_density.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "energy_density", arma::hdf5_opts::append));
+		ldos2.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "LDOS2", arma::hdf5_opts::append));
+		energy_density2.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "energy_density2", arma::hdf5_opts::append));
 		E.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "energies", arma::hdf5_opts::append));
 		E0.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "unperturbed energies", arma::hdf5_opts::append));
 		part_ratio.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "pr", arma::hdf5_opts::append));
