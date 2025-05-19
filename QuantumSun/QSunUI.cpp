@@ -1676,8 +1676,11 @@ void ui::multifractality(){
 	arma::vec q_ipr_list = {0.5, 1.0, 1.5, 2, 3.0};
 	double energy_window = 0.01;
 	arma::vec energy_density = arma::vec({0.0, 0.0831, 0.1265, 0.1572, 0.1814, 0.2017, 0.2194, 0.235, 0.2493, 0.2623, 0.2744, 0.2857, 0.2964, 0.3065, 0.3162, 0.3254, 0.3343, 0.3429, 0.3512, 0.3592, 0.367, 0.3747, 0.3821, 0.3894, 0.3965, 0.4036, 0.4105, 0.4172, 0.4239, 0.4306, 0.4371, 0.4436, 0.45, 0.4563, 0.4627, 0.4689, 0.4752, 0.4814, 0.4876, 0.4938, 0.5, 0.5062, 0.5124, 0.5186, 0.5248, 0.5311, 0.5373, 0.5437, 0.55, 0.5564, 0.5629, 0.5694, 0.5761, 0.5828, 0.5895, 0.5964, 0.6035, 0.6106, 0.6179, 0.6253, 0.633, 0.6408, 0.6488, 0.6571, 0.6657, 0.6746, 0.6838, 0.6935, 0.7036, 0.7143, 0.7256, 0.7377, 0.7507, 0.765, 0.7806, 0.7983, 0.8186, 0.8428, 0.8735, 0.9169, 1.0	});
-	arma::vec energy_density2 = arma::sort(0.5 - arma::logspace(-3, int(std::log(0.5)), 81));
+	arma::vec energy_density2 = arma::sort(0.5 - arma::logspace(-2, 0, 51));
 
+	disorder<double> disorder_generator = disorder<double>(this->seed);
+	disorder<int> neigh_generator = disorder<int>(this->seed);
+	GOE grain_generator(this->seed);
 	for(int realis = 0; realis < this->realisations; realis++)
 	{
 		if(realis > 0)
@@ -1687,7 +1690,6 @@ void ui::multifractality(){
 		// this->ptr_to_model->diagonalization();
 		const size_t dim_loc = ULLPOW( (this->L_loc) );
 		const size_t dim_erg = ULLPOW( (this->grain_size) );
-		disorder<double> disorder_generator = disorder<double>(this->seed);
 
 		arma::mat H = arma::mat(dim, dim, arma::fill::zeros);
 		arma::mat H0 = arma::mat(dim, dim, arma::fill::zeros);
@@ -1695,11 +1697,13 @@ void ui::multifractality(){
 		std::cout << "AAAAA: " << _disorder.t() << std::endl;
 		
 		/* Create random neighbours for coupling hamiltonian */
-		auto random_neigh = disorder<int>(this->seed).uniform(this->L_loc, 0, this->grain_size - 1);
+		auto random_neigh = neigh_generator.uniform(this->L_loc, 0, this->grain_size - 1);
 
 		/* Create GOE Matrix */
-		arma::mat H_grain = this->gamma * GOE(this->seed).generate_matrix(dim_erg);
-		H_grain /= std::sqrt(ULLPOW(this->grain_size) + 1);
+		arma::mat H_grain = this->gamma * grain_generator.generate_matrix(dim_erg);
+		// H_grain = H_grain - arma::trace(H_grain);
+		// H_grain /= std::sqrt(ULLPOW(this->grain_size) + 1);
+		H_grain /= std::sqrt( arma::trace(H_grain * H_grain) / double(dim_erg) );
 
 		/* Create random couplings */
 		auto _long_range_couplings = arma::vec(this->L_loc, arma::fill::zeros);
@@ -1756,11 +1760,6 @@ void ui::multifractality(){
 		arma::eig_sym(E, V, H);
 		
 
-		u64 E_av_idx = spectrals::get_mean_energy_index(E);
-
-		u64 num_of_states = std::min( u64(this->l_steps), u64(0.02*dim) );
-		u64	Emin = E_av_idx - num_of_states / 2;
-		u64	Emax = E_av_idx + num_of_states / 2;
 		std::cout << " - - - - - - finished diagonalization in : " << tim_s(start) << " s for realis = " << realis << " - - - - - - " << std::endl; // simulation end
 		start = std::chrono::system_clock::now();
 		
@@ -1768,6 +1767,19 @@ void ui::multifractality(){
 		arma::mat V0;
 		arma::eig_sym(E0, V0, H0);
 		double dE0 = E0(E0.size()-1) - E0(0);
+
+
+		// u64 E_av_idx = spectrals::get_mean_energy_index(E);
+		double E_av = 0.5 * dE0 + E0(0);
+			
+		auto i = min_element(begin(E), end(E), [=](double x, double y) {
+				return abs(x - E_av) < abs(y - E_av);
+				});
+		u64 E_av_idx = i - E.begin();
+
+		u64 num_of_states = std::min( u64(this->l_steps), u64(0.02*dim) );
+		u64	Emin = E_av_idx - num_of_states / 2;
+		u64	Emax = E_av_idx + num_of_states / 2;
 
 		std::cout << " - - - - - - finished diagonalization of L-1 sized matrix in : " << tim_s(start) << " s for realis = " << realis << " - - - - - - " << std::endl; // simulation end
 		start = std::chrono::system_clock::now();
@@ -1780,7 +1792,7 @@ void ui::multifractality(){
 		arma::vec part_ratio_d2_comp(size, arma::fill::zeros);
 		arma::vec info_ent_d2_comp(size, arma::fill::zeros);
 		arma::mat ldos(num_of_states, energy_density.size()-1, arma::fill::zeros);
-		arma::mat ldos2(num_of_states, energy_density.size()-1, arma::fill::zeros);
+		arma::mat ldos2(num_of_states, energy_density2.size()-1, arma::fill::zeros);
 
 		outer_threads = this->thread_number;
 		omp_set_num_threads(1);
@@ -1827,7 +1839,7 @@ void ui::multifractality(){
 
 			//!------- LDOS CALCULATION
 			if(n >= Emin && n < Emax){
-				const auto idx = int( (std::log10(E0(n)) - E0(0)) / energy_window);
+				// const auto idx = int( (std::log10(E0(n)) - E0(0)) / energy_window);
 				arma::vec overlaps = V0.t() * eigenstate;
 				for(int e = 0; e < energy_density.size()-1; e++)
 				{
@@ -1835,10 +1847,12 @@ void ui::multifractality(){
 					double E_plus = energy_density(e+1) * dE0 + E0(0);
 					arma::uvec indices = arma::find(E0 >= E_minus && E0 < E_plus);
 					ldos(n-Emin, e) = arma::accu( arma::square(overlaps.rows(indices)) );
-
-					E_minus = energy_density2(e) * dE0 + E0(0);
-					E_plus = energy_density2(e+1) * dE0 + E0(0);
-					indices = arma::find(E0 >= E_minus && E0 < E_plus);
+				}
+				for(int e = 0; e < energy_density2.size()-1; e++)
+				{
+					double E_minus = energy_density2(e) * dE0 + E0(0);
+					double E_plus = energy_density2(e+1) * dE0 + E0(0);
+					arma::uvec indices = arma::find(E0 >= E_minus && E0 < E_plus);
 					ldos2(n-Emin, e) = arma::accu( arma::square(overlaps.rows(indices)) );
 				}
 			}

@@ -61,6 +61,7 @@ namespace QuadraticUI{
 	    virtual double rescaling_for_coefficients() override;
 
         void geometric_tensor();
+        void multifractality() override;
     };
 }
 

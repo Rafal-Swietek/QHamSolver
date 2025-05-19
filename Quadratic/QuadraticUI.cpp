@@ -139,6 +139,9 @@ void ui::make_sim(){
 	case 13:
 		geometric_tensor();
 		break;
+	case 14:
+		multifractality();
+		break;
 	default:
 		#define generate_scaling_array(name) arma::linspace(this->name, this->name + this->name##s * (this->name##n - 1), this->name##n);
 		auto L_list = generate_scaling_array(L);
@@ -753,7 +756,7 @@ void ui::spectrals()
 
 void ui::quench()
 {
-	std::string dir = this->saving_dir + "Quench" + kPSep;
+	std::string dir = this->saving_dir + "Quench_2ndattempt" + kPSep;
 	createDirs(dir);
 	
 	size_t dim = this->ptr_to_model->get_hilbert_size();
@@ -761,10 +764,19 @@ void ui::quench()
 
 	const size_t size = dim > 1e5? this->l_steps : dim;
 	
-	double tH = dim;
+	// double tH = dim;
 	// int time_end = (int)std::ceil(std::log10(10 * tH));
 	// time_end = (time_end / std::log10(tH) < 10 ) ? time_end + 2 : time_end;
-	arma::vec times = arma::logspace(-2, (std::log10(1000 * tH)), this->num_of_points);
+	double dim_log = this->L * std::log(2);
+	double dE_base = std::sqrt(1 + std::pow(dim, 1 - this->g));
+	double bandwidth;
+	if(this->g >= 1) bandwidth = 2 * dE_base * ( std::sqrt(2 * dim_log) - std::log(dim_log * 4 * constants<double>::pi) / std::sqrt(2*dim_log) / 2 );
+	else			 bandwidth = 4 * dE_base;
+
+	double dt = constants<double>::two_pi / bandwidth;
+	double tH = 2 * dim / dE_base;
+	arma::vec times = arma::logspace(-2, std::log10(10 * tH), this->num_of_points);
+	// arma::vec times = arma::logspace(-2, (std::log10(1000 * tH)), this->num_of_points);
 
 	int Ll = this->L;
 
@@ -1280,6 +1292,159 @@ void ui::total_spin()
 	}
 }
 
+void ui::multifractality(){
+	clk::time_point start = std::chrono::system_clock::now();
+
+	std::string subdir = "ParticipationRatio" + kPSep;
+	std::string dir = this->saving_dir + "NewBasis" + kPSep + subdir;
+	createDirs(dir);
+
+	std::string info = this->set_info();
+	std::string filename = info;
+	size_t dim = this->ptr_to_model->get_hilbert_size();
+
+	int counter = 0;
+
+	const int size = dim;	
+	// arma::vec q_ipr_list = arma::linspace(2.0 / double(this->num_of_points), 2.0, this->num_of_points);
+	arma::vec q_ipr_list = {0.5, 1.0, 1.5, 2, 3.0};
+	double energy_window = 0.01;
+	arma::vec energy_density = arma::vec({0.0, 0.0831, 0.1265, 0.1572, 0.1814, 0.2017, 0.2194, 0.235, 0.2493, 0.2623, 0.2744, 0.2857, 0.2964, 0.3065, 0.3162, 0.3254, 0.3343, 0.3429, 0.3512, 0.3592, 0.367, 0.3747, 0.3821, 0.3894, 0.3965, 0.4036, 0.4105, 0.4172, 0.4239, 0.4306, 0.4371, 0.4436, 0.45, 0.4563, 0.4627, 0.4689, 0.4752, 0.4814, 0.4876, 0.4938, 0.5, 0.5062, 0.5124, 0.5186, 0.5248, 0.5311, 0.5373, 0.5437, 0.55, 0.5564, 0.5629, 0.5694, 0.5761, 0.5828, 0.5895, 0.5964, 0.6035, 0.6106, 0.6179, 0.6253, 0.633, 0.6408, 0.6488, 0.6571, 0.6657, 0.6746, 0.6838, 0.6935, 0.7036, 0.7143, 0.7256, 0.7377, 0.7507, 0.765, 0.7806, 0.7983, 0.8186, 0.8428, 0.8735, 0.9169, 1.0	});
+	arma::vec energy_density2 = arma::sort(0.5 - arma::logspace(-3, int(std::log(0.5)), 81));
+
+	disorder<double> disorder_generator = disorder<double>(this->seed);
+	GOE random_matrix(this->seed);
+	for(int realis = 0; realis < this->realisations; realis++)
+	{
+		if(realis > 0)
+			this->ptr_to_model->generate_hamiltonian();
+		
+    	clk::time_point start_loop = std::chrono::system_clock::now();
+
+		arma::vec E0 = disorder_generator.gaussian(dim, 0, 1);
+		arma::mat H0 = arma::diagmat( E0 );
+        arma::mat H = H0 + random_matrix.generate_matrix(dim) / std::pow(dim, this->g / 2.0);
+
+		// auto indices_E0 = arma::sort_index(E0);
+		// E0 = E0.rows(indices_E0);
+		std::cout << " - - - - - - finished Hamiltonian in : " << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
+		start = std::chrono::system_clock::now();
+
+		arma::vec E;
+		arma::mat V, V0;
+		arma::eig_sym(E, V, H);
+		arma::eig_sym(E0, V0, H0);
+		double dE0 = E0(E0.size()-1) - E0(0);
+		
+		// u64 E_av_idx = spectrals::get_mean_energy_index(E);
+		double E_av = 0.5 * dE0 + E0(0);
+			
+		auto i = min_element(begin(E), end(E), [=](double x, double y) {
+				return abs(x - E_av) < abs(y - E_av);
+				});
+		u64 E_av_idx = i - E.begin();
+
+		u64 num_of_states = std::min( u64(this->l_steps), u64(0.02*dim) );
+		u64	Emin = E_av_idx - num_of_states / 2;
+		u64	Emax = E_av_idx + num_of_states / 2;
+		
+
+		
+		std::cout << " - - - - - - finished diagonalization in : " << tim_s(start) << " s for realis = " << realis << " - - - - - - " << std::endl; // simulation end
+		start = std::chrono::system_clock::now();
+
+		arma::mat part_ratio(num_of_states, q_ipr_list.size(), arma::fill::zeros);
+		arma::mat info_ent(num_of_states, q_ipr_list.size(), arma::fill::zeros);
+		
+		arma::vec part_ratio_d2(size, arma::fill::zeros);
+		arma::vec info_ent_d2(size, arma::fill::zeros);
+		arma::vec part_ratio_d2_comp(size, arma::fill::zeros);
+		arma::vec info_ent_d2_comp(size, arma::fill::zeros);
+		arma::mat ldos(num_of_states, energy_density.size()-1, arma::fill::zeros);
+		arma::mat ldos2(num_of_states, energy_density.size()-1, arma::fill::zeros);
+
+		outer_threads = this->thread_number;
+		omp_set_num_threads(1);
+
+		for(int iq = 0; iq < q_ipr_list.size(); iq++)
+		{
+		#pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
+			for(int n = 0; n < num_of_states; n++)
+			{
+				arma::Col<element_type> eigenstate = arma::normalise(V.col(n + Emin));
+				if(q_ipr_list(iq) == 1)
+				{
+					double _pr_ = 0;
+					for (int k = 0; k < eigenstate.size(); k++) {
+						arma::vec state_k = arma::normalise(V0.col(k));
+						auto c_k = dot_prod( state_k, eigenstate);
+						double value = std::abs(std::conj(c_k) * c_k);
+						_pr_ += (std::abs(value) > 0) ? -value * std::log(value) : 0;
+					}
+					part_ratio(n, iq) = arma::norm(eigenstate);
+					info_ent(n, iq) = _pr_;
+				}
+				else{
+					double _pr_ = statistics::participation_ratio(eigenstate, V0, q_ipr_list(iq));
+					part_ratio(n, iq) = _pr_;
+					info_ent(n, iq) = std::log(_pr_) / (1 - q_ipr_list(iq));
+				}
+			}
+		}
+		std::cout << " - - - - - - finished IPR in spectrum center in : " << tim_s(start) << " s for realis = " << realis << " - - - - - - " << std::endl; // simulation end
+		start = std::chrono::system_clock::now();
+
+	#pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
+		for(int n = 0; n < dim; n++)
+		{
+			arma::Col<element_type> eigenstate = arma::normalise(V.col(n));
+			double _pr_ = statistics::participation_ratio(eigenstate, 2);
+			part_ratio_d2(n) = _pr_;
+			info_ent_d2(n) = -std::log(_pr_);
+
+			//!------- LDOS CALCULATION
+			if(n >= Emin && n < Emax)
+			{
+				// const auto idx = int( (std::log10(E0(n)) - E0(0)) / energy_window);
+				arma::vec overlaps = V0.t() * eigenstate; //.rows(indices_E0);
+				for(int e = 0; e < energy_density.size()-1; e++)
+				{
+					double E_minus = energy_density(e) * dE0 + E0(0);
+					double E_plus = energy_density(e+1) * dE0 + E0(0);
+					arma::uvec indices = arma::find(E0 >= E_minus && E0 < E_plus);
+					ldos(n-Emin, e) = arma::accu( arma::square(overlaps.rows(indices)) );
+
+					E_minus = energy_density2(e) * dE0 + E0(0);
+					E_plus = energy_density2(e+1) * dE0 + E0(0);
+					indices = arma::find(E0 >= E_minus && E0 < E_plus);
+					ldos2(n-Emin, e) = arma::accu( arma::square(overlaps.rows(indices)) );
+				}
+			}
+		}
+		std::cout << " - - - - - - finished IPR all for q=2 in : " << tim_s(start) << " s for realis = " << realis << " - - - - - - " << std::endl; // simulation end
+
+		omp_set_num_threads(this->thread_number);
+
+		std::string dir_realis = dir + "realisation=" + std::to_string(realis + this->jobid) + kPSep;
+		createDirs(dir_realis);
+		q_ipr_list.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "qs"));
+
+		ldos.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "LDOS", arma::hdf5_opts::append));
+		energy_density.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "energy_density", arma::hdf5_opts::append));
+		ldos2.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "LDOS2", arma::hdf5_opts::append));
+		energy_density2.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "energy_density2", arma::hdf5_opts::append));
+
+		E.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "energies", arma::hdf5_opts::append));
+		E0.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "unperturbed energies", arma::hdf5_opts::append));
+		part_ratio.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "pr", arma::hdf5_opts::append));
+		info_ent.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "info", arma::hdf5_opts::append));
+		part_ratio_d2.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "pr_d2", arma::hdf5_opts::append));
+		info_ent_d2.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "info_d2", arma::hdf5_opts::append));
+		
+		std::cout << " - - - - - - finished realisation realis = " << realis << " in : " << tim_s(start_loop) << " s - - - - - - " << std::endl; // simulation end
+	};
+    std::cout << " - - - - - - FINISHED IPR CALCULATION IN : " << tim_s(start) << " seconds - - - - - - " << std::endl; // simulation end
+}
 
 void ui::geometric_tensor(){
 	std::string dir = this->saving_dir + "GeometricTensor2" + kPSep;
