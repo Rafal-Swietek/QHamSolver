@@ -13,6 +13,8 @@ void ui::make_sim(){
     printAllOptions();
 	
 	this->ptr_to_model = this->create_new_model_pointer();
+	// arma::Mat<element_type> H = this->ptr_to_model->get_dense_hamiltonian();
+	// H.save(   arma::hdf5_name("HamiltonianRP.hdf5", "H"));
 	// auto do_stuff = [&]()
 	// {
 	// 	auto some_kernel = [](u64 n){
