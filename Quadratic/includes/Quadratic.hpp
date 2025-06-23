@@ -11,10 +11,10 @@
     #define lattice_type lattice::lattice3D
 #endif
 
-#if (_MAT_ENSEMBLE_ == 0 || _MAT_ENSEMBLE_ > 2) && (defined(SYK) || defined(RP))
-    using elem_ty = double;
-#else
+#if (_MAT_ENSEMBLE_ == 1 || _MAT_ENSEMBLE_ == 2) && (defined(SYK) || defined(RP))
     using elem_ty = cpx;
+#else
+    using elem_ty = double;
 #endif
 /// @brief Model for EBT, Anderson model
 class Quadratic : 
