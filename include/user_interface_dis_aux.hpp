@@ -239,24 +239,24 @@ void user_interface_dis<Hamiltonian>::spectral_form_factor(){
 			if(this->fun == 1) std::cout << "\t\t	--> finished microcanonical SFF for " << prefix + info << " - in time : " << tim_s(start) << "s" << std::endl;
 			start = std::chrono::system_clock::now();
 		// #pragma omp parallel for
-			for(int b_idx = 0; b_idx < betas.size(); b_idx++)
-			{
-				double inv_temp = betas(b_idx);
-				statistics::SFF<statistics::filters::raw, statistics::ensemble::GC> SFF_GC(1.0, inv_temp);
-				x = SFF_GC.calculate(eigenvalues, times_fold);
-				sff_beta_raw.row(b_idx) += (arma::abs(x) % arma::abs(x)).t();
-				Z_beta_raw(b_idx) += std::get<0>(SFF_GC.get_norms());
+			// for(int b_idx = 0; b_idx < betas.size(); b_idx++)
+			// {
+			// 	double inv_temp = betas(b_idx);
+			// 	statistics::SFF<statistics::filters::raw, statistics::ensemble::GC> SFF_GC(1.0, inv_temp);
+			// 	x = SFF_GC.calculate(eigenvalues, times_fold);
+			// 	sff_beta_raw.row(b_idx) += (arma::abs(x) % arma::abs(x)).t();
+			// 	Z_beta_raw(b_idx) += std::get<0>(SFF_GC.get_norms());
 
-				statistics::SFF<statistics::filters::gauss, statistics::ensemble::GC> SFF_GC2(0.1, inv_temp);
-				x = SFF_GC2.calculate(eigenvalues, times_fold);
-				sff_beta_folded.row(b_idx) += (arma::abs(x) % arma::abs(x)).t();
-				Z_beta_folded(b_idx) += std::get<0>(SFF_GC2.get_norms());
+			// 	statistics::SFF<statistics::filters::gauss, statistics::ensemble::GC> SFF_GC2(0.1, inv_temp);
+			// 	x = SFF_GC2.calculate(eigenvalues, times_fold);
+			// 	sff_beta_folded.row(b_idx) += (arma::abs(x) % arma::abs(x)).t();
+			// 	Z_beta_folded(b_idx) += std::get<0>(SFF_GC2.get_norms());
 
-				statistics::SFF<statistics::filters::gauss, statistics::ensemble::GC> SFF_GC3(0.1, inv_temp);
-				x = SFF_GC3.calculate(eigenvalues_unfolded, times);
-				sff_beta.row(b_idx) += (arma::abs(x) % arma::abs(x)).t();
-				Z_beta(b_idx) += std::get<0>(SFF_GC3.get_norms());
-			}
+			// 	statistics::SFF<statistics::filters::gauss, statistics::ensemble::GC> SFF_GC3(0.1, inv_temp);
+			// 	x = SFF_GC3.calculate(eigenvalues_unfolded, times);
+			// 	sff_beta.row(b_idx) += (arma::abs(x) % arma::abs(x)).t();
+			// 	Z_beta(b_idx) += std::get<0>(SFF_GC3.get_norms());
+			// }
 			
 			if(this->fun == 1) std::cout << "\t\t	--> finished canonical SFF for " << prefix + info << " - in time : " << tim_s(start) << "s" << std::endl;
 			start = std::chrono::system_clock::now();
@@ -305,8 +305,8 @@ void user_interface_dis<Hamiltonian>::spectral_form_factor(){
 	}
 
 	// --------------------------------------------------------------- AVERAGE CURRENT REALISATIONS
-	if(sff_beta_raw.is_empty()) return;
-	if(sff_beta_raw.is_zero()) return;
+	if(sff_eps.is_empty()) return;
+	if(sff_eps.is_zero()) return;
 	if(this->jobid > 0) return;
 	if(counter == 0) return;
 
