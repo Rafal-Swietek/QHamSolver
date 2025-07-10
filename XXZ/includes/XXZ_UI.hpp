@@ -81,6 +81,7 @@ namespace XXZ_UI{
         void compare_energies();
         void compare_hamiltonian();
         void check_symmetry_generators();
+        void spectrals();
 
         template <
 			typename callable, 
@@ -95,12 +96,13 @@ namespace XXZ_UI{
 			v_1d<int> zxsec = (this->use_flip_X())? v_1d<int>({-1, 1}) : v_1d<int>({1});
             // std::cout << this->L << "\t\t" << this->hx << "\t\t" << zxsec << std::endl;
             // std::cout << this->L << "\t\t" << this->hz << "\t\t" << zzsec << std::endl;
-		#pragma omp parallel for num_threads(outer_threads)// schedule(dynamic)
-        #ifdef USE_REAL_SECTORS
-            for(int ks : (this->L%2? v_1d<int>({0}) : v_1d<int>({0, (int)this->L/2})) ){
-        #else
-			for (int ks = 1; ks < this->L/2.0; ks++) {
-        #endif
+		// #pragma omp parallel for num_threads(outer_threads)// schedule(dynamic)
+        // #ifdef USE_REAL_SECTORS
+        //     for(int ks : (this->L%2? v_1d<int>({0}) : v_1d<int>({0, (int)this->L/2})) ){
+        // #else
+		// 	for (int ks = 1; ks < this->L/2.0; ks++) {
+        // #endif
+        for (int ks = 0; ks < this->L; ks++) {
 				v_1d<int> psec = k_real_sec(ks)? v_1d<int>({-1, 1}) : v_1d<int>({1});
                 std::cout << ks << "\t\t" << psec << std::endl;
                 for(auto& ps : psec){

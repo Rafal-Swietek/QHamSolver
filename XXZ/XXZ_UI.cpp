@@ -18,15 +18,18 @@ namespace XXZ_UI{
 
 void ui::make_sim(){
     printAllOptions();
+    // compare_energies();
+    // return;
 
 	this->ptr_to_model = this->create_new_model_pointer();
-	auto Hamil = this->ptr_to_model->get_hamiltonian();
-	this->l_steps = 0.05 * Hamil.n_cols;
-	if(this->l_steps > 200)
-		this->l_steps = 200;
-	auto polfed = polfed::POLFED<ui::element_type>(Hamil, this->l_steps, this->l_bundle, -1, this->tol, 0.2, this->seed, true);
-	auto [E, V] = polfed.eig();
-	return;
+
+	// auto Hamil = this->ptr_to_model->get_hamiltonian();
+	// this->l_steps = 0.05 * Hamil.n_cols;
+	// if(this->l_steps > 200)
+	// 	this->l_steps = 200;
+	// auto polfed = polfed::POLFED<ui::element_type>(Hamil, this->l_steps, this->l_bundle, -1, this->tol, 0.2, this->seed, true);
+	// auto [E, V] = polfed.eig();
+	// return;
 //     this->ptr_to_model = create_new_model_pointer();
 //     this->ptr_to_model->diagonalization(false);
 //     arma::vec E_ED = this->ptr_to_model->get_eigenvalues();
@@ -97,6 +100,8 @@ void ui::make_sim(){
 	case 4:
 		diagonal_matrix_elements();
 		break;
+    case 5: 
+        spectrals(); break;
 	default:
 		#define generate_scaling_array(name) arma::linspace(this->name, this->name + this->name##s * (this->name##n - 1), this->name##n)
         #define for_loop(param, var) for (auto& param : generate_scaling_array(var))
@@ -154,6 +159,186 @@ void ui::make_sim(){
 }
 
 
+void ui::spectrals()
+{
+	std::string dir = this->saving_dir + "Spectrals" + kPSep;
+	createDirs(dir);
+	
+	size_t dim = this->ptr_to_model->get_hilbert_size();
+	std::string info = this->set_info();
+	const size_t size = dim > 1e5? this->l_steps : dim;
+
+	int Ll = this->L;
+	int counter = 0;
+	
+	const double _bandwidth_def = std::sqrt(this->L);
+	const double _tH = double(dim) / _bandwidth_def;
+	
+	const arma::vec omegax = arma::logspace(std::log10(1.0/dim) - 2, std::log10( _bandwidth_def ) + 1, 10 * this->L);
+	const arma::vec energy_density = arma::regspace(0.05, 0.02, 0.95);
+	
+	arma::vec times = arma::logspace(-2, (std::log10(1000 * _tH)) + 1.5, this->num_of_points);
+
+	double window_width = 0.04;
+	
+    auto operator_ptr = std::make_unique<QHS::QHamSolver<XXZ>>(this->boundary_conditions, this->L, 1, 0, 0, 0, 0, this->syms.Sz, this->add_parity_breaking, 0, this->seed);
+	arma::sp_mat kinetic = operator_ptr->get_hamiltonian();
+    kinetic = kinetic * 4. / std::sqrt(this->L);
+	double _operator_HSnorm = arma::trace(kinetic * kinetic) / dim;
+	kinetic = kinetic / std::sqrt(_operator_HSnorm);
+	std::cout << "Hilbert-Schmidt Norm\t\t" << _operator_HSnorm << "\t\tNew Norm\t\t" << arma::trace(kinetic * kinetic) / dim << std::endl;
+
+// #pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
+	for(int realis = 0; realis < this->realisations; realis++)
+	{
+		clk::time_point start_re = std::chrono::system_clock::now();
+		if(realis > 0)
+			this->ptr_to_model->generate_hamiltonian();
+		
+		clk::time_point start = std::chrono::system_clock::now();
+		if(dim > 1e5){
+			this->ptr_to_model->diag_sparse(this->l_steps, this->l_bundle, this->tol, this->seed);	
+		}
+		else{
+        	this->ptr_to_model->diagonalization();
+		}
+		std::cout << " - - - - - - finished diagonalization in : " << tim_s(start) << " s for realis = " << realis << " - - - - - - " << std::endl; // simulation end
+		start = std::chrono::system_clock::now();
+		
+		const arma::vec E = this->ptr_to_model->get_eigenvalues();
+		const auto& V = this->ptr_to_model->get_eigenvectors();
+		double E_av = arma::trace(E) / double(dim);
+
+		auto i = std::min_element(std::begin(E), std::end(E), [=](double x, double y) {
+			return abs(x - E_av) < abs(y - E_av);
+		});
+		const long Eav_idx = i - std::begin(E);
+		long int E_min = dim < 0? 0 : Eav_idx - long(dim / 4);
+		long int E_max = dim > 1e5? dim : Eav_idx + long(dim / 4);
+
+		double wH = 0, r = 0;
+		for (long int i = E_min; i < E_max; i++){
+            double dE1 = E(i+1) - E(i);
+            double dE2 = E(i) - E(i-1);
+			wH += E(i+1) - E(i);
+            r += min(dE1, dE2) / max(dE1, dE2);
+        }
+		wH /= double(E_max - E_min);
+        r /= double(E_max - E_min);
+
+		start = std::chrono::system_clock::now();
+		
+		arma::Col<element_type> Hdiagonal = arma::diagvec( this->ptr_to_model->get_dense_hamiltonian() );
+
+		auto i2 = min_element(begin(Hdiagonal), end(Hdiagonal), [=](element_type x, element_type y) {
+			return abs(x - E_av) < abs(y - E_av);
+		});
+		const u64 idx = i2 - begin(Hdiagonal);
+		double quench_E = std::real( Hdiagonal(idx) );
+		double tot_spin_init = kinetic(idx, idx);
+
+		arma::Col<element_type> coeff = V.row(idx).t();
+
+		arma::vec quench(times.size(), arma::fill::zeros);
+		arma::cx_mat psi(dim, times.size(), arma::fill::zeros);
+
+		start = std::chrono::system_clock::now();
+		std::cout << " - - - - - - finished finding product state with energy E = " << quench_E << " compared to mean energy <H> = " << E_av << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
+
+		start = std::chrono::system_clock::now();
+	#pragma omp parallel for
+		for(long t_idx = 0; t_idx < times.size(); t_idx++)
+		{
+			double time = times(t_idx);
+			for(long alfa = 0; alfa < dim; alfa++)
+			{
+				auto state = V.col(alfa);
+				psi.col(t_idx) += std::exp(-1i * time * E(alfa)) * state * state(idx);
+			}
+		}
+
+		std::cout << " - - - - - - finished preparing initial states for all times in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
+		arma::Mat<element_type> mat_elem = V.t() * kinetic * V;
+		arma::Col<element_type> diag_mat_elem = arma::diagvec(mat_elem);
+		// arma::mat xx = arma::abs(mat_elem);
+		// xx.save(   arma::hdf5_name("MAT_ELEM" + info + ".hdf5", "mat_elem"));
+		// xx = ( arma::mat(total_spin) );
+		// xx.save(   arma::hdf5_name("MAT_ELEM" + info + ".hdf5", "sparse", arma::hdf5_opts::append));
+
+		std::cout << " - - - - - - finished matrix elements in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
+		start = std::chrono::system_clock::now();
+		auto [_susc, _susc_r] = adiabatics::gauge_potential_save(mat_elem, E, this->L, wH);
+
+		std::cout << " - - - - - - finished AGP in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
+		start = std::chrono::system_clock::now();
+		arma::Mat<element_type> _integrated_spectral_fun(omegax.size()-1, energy_density.size(), arma::fill::zeros);
+		arma::Mat<element_type> _spectral_fun(omegax.size()-1, energy_density.size(), arma::fill::zeros);
+		arma::Mat<element_type> _spectral_fun_typ(omegax.size()-1, energy_density.size(), arma::fill::zeros);
+		arma::Mat<element_type> _element_count(omegax.size()-1, energy_density.size(), arma::fill::zeros);
+		
+		const double bandwidth = E(E.size() - 1) - E(0);
+	#pragma omp parallel for
+		for(int ii = 0; ii < energy_density.size(); ii++){
+			const double eps = energy_density(ii);
+			const double energyx = eps * bandwidth + E(0);
+			spectrals::preset_omega set_omega(E, window_width, energyx);
+			arma::vec omegas_i, matter;
+            std::tie(omegas_i, matter) = set_omega.get_matrix_elements(mat_elem);
+            for(int k = 0; k < omegax.size() - 1; k++){
+                arma::uvec indices = arma::find(omegas_i >= omegax[k] && omegas_i < omegax[k+1]);
+                if(indices.size() > 0){
+                    _element_count(k, ii) = indices.size();
+                    arma::vec x = arma::vec( omegas_i.elem(indices) );
+                    arma::vec y = arma::vec( matter.elem(indices) );
+                    _spectral_fun(k, ii) = arma::accu( y );
+                    _spectral_fun_typ(k, ii) = arma::accu( arma::log(y) );
+                }
+                indices = arma::find(omegas_i < omegax[k+1]);
+                if(indices.size() > 0){
+                    arma::vec y = arma::vec( matter.elem(indices) );
+                    _integrated_spectral_fun(k, ii) = arma::accu(y);
+                }
+            }
+		}
+		std::cout << " - - - - - - finished Sz_L matrix elements at finite energy density in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
+
+		start = std::chrono::system_clock::now();
+	#pragma omp parallel for
+		for(long t_idx = 0; t_idx < times.size(); t_idx++)
+			quench(t_idx) = std::real( arma::cdot(psi.col(t_idx), kinetic * psi.col(t_idx)) );
+		
+		std::cout << " - - - - - - finished time evolution for Sz_L in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
+
+
+
+		{
+			std::string dir_realis = dir + "realisation=" + std::to_string(this->jobid + realis) + kPSep;
+			createDirs(dir_realis);
+			E.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "energies"));
+			omegax.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "omegas",   arma::hdf5_opts::append));
+			_integrated_spectral_fun.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "integrated_spectral_fun",   arma::hdf5_opts::append));
+			energy_density.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "energy_density",   arma::hdf5_opts::append));
+			_spectral_fun.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "spectral_fun",   arma::hdf5_opts::append));
+			_spectral_fun_typ.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "log(_spectral_fun_typ)",   arma::hdf5_opts::append));
+			_element_count.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "element_count",   arma::hdf5_opts::append));
+
+			_susc.save(	 arma::hdf5_name(dir_realis + info + ".hdf5", "susc",     arma::hdf5_opts::append));
+			_susc_r.save(arma::hdf5_name(dir_realis + info + ".hdf5", "susc_reg", arma::hdf5_opts::append));
+
+			coeff.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "coefficients", arma::hdf5_opts::append));
+			diag_mat_elem.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "diag_mat",   arma::hdf5_opts::append));
+			times.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "times",   arma::hdf5_opts::append));
+			quench.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "quench",   arma::hdf5_opts::append));
+			arma::vec( {quench_E} ).save(   arma::hdf5_name(dir_realis + info + ".hdf5", "quench_energy",   arma::hdf5_opts::append));
+			arma::vec( {tot_spin_init} ).save(   arma::hdf5_name(dir_realis + info + ".hdf5", "tot_spin_init",   arma::hdf5_opts::append));
+			arma::vec( {_operator_HSnorm} ).save(   arma::hdf5_name(dir_realis + info + ".hdf5", "HSnorm",   arma::hdf5_opts::append));
+
+			arma::vec( {wH} ).save(   arma::hdf5_name(dir_realis + info + ".hdf5", "wH",   arma::hdf5_opts::append));
+			arma::vec( {r} ).save(   arma::hdf5_name(dir_realis + info + ".hdf5", "gap_ratio",   arma::hdf5_opts::append));
+		}
+		std::cout << " - - - - - - finished realisation realis = " << realis << " in : " << tim_s(start_re) << " s - - - - - - " << std::endl; // simulation end
+	}
+}
 
 // -------------------------------------------------------------------------------------------------------------------------------------
 // ---------------------------------------------------------------------------------------------------------------- MODEL DEPENDENT FUNCTIONS
@@ -314,27 +499,27 @@ arma::sp_mat ui::energy_current(){
                 double Snei = double(check_spin(k, nei)) - 0.5;
                 double Snei2 = double(check_spin(k, nei2)) - 0.5;
                 {
-                    auto [val, state_tmp]   = operators::sigma_x(k, this->L, i);
+                    auto [val, state_tmp]   = operators::sigma_x<cpx>(k, this->L, i);
                     auto [val2, new_idx]    = operators::sigma_y(state_tmp, this->L, nei2);
                     jE(new_idx, k) += std::imag(Jx * Jy * Snei * val * val2);
                 }{
-                    auto [val, state_tmp]   = operators::sigma_x(k, this->L, nei2);
+                    auto [val, state_tmp]   = operators::sigma_x<cpx>(k, this->L, nei2);
                     auto [val2, new_idx]    = operators::sigma_y(state_tmp, this->L, i);
                     jE(new_idx, k) -= std::imag(Jx * Jy * Snei * val * val2);
                 }{
-                    auto [val, state_tmp]   = operators::sigma_x(k, this->L, nei);
+                    auto [val, state_tmp]   = operators::sigma_x<cpx>(k, this->L, nei);
                     auto [val2, new_idx]    = operators::sigma_y(state_tmp, this->L, i);
                     jE(new_idx, k) += std::imag(Jz * Jy * Snei2 * val * val2);
                 }{
-                    auto [val, state_tmp]   = operators::sigma_x(k, this->L, i);
+                    auto [val, state_tmp]   = operators::sigma_x<cpx>(k, this->L, i);
                     auto [val2, new_idx]    = operators::sigma_y(state_tmp, this->L, nei);
                     jE(new_idx, k) -= std::imag(Jz * Jx * Snei2 * val * val2);
                 }{
-                    auto [val, state_tmp]   = operators::sigma_x(k, this->L, nei2);
+                    auto [val, state_tmp]   = operators::sigma_x<cpx>(k, this->L, nei2);
                     auto [val2, new_idx]    = operators::sigma_y(state_tmp, this->L, nei);
                     jE(new_idx, k) += std::imag(Jz * Jx * Si * val * val2);
                 }{
-                    auto [val, state_tmp]   = operators::sigma_x(k, this->L, nei);
+                    auto [val, state_tmp]   = operators::sigma_x<cpx>(k, this->L, nei);
                     auto [val2, new_idx]    = operators::sigma_y(state_tmp, this->L, nei2);
                     jE(new_idx, k) -= std::imag(Jz * Jy * Si * val * val2);
                 }
@@ -371,32 +556,32 @@ ui::jE_mat_elem_kernel(
         double Snei = double(check_spin(k, nei)) - 0.5;
         double Snei2 = double(check_spin(k, nei2)) - 0.5;
         {
-            auto [val, state_tmp]   = operators::sigma_x(k, this->L, i);
+            auto [val, state_tmp]   = operators::sigma_x<cpx>(k, this->L, i);
             auto [val2, new_idx]    = operators::sigma_y(state_tmp, this->L, nei2);
             // jE(new_idx, k) += std::imag(Jx * Jy * Snei * val * val2);
             result += my_conjungate(state1(new_idx)) * std::imag(Jx * Jy * Snei * val * val2) * state2(k);
         }{
-            auto [val, state_tmp]   = operators::sigma_x(k, this->L, nei2);
+            auto [val, state_tmp]   = operators::sigma_x<cpx>(k, this->L, nei2);
             auto [val2, new_idx]    = operators::sigma_y(state_tmp, this->L, i);
             // jE(new_idx, k) -= std::imag(Jx * Jy * Snei * val * val2);
             result -= my_conjungate(state1(new_idx)) * std::imag(Jx * Jy * Snei * val * val2) * state2(k);
         }{
-            auto [val, state_tmp]   = operators::sigma_x(k, this->L, nei);
+            auto [val, state_tmp]   = operators::sigma_x<cpx>(k, this->L, nei);
             auto [val2, new_idx]    = operators::sigma_y(state_tmp, this->L, i);
             // jE(new_idx, k) += std::imag(Jz * Jy * Snei2 * val * val2);
             result += my_conjungate(state1(new_idx)) * std::imag(Jz * Jy * Snei2 * val * val2) * state2(k);
         }{
-            auto [val, state_tmp]   = operators::sigma_x(k, this->L, i);
+            auto [val, state_tmp]   = operators::sigma_x<cpx>(k, this->L, i);
             auto [val2, new_idx]    = operators::sigma_y(state_tmp, this->L, nei);
             // jE(new_idx, k) -= std::imag(Jz * Jx * Snei2 * val * val2);
             result -= my_conjungate(state1(new_idx)) * std::imag(Jz * Jx * Snei2 * val * val2) * state2(k);
         }{
-            auto [val, state_tmp]   = operators::sigma_x(k, this->L, nei2);
+            auto [val, state_tmp]   = operators::sigma_x<cpx>(k, this->L, nei2);
             auto [val2, new_idx]    = operators::sigma_y(state_tmp, this->L, nei);
             // jE(new_idx, k) += std::imag(Jz * Jx * Si * val * val2);
             result += my_conjungate(state1(new_idx)) * std::imag(Jz * Jx * Si * val * val2) * state2(k);
         }{
-            auto [val, state_tmp]   = operators::sigma_x(k, this->L, nei);
+            auto [val, state_tmp]   = operators::sigma_x<cpx>(k, this->L, nei);
             auto [val2, new_idx]    = operators::sigma_y(state_tmp, this->L, nei2);
             // jE(new_idx, k) -= std::imag(Jz * Jy * Si * val * val2);
             result -= my_conjungate(state1(new_idx)) * std::imag(Jz * Jy * Si * val * val2) * state2(k);

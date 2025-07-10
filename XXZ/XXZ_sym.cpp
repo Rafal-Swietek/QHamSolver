@@ -161,8 +161,8 @@ void XXZsym::create_hamiltonian()
                     if(s_i < 0 && s_j > 0){
                         // u64 new_idx =  flip(base_state, BinaryPowers[this->system_size - 1 - nei], this->system_size - 1 - nei);
                         // new_idx =  flip(new_idx, BinaryPowers[this->system_size - 1 - j], this->system_size - 1 - j);
-                        auto [val, state_tmp]   = operators::sigma_minus(base_state, this->system_size, nei);
-                        auto [val2, state]      = operators::sigma_plus(state_tmp, this->system_size, j);
+                        auto [val, state_tmp]   = operators::sigma_minus<cpx>(base_state, this->system_size, nei);
+                        auto [val2, state]      = operators::sigma_plus<cpx>(state_tmp, this->system_size, j);
                         
                         // 0.5 cause flip 0.5*(S+S- + S-S+)
                         this->set_hamiltonian_elements(k, 0.5 * coupling[a], state);
@@ -170,8 +170,8 @@ void XXZsym::create_hamiltonian()
                     else if(s_i > 0 && s_j < 0){
                         // u64 new_idx =  flip(base_state, BinaryPowers[this->system_size - 1 - nei], this->system_size - 1 - nei);
                         // new_idx =  flip(new_idx, BinaryPowers[this->system_size - 1 - j], this->system_size - 1 - j);
-                        auto [val, state_tmp]   = operators::sigma_minus(base_state, this->system_size, j);
-                        auto [val2, state]      = operators::sigma_plus(state_tmp, this->system_size, nei);
+                        auto [val, state_tmp]   = operators::sigma_minus<cpx>(base_state, this->system_size, j);
+                        auto [val2, state]      = operators::sigma_plus<cpx>(state_tmp, this->system_size, nei);
                         
                         // 0.5 cause flip 0.5*(S+S- + S-S+)
                         this->set_hamiltonian_elements(k, 0.5 * coupling[a], state);
