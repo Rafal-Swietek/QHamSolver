@@ -161,7 +161,7 @@ void ui::make_sim(){
 
 void ui::spectrals()
 {
-	std::string dir = this->saving_dir + "Spectrals" + kPSep;
+	std::string dir = this->saving_dir + "Spectrals_SzSz" + kPSep;
 	createDirs(dir);
 	
 	size_t dim = this->ptr_to_model->get_hilbert_size();
@@ -180,9 +180,26 @@ void ui::spectrals()
 	arma::vec times = arma::logspace(-2, (std::log10(1000 * _tH)) + 1.5, this->num_of_points);
 
 	double window_width = 0.04;
+	auto _hilbert_space = this->ptr_to_model->get_model_ref().get_hilbert_space();
 	
-    auto operator_ptr = std::make_unique<QHS::QHamSolver<XXZ>>(this->boundary_conditions, this->L, 1, 0, 0, 0, 0, this->syms.Sz, this->add_parity_breaking, 0, this->seed);
-	arma::sp_mat kinetic = operator_ptr->get_hamiltonian();
+    arma::sp_mat kinetic(dim, dim);
+    auto check_spin = QOps::__builtins::get_digit(this->L);
+
+    for (u64 k = 0; k < dim; k++) 
+    {
+		double s_i, s_j;
+		u64 base_state = _hilbert_space(k);
+		for (int j = 0; j < this->L; j++) 
+        {
+			s_i = check_spin(base_state, j) ? 0.5 : -0.5;				// true - spin up, false - spin down
+            int nei = j + 1;
+            if(nei >= this->L)
+                nei = (this->boundary_conditions)? -1 : nei % this->L;
+            s_j = check_spin(base_state, nei) ? 0.5 : -0.5;
+
+            kinetic(k, k) += s_i * s_j;
+		}
+	}
     kinetic = kinetic * 4. / std::sqrt(this->L);
 	double _operator_HSnorm = arma::trace(kinetic * kinetic) / dim;
 	kinetic = kinetic / std::sqrt(_operator_HSnorm);
@@ -693,7 +710,7 @@ void ui::parse_cmd_options(int argc, std::vector<std::string> argv)
     }
 
 	folder = this->dir_prefix + folder;
-    
+
     if (fs::create_directories(folder) || fs::is_directory(folder)) // creating the directory for saving the files with results
     	this->saving_dir = folder;									// if can create dir this is is
 }
