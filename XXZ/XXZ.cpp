@@ -42,7 +42,7 @@ XXZ::XXZ(int _BC, unsigned int L, double J1, double J2, double delta1, double de
     //     this->_add_parity_breaking = false;
     //<! disorder terms
     size_t _dim = binom(L, L / 2);
-    w = w * std::sqrt(std::sqrt(L) / _dim);
+    w = std::pow(dim, -w);
 
     this->_w = w;
     if(std::abs(w) > 0){
