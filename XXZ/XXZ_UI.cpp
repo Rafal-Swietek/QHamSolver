@@ -164,9 +164,10 @@ void ui::spectrals()
 	std::string dir = this->saving_dir + "Spectrals_SzSz" + kPSep;
 	createDirs(dir);
 	
+    const size_t dim_max = 1e2;
 	size_t dim = this->ptr_to_model->get_hilbert_size();
 	std::string info = this->set_info();
-	const size_t size = dim > 1e5? this->l_steps : dim;
+	const size_t size = dim > dim_max? this->l_steps : dim;
 
 	int Ll = this->L;
 	int counter = 0;
@@ -174,7 +175,7 @@ void ui::spectrals()
 	const double _bandwidth_def = std::sqrt(this->L);
 	const double _tH = double(dim) / _bandwidth_def;
 	
-	const arma::vec omegax = arma::logspace(std::log10(1.0/dim) - 2, std::log10( _bandwidth_def ) + 1, 10 * this->L);
+	const arma::vec omegax = arma::logspace(std::log10(1.0/dim) - 1, std::log10( _bandwidth_def ) + 1, 10 * this->L);
 	const arma::vec energy_density = arma::regspace(0.05, 0.02, 0.95);
 	
 	arma::vec times = arma::logspace(-2, (std::log10(1000 * _tH)) + 1.5, this->num_of_points);
@@ -213,7 +214,7 @@ void ui::spectrals()
 			this->ptr_to_model->generate_hamiltonian();
 		
 		clk::time_point start = std::chrono::system_clock::now();
-		if(dim > 1e5){
+		if(dim > dim_max){
 			this->ptr_to_model->diag_sparse(this->l_steps, this->l_bundle, this->tol, this->seed);	
 		}
 		else{
@@ -230,18 +231,19 @@ void ui::spectrals()
 			return abs(x - E_av) < abs(y - E_av);
 		});
 		const long Eav_idx = i - std::begin(E);
-		long int E_min = dim < 0? 0 : Eav_idx - long(dim / 4);
-		long int E_max = dim > 1e5? dim : Eav_idx + long(dim / 4);
+		long int E_min = dim > dim_max? 1 : Eav_idx - long(dim / 4);
+		long int E_max = dim > dim_max? size-1 : Eav_idx + long(dim / 4);
 
-		double wH = 0, r = 0;
+		double wH = 0, r = 0, count = 0;
 		for (long int i = E_min; i < E_max; i++){
             double dE1 = E(i+1) - E(i);
             double dE2 = E(i) - E(i-1);
 			wH += E(i+1) - E(i);
             r += min(dE1, dE2) / max(dE1, dE2);
+            count += 1;
         }
-		wH /= double(E_max - E_min);
-        r /= double(E_max - E_min);
+		wH /= double(count);
+        r /= double(count);
 
 		start = std::chrono::system_clock::now();
 		
@@ -267,7 +269,7 @@ void ui::spectrals()
 		for(long t_idx = 0; t_idx < times.size(); t_idx++)
 		{
 			double time = times(t_idx);
-			for(long alfa = 0; alfa < dim; alfa++)
+			for(long alfa = 0; alfa < size; alfa++)
 			{
 				auto state = V.col(alfa);
 				psi.col(t_idx) += std::exp(-1i * time * E(alfa)) * state * state(idx);

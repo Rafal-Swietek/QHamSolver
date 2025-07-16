@@ -41,8 +41,8 @@ XXZ::XXZ(int _BC, unsigned int L, double J1, double J2, double delta1, double de
     // if(this->_add_edge_fields)
     //     this->_add_parity_breaking = false;
     //<! disorder terms
-    size_t _dim = binom(L, L / 2);
-    w = std::pow(dim, -w);
+    // size_t _dim = binom(L, L / 2);
+    w = std::pow(this->dim, -w);
 
     this->_w = w;
     if(std::abs(w) > 0){
@@ -137,6 +137,7 @@ void XXZ::create_hamiltonian()
 		}
 		//std::cout << std::bitset<4>(base_state) << "\t";
 	}
+    // this->H = this->H / std::sqrt( arma::trace(this->H * this->H) / this->dim );//std::sqrt((2. + this->_delta1*this->_delta1) / 16. + this->_w * this->_w / 12.);
 }
 
 
