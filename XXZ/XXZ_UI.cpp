@@ -164,7 +164,7 @@ void ui::spectrals()
 	std::string dir = this->saving_dir + "Spectrals_SzSz" + kPSep;
 	createDirs(dir);
 	
-    const size_t dim_max = 1e2;
+    const size_t dim_max = 1e5;
 	size_t dim = this->ptr_to_model->get_hilbert_size();
 	std::string info = this->set_info();
 	const size_t size = dim > dim_max? this->l_steps : dim;
