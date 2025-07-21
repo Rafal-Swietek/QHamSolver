@@ -206,6 +206,26 @@ void ui::spectrals()
 	kinetic = kinetic / std::sqrt(_operator_HSnorm);
 	std::cout << "Hilbert-Schmidt Norm\t\t" << _operator_HSnorm << "\t\tNew Norm\t\t" << arma::trace(kinetic * kinetic) / dim << std::endl;
 
+    auto subsystem_sizes = arma::conv_to<arma::Col<int>>::from(arma::linspace(0, this->L, this->L + 1));
+	std::cout << subsystem_sizes.t() << std::endl;
+	std::vector<QOps::generic_operator<element_type>> permutation_op;
+	for(int LA_idx = 0; LA_idx < subsystem_sizes.size() - 1; LA_idx++)
+	{	
+		int LA = subsystem_sizes[LA_idx];
+		auto start_LA = std::chrono::system_clock::now();
+		std::vector<int> p(this->L);
+		p[LA % this->L] = 0;
+		for(int l = 0; l < this->L; l++){
+			if(l != LA % this->L){
+				p[l] = (l < (LA % this->L) )? l + 1 : l;
+			}
+		}
+		// std::cout << LA << "\t\t" << p << "\t\t" << p2 << std::endl;
+		auto permutation = QOps::_permutation_generator<element_type>(this->L, p);
+		permutation_op.push_back(permutation);
+
+		std::cout << " - - - - - - set permutation matrix for LA = " << LA << " in : " << tim_s(start_LA) << " s - - - - - - " << std::endl;
+	}
 // #pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
 	for(int realis = 0; realis < this->realisations; realis++)
 	{
@@ -327,9 +347,43 @@ void ui::spectrals()
 			quench(t_idx) = std::real( arma::cdot(psi.col(t_idx), kinetic * psi.col(t_idx)) );
 		
 		std::cout << " - - - - - - finished time evolution for Sz_L in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
+        start = std::chrono::system_clock::now();
 
+        u64 num = dim > 2000? 500 : int(dim / 10);
+        arma::mat S(num, this->L + 1, arma::fill::zeros);
+		arma::mat S_site = S;
+		arma::vec participation_entropy(num, arma::fill::zeros);
 
+		outer_threads = this->thread_number;
+		omp_set_num_threads(1);
+		std::cout << outer_threads << "\t\t" << omp_get_num_threads() << std::endl;
+		
+		E_min = Eav_idx - long(num / 2);
+		E_max = Eav_idx + long(num / 2);
+	#pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
+		for(int _n = 0; _n < num; _n++){
+            auto n = _n + E_min;
+			arma::Col<element_type> state = arma::normalise(this->ptr_to_model->get_eigenState(n));
+			// arma::Col<element_type> state2 = arma::normalise(this->ptr_to_model->get_eigenState(n));
+			
+			#pragma omp parallel for
+				for(int k = 0; k < dim; k++){
+					auto value = std::abs(state(k)) * std::abs(state(k));
+					participation_entropy(_n) += (std::abs(value) > 0) ? -value * std::log(value) : 0;
+				}
 
+			state = this->cast_state(state);
+
+			for(int LA_idx = 0; LA_idx < subsystem_sizes.size() - 1; LA_idx++)
+			{	
+				int LA = subsystem_sizes[LA_idx];
+				S(_n, LA_idx) = entropy::schmidt_decomposition(state, this->L - LA, this->L);	// bipartite entanglement at subsystem size LA
+				
+				arma::Col<element_type> permuted_state = permutation_op[LA_idx].multiply(state);
+				S_site(_n, LA_idx) = entropy::schmidt_decomposition(permuted_state, this->L - 1, this->L);	// single site entanglement at site LA
+			}
+		}
+        std::cout << " - - - - - - finished entanglement entropy in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
 		{
 			std::string dir_realis = dir + "realisation=" + std::to_string(this->jobid + realis) + kPSep;
 			createDirs(dir_realis);
@@ -354,6 +408,11 @@ void ui::spectrals()
 
 			arma::vec( {wH} ).save(   arma::hdf5_name(dir_realis + info + ".hdf5", "wH",   arma::hdf5_opts::append));
 			arma::vec( {r} ).save(   arma::hdf5_name(dir_realis + info + ".hdf5", "gap_ratio",   arma::hdf5_opts::append));
+
+			S.save(arma::hdf5_name(dir_realis + info + ".hdf5", "entropy", arma::hdf5_opts::append));
+			S_site.save(arma::hdf5_name(dir_realis + info + ".hdf5", "single_site_entropy", arma::hdf5_opts::append));
+			subsystem_sizes.save(arma::hdf5_name(dir_realis + info + ".hdf5", "subsystem sizes", arma::hdf5_opts::append));
+			participation_entropy.save(arma::hdf5_name(dir_realis + info + ".hdf5", "von Neumann participation entropy", arma::hdf5_opts::append));
 		}
 		std::cout << " - - - - - - finished realisation realis = " << realis << " in : " << tim_s(start_re) << " s - - - - - - " << std::endl; // simulation end
 	}

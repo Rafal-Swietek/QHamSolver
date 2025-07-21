@@ -41,8 +41,11 @@ XXZ::XXZ(int _BC, unsigned int L, double J1, double J2, double delta1, double de
     // if(this->_add_edge_fields)
     //     this->_add_parity_breaking = false;
     //<! disorder terms
-    // size_t _dim = binom(L, L / 2);
-    w = std::pow(this->dim, -w);
+    size_t _dim = binom(L, L / 2);
+    w = std::pow(_dim, -w);
+    std::cout << "----------------------------" << std::endl;
+    printSeparated(std::cout, "\t", 20, true, "CHECK DIM:", this->dim, _dim, w);
+    std::cout << "----------------------------" << std::endl;
 
     this->_w = w;
     if(std::abs(w) > 0){
