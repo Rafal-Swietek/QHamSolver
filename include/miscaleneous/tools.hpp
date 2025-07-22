@@ -455,5 +455,22 @@ double logbinom(double n, double k) noexcept
 /// @param k lower number in coefficient
 /// @return binomial coefficient
 inline 
-double binom(double n, double k) noexcept
-	{ return std::exp(logbinom(n,k)); }
+unsigned long long binom(int n, int k) {
+    if (k < 0 || k > n) return 0;
+    if (k == 0 || k == n) return 1;
+
+    // Take advantage of symmetry
+    if (k > n - k)
+        k = n - k;
+
+    unsigned long long result = 1;
+
+    for (int i = 1; i <= k; ++i) {
+        result *= (n - k + i);
+        result /= i;
+    }
+
+    return result;
+}
+// double binom(double n, double k) noexcept
+// 	{ return std::exp(logbinom(n,k)); }
