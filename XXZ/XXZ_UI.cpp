@@ -164,7 +164,7 @@ void ui::spectrals()
 	std::string dir = this->saving_dir + "Spectrals_SzSz" + kPSep;
 	createDirs(dir);
 	
-    const size_t dim_max = 1e5;
+    const size_t dim_max = 1e4;
 	size_t dim = this->ptr_to_model->get_hilbert_size();
 	std::string info = this->set_info();
 	const size_t size = dim > dim_max? this->l_steps : dim;
@@ -281,25 +281,29 @@ void ui::spectrals()
 
 		arma::Col<element_type> coeff = V.row(idx).t();
 
-		arma::vec quench(times.size(), arma::fill::zeros);
-		arma::cx_mat psi(dim, times.size(), arma::fill::zeros);
+        arma::vec quench;
+        arma::cx_mat psi;
+        if(dim < dim_max){
+            quench = arma::vec(times.size(), arma::fill::zeros);
+            psi = arma::cx_mat(dim, times.size(), arma::fill::zeros);
+            start = std::chrono::system_clock::now();
+            std::cout << " - - - - - - finished finding product state with energy E = " << quench_E << " compared to mean energy <H> = " << E_av << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
+            
 
-		start = std::chrono::system_clock::now();
-		std::cout << " - - - - - - finished finding product state with energy E = " << quench_E << " compared to mean energy <H> = " << E_av << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
+            start = std::chrono::system_clock::now();
+        #pragma omp parallel for
+            for(long t_idx = 0; t_idx < times.size(); t_idx++)
+            {
+                double time = times(t_idx);
+                for(long alfa = 0; alfa < size; alfa++)
+                {
+                    auto state = V.col(alfa);
+                    psi.col(t_idx) += std::exp(-1i * time * E(alfa)) * state * state(idx);
+                }
+            }
 
-		start = std::chrono::system_clock::now();
-	#pragma omp parallel for
-		for(long t_idx = 0; t_idx < times.size(); t_idx++)
-		{
-			double time = times(t_idx);
-			for(long alfa = 0; alfa < size; alfa++)
-			{
-				auto state = V.col(alfa);
-				psi.col(t_idx) += std::exp(-1i * time * E(alfa)) * state * state(idx);
-			}
-		}
-
-		std::cout << " - - - - - - finished preparing initial states for all times in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
+            std::cout << " - - - - - - finished preparing initial states for all times in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
+        }
 		arma::Mat<element_type> mat_elem = V.t() * kinetic * V;
 		arma::Col<element_type> diag_mat_elem = arma::diagvec(mat_elem);
 		// arma::mat xx = arma::abs(mat_elem);
@@ -344,15 +348,19 @@ void ui::spectrals()
 		}
 		std::cout << " - - - - - - finished Sz_L matrix elements at finite energy density in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
 
-		start = std::chrono::system_clock::now();
-	#pragma omp parallel for
-		for(long t_idx = 0; t_idx < times.size(); t_idx++)
-			quench(t_idx) = std::real( arma::cdot(psi.col(t_idx), kinetic * psi.col(t_idx)) );
-		
-		std::cout << " - - - - - - finished time evolution for Sz_L in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
+        if(dim < dim_max){
+            start = std::chrono::system_clock::now();
+        #pragma omp parallel for
+            for(long t_idx = 0; t_idx < times.size(); t_idx++)
+                quench(t_idx) = std::real( arma::cdot(psi.col(t_idx), kinetic * psi.col(t_idx)) );
+            
+            std::cout << " - - - - - - finished time evolution for Sz_L in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
+        }
         start = std::chrono::system_clock::now();
 
-        u64 num = dim > 2000? 500 : int(dim / 10);
+		E_min = dim > dim_max? 0 : Eav_idx - std::min(500, int(dim/10));
+		E_max = dim > dim_max? size : Eav_idx + std::min(500, int(dim/10));
+        u64 num = E_max - E_min;
         arma::mat S(num, this->L + 1, arma::fill::zeros);
 		arma::mat S_site = S;
 		arma::vec participation_entropy(num, arma::fill::zeros);
@@ -361,8 +369,6 @@ void ui::spectrals()
 		omp_set_num_threads(1);
 		std::cout << outer_threads << "\t\t" << omp_get_num_threads() << std::endl;
 		
-		E_min = Eav_idx - long(num / 2);
-		E_max = Eav_idx + long(num / 2);
 	#pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
 		for(int _n = 0; _n < num; _n++){
             auto n = _n + E_min;
