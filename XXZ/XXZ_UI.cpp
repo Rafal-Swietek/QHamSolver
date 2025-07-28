@@ -196,9 +196,12 @@ void ui::spectrals()
             int nei = j + 1;
             if(nei >= this->L)
                 nei = (this->boundary_conditions)? -1 : nei % this->L;
-            s_j = check_spin(base_state, nei) ? 0.5 : -0.5;
+            
+            if(nei >= 0){
+                s_j = check_spin(base_state, nei) ? 0.5 : -0.5;
 
-            kinetic(k, k) += s_i * s_j;
+                kinetic(k, k) += s_i * s_j;
+            }
 		}
 	}
     kinetic = kinetic * 4. / std::sqrt(this->L);
@@ -383,6 +386,7 @@ void ui::spectrals()
 				S_site(_n, LA_idx) = entropy::schmidt_decomposition(permuted_state, this->L - 1, this->L);	// single site entanglement at site LA
 			}
 		}
+    	omp_set_num_threads(this->thread_number);
         std::cout << " - - - - - - finished entanglement entropy in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
 		{
 			std::string dir_realis = dir + "realisation=" + std::to_string(this->jobid + realis) + kPSep;
