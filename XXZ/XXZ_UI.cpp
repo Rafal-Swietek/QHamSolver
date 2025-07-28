@@ -270,20 +270,22 @@ void ui::spectrals()
 
 		start = std::chrono::system_clock::now();
 		
-		arma::Col<element_type> Hdiagonal = arma::diagvec( this->ptr_to_model->get_dense_hamiltonian() );
-
-		auto i2 = min_element(begin(Hdiagonal), end(Hdiagonal), [=](element_type x, element_type y) {
-			return abs(x - E_av) < abs(y - E_av);
-		});
-		const u64 idx = i2 - begin(Hdiagonal);
-		double quench_E = std::real( Hdiagonal(idx) );
-		double tot_spin_init = kinetic(idx, idx);
-
-		arma::Col<element_type> coeff = V.row(idx).t();
-
+        double quench_E, tot_spin_init;
         arma::vec quench;
         arma::cx_mat psi;
+        arma::Col<element_type> coeff;
         if(dim < dim_max){
+            arma::Col<element_type> Hdiagonal = arma::diagvec( this->ptr_to_model->get_dense_hamiltonian() );
+
+            auto i2 = min_element(begin(Hdiagonal), end(Hdiagonal), [=](element_type x, element_type y) {
+                return abs(x - E_av) < abs(y - E_av);
+            });
+            const u64 idx = i2 - begin(Hdiagonal);
+            double quench_E = std::real( Hdiagonal(idx) );
+            double tot_spin_init = kinetic(idx, idx);
+
+            coeff = V.row(idx).t();
+
             quench = arma::vec(times.size(), arma::fill::zeros);
             psi = arma::cx_mat(dim, times.size(), arma::fill::zeros);
             start = std::chrono::system_clock::now();
