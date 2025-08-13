@@ -28,8 +28,8 @@ XXZ::XXZ(int _BC, unsigned int L, double J1, double J2, double delta1, double de
     this->system_size = L; 
     this->_J1 = J1;
     this->_J2 = J2;
-    this->_delta1 = delta1;
-    this->_delta2 = delta2;
+    // this->_delta1 = delta1;
+    // this->_delta2 = delta2;
     
     this->_hz = hz;
     this->Sz = Sz;
@@ -42,9 +42,11 @@ XXZ::XXZ(int _BC, unsigned int L, double J1, double J2, double delta1, double de
     //     this->_add_parity_breaking = false;
     //<! disorder terms
     size_t _dim = binom(L, L / 2);
-    w = std::pow(_dim, -w);
+    delta1 = std::pow(_dim, -delta1);
+    this->_delta1 = delta1;
+    this->_delta2 = delta2;
     std::cout << "----------------------------" << std::endl;
-    printSeparated(std::cout, "\t", 20, true, "CHECK DIM:", this->dim, _dim, w);
+    printSeparated(std::cout, "\t", 20, true, "CHECK DIM:", this->dim, _dim, delta1);
     std::cout << "----------------------------" << std::endl;
 
     this->_w = w;
