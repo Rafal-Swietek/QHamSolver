@@ -92,10 +92,11 @@ namespace QOps {
 				if constexpr(_particle_type == particle::fermion){
 					return [L](u64 n) { 
 						u64 odd_mask = 0;
-						for (int i = 1; i < L; i += 2)
+						for (int i = 0; i < L; i += 2)
 							odd_mask |= (1ULL << i);
 						int odd_count = __builtin_popcount(n & odd_mask);
-						double sign = (odd_count & 1) ? 1.0 : 1.0;
+
+						double sign = (odd_count & 1) ? -1.0 : 1.0;
 						// printSeparated(std::cout, "\t", 20, true, n, odd_count, boost::dynamic_bitset<>(L, n), boost::dynamic_bitset<>(L, odd_mask), boost::dynamic_bitset<>(L, n & odd_mask), sign);
 						u64 mask = (L >= 64) ? ~0ULL : ((1ULL << L) - 1);
 						return std::make_pair((~n) & mask, sign); 

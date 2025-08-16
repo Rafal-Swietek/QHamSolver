@@ -38,11 +38,11 @@ if __name__ == '__main__':
     gamma=1.0
     ini_ave=0
     
-    nu = 0.5
+    nu = 500
     
     seed = int(sys.argv[1])
 
-    sizes = np.arange(8, 15)
+    sizes = np.arange(10, 17)
 
     perturbation = []
     gap_ratio = []
@@ -51,8 +51,9 @@ if __name__ == '__main__':
         name = f"./collected data/results/nu={nu}/" + f'_L={L}.hdf5'
         if os.path.exists(name):
             with h5py.File(name, "r") as file:
-                perturbation.append( np.array(file.get('perturbation')))
-                gap_ratio.append(np.array(file.get('gap_ratio')))
+                gx = np.array(file.get('perturbation'))
+                perturbation.append( gx[gx < 1.5])
+                gap_ratio.append( np.array(file.get('gap_ratio'))[gx < 1.5] )
         else:
             print(name)
     gap_ratio   = np.array(gap_ratio)
@@ -63,9 +64,9 @@ if __name__ == '__main__':
         name = f"./thouless time/" + f'_L={L}.hdf5'
         if os.path.exists(name):
             with h5py.File(name, "r") as file:
-                tH      = np.array(file.get('heisenberg time'))
-                t_Th    = np.array(file.get('thouless time'))
-                thouless_cond.append( np.log(tH / t_Th) )
+                tH      = np.array(file.get('heisenberg time'))[gx < 1.5]
+                t_Th    = np.array(file.get('thouless time'))[gx < 1.5]
+                thouless_cond.append( np.log(1 / t_Th) )
         else:
             print(name)
     thouless_cond   = np.array(thouless_cond)

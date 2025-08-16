@@ -73,7 +73,7 @@ namespace QHS{
             }
             
             // for(auto& idx : mapping)
-            //     std::cout << idx << "";
+            //     printSeparated(std::cout, "\t", 20, true, idx, boost::dynamic_bitset<>(this->system_size, idx), __builtin_popcountll(idx));
             // std::cout << std::endl;
             this->dim = this->mapping.size();
         }
@@ -95,3 +95,5 @@ namespace QHS{
             { return binary_search(this->mapping, 0, this->dim - 1, element); }
     };
 }
+
+#include "constrained_aux.hpp"

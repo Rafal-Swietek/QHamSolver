@@ -8,7 +8,48 @@ namespace AndersonUI{
 
 void ui::make_sim(){
     printAllOptions();
+	int global_sum = 0;
+	// for(auto ell : multi_index(this->V,this->V))
+	// {
+	// 	int sum = ell[0] - ell[1];
+	// 	if( sum == 0 ) global_sum++;
+	// }
+	// printSeparated(std::cout, "\t", 16, true, "m=1\t\t", global_sum, (std::log(global_sum) / std::log(this->V)));
+	// global_sum = 0;
+	// for(auto ell : multi_index(this->V,this->V, this->V,this->V))
+	// {
+	// 	int sum = ell[0] - ell[1] + ell[2] - ell[3];
+	// 	if( sum == 0 ) global_sum++;
+	// }
+	// printSeparated(std::cout, "\t", 16, true, "m=2\t\t", global_sum, (std::log(global_sum) / std::log(this->V)));
+	for(this->V = 2; this->V < 28; this->V += 2){
+		global_sum = 0;
+		for(auto ell : multi_index(this->V,this->V, this->V,this->V, this->V,this->V))
+		{
+			// int sum = ell[0] - ell[1] + ell[2] - ell[3] + ell[4] - ell[5];
+			if( ell[0] + ell[5] == ell[1] + ell[4]) 
+				if( ell[1] + ell[2] == ell[0] + ell[3]) 
+					if( ell[3] + ell[4] == ell[2] + ell[5]) 
+						global_sum++;
+		}
+		printSeparated(std::cout, "\t", 16, true, this->V, global_sum, (std::log(global_sum) / std::log(this->V)));
+	}
+	// global_sum = 0;
+	// for(auto ell : multi_index(this->V,this->V, this->V,this->V, this->V,this->V, this->V,this->V))
+	// {
+	// 	int sum = ell[0] - ell[1] + ell[2] - ell[3] + ell[4] - ell[5] + ell[6] - ell[7];
+	// 	if( sum == 0 ) global_sum++;
+	// }
+	// printSeparated(std::cout, "\t", 16, true, "m=4\t\t", global_sum, (std::log(global_sum) / std::log(this->V))); 
+	// global_sum = 0;
+	// for(auto ell : multi_index(this->V,this->V, this->V,this->V, this->V,this->V, this->V,this->V, this->V,this->V))
+	// {
+	// 	int sum = ell[0] - ell[1] + ell[2] - ell[3] + ell[4] - ell[5] + ell[6] - ell[7] + ell[8] - ell[9];
+	// 	if( sum == 0 ) global_sum++;
+	// }
+	// printSeparated(std::cout, "\t", 16, true, "m=5\t\t", global_sum, (std::log(global_sum) / std::log(this->V)));
 	
+	return;
 	this->ptr_to_model = this->create_new_model_pointer();
 	
 	clk::time_point start = std::chrono::system_clock::now();
@@ -62,10 +103,11 @@ void ui::eigenstate_entanglement()
 	std::string info = this->set_info();
 	std::string filename = info;// + "_subsize=" + std::to_string(VA);
 
-	u64 num_states = 10000;//ULLPOW(14);
+	u64 num_states = this->num_of_points;//ULLPOW(14);
 
-	auto subsystem_sizes = arma::conv_to<arma::Col<int>>::from(arma::linspace(0, this->V / 2 - 1, this->V / 2));
-	std::cout << subsystem_sizes[0] << "...\t" << subsystem_sizes[subsystem_sizes.size() - 1] << std::endl;
+	// arma::Col<int> subsystem_sizes = arma::conv_to<arma::Col<int>>::from(arma::linspace(0, this->V / 2 - 1, this->V / 2));
+	arma::Col<int> subsystem_sizes = arma::Col<int>({this->V / 2});
+	std::cout << subsystem_sizes(0) << "...\t" << subsystem_sizes(subsystem_sizes.size() - 1) << std::endl;
 
 	arma::vec energies(num_states, arma::fill::zeros);
 	arma::vec entropies(subsystem_sizes.size(), arma::fill::zeros);
@@ -95,24 +137,41 @@ void ui::eigenstate_entanglement()
 
 		std::cout << " - - - - - - finished diagonalization in : " << tim_s(start) << " s for realis = " << realis << " - - - - - - " << std::endl; // simuVAtion end
 		
-		const arma::vec single_particle_energy 	= this->ptr_to_model->get_eigenvalues();
-		const arma::mat orbitals 				= this->ptr_to_model->get_eigenvectors();
+		arma::vec single_particle_energy = this->ptr_to_model->get_eigenvalues();
+		for(int k = 0; k < this->V; k++){
+			single_particle_energy(k) = -2 * std::cos(2 * pi * double(k) / double(this->V));
+		}
+		
+		
+		arma::cx_mat orbitals = arma::cx_mat(this->V, this->V, arma::fill::zeros);
+		for(int k = 0; k < this->V; k++)
+			for(int l = 0; l < this->V; l++)
+				orbitals(k, l) = std::exp(1i * double(l) * 2.0 * pi * double(k) / double(this->V)) / std::sqrt(this->V);
+		// orbitals.zeros(); orbitals.set_real(this->ptr_to_model->get_eigenvectors());
+
+		// arma::sp_mat H = this->ptr_to_model->get_hamiltonian();
+		// std::cout << arma::sort(single_particle_energy).t();
+		// std::cout << arma::sort(arma::real(arma::mat(orbitals * (H) * orbitals.t()).diag())).t();
 
 		arma::vec S(subsystem_sizes.size(), arma::fill::zeros);
 		arma::vec S_site(subsystem_sizes.size(), arma::fill::zeros);
 
-		auto mb_states = entanglement::mb_configurations(num_states, this->V, random_generator);
-
+		// auto mb_states = entanglement::mb_config_all(this->V);
+		auto mb_states = single_particle::mb_config(num_states, this->V, random_generator);
+		// auto mb_states = entanglement::mb_config_free_fermion(num_states, this->V, random_generator);
+		
 		arma::vec E(num_states);
+		// num_states = mb_states.size();
 		
 		
 		std::cout << " - - - - - - finished many-body configurations in : " << tim_s(start) << " s for realis = " << realis << " - - - - - - " << std::endl;
-		std::cout << "Number of states = \t\t" << mb_states.size() << std::endl << std::endl; 
+		std::cout << "Number of states = \t\t" << num_states << std::endl << std::endl; 
 		outer_threads = this->thread_number;
 		omp_set_num_threads(1);
 		std::cout << outer_threads << "\t\t" << omp_get_num_threads() << std::endl;
 		
-	#pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
+		// arma::cx_vec coeff = random_generator.create_random_vec<cpx>(num_states, 0.0);
+		// coeff /= arma::norm(coeff);
 		for(auto& VA : subsystem_sizes)
 		{
 			auto start_VA = std::chrono::system_clock::now();
@@ -121,31 +180,148 @@ void ui::eigenstate_entanglement()
 
 			double entropy_single_site = 0;
 			double entropy = 0;
-			for(u64 n = 0; n < mb_states.size(); n++){
+
+			arma::cx_vec traces(5, arma::fill::zeros);
+			arma::cx_vec traces_pred(5, arma::fill::zeros);
+			arma::cx_vec traces_pred2(5, arma::fill::zeros);
+
+			arma::cx_vec correlation_Nq(5, arma::fill::zeros);
+
+			arma::cx_mat chi(this->V, this->V, arma::fill::zeros);
+			for(auto q : multi_index(this->V,this->V))
+			{
+				for(int ell = 0; ell < VA; ell++)
+					chi(q[0], q[1]) += orbitals(q[0], ell) * std::conj(orbitals(q[1], ell));
+			}
+			std::cout << chi << std::endl;
+		#pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
+			for(u64 n = 0; n < num_states; n++){
 				E(n) = 0;
 				double lambda = 0;
-				// arma::mat rho(VA, VA, arma::fill::zeros);
+				arma::cx_mat J_m(VA, VA, arma::fill::zeros);
+				int N = 0;
 				for(int q = 0; q < this->V; q++){
 					double n_q = int(mb_states[n][q]);
 					double c_q = 2 * n_q - 1;
-					lambda += c_q * orbitals(VA, q) * orbitals(VA, q);
+					lambda += c_q * std::abs(orbitals(q, VA) * orbitals(q, VA));
 					
 					E(n) += single_particle_energy(q) * n_q;
-					// if(VA > 0){
-					// 	arma::vec orbital = orbitals.col(q).rows(0, VA - 1);
-					// 	rho += c_q * orbital * orbital.t();
-					// }
+					if(VA > 0){
+						arma::cx_vec orbital = orbitals.col(q).rows(0, VA - 1);
+						J_m += c_q * orbital * orbital.t();
+						// for(auto idx : multi_index(VA, VA)){
+						// 	J_m(idx[0], idx[1]) -= c_q * std::exp(1i * two_pi * double(q * (idx[1] - idx[0]) ) / double(this->V)) / double(this->V);
+						// }
+					}
+					for(int k = 0; k < traces.size(); k++){
+						traces_pred(k) += std::pow(c_q / 2.0, 2*k+2);
+					}
+					N += n_q;
 				}
-				// auto lambdas = arma::eig_sym(rho);
+				auto lambdas = arma::eig_sym(J_m);
+				std::cout << mb_states[n] << "\t\t" << lambdas.t() << std::endl;
+
+				for(int k = 0; k < traces.size(); k++){
+					traces(k) += arma::trace(arma::powmat(J_m, 2*k+2));
+					// traces_pred(k) += N * (1 - double(N) / double(this->L)) / std::pow(2, 2*k);
+				}
 				
-				// entropy 			+= entanglement::entropy::vonNeumann(lambdas);
-				// #pragma omp critical
+				for(auto q : multi_index(this->V,this->V))
 				{
-					entropy_single_site += entanglement::entropy::vonNeumann_helper(lambda);
+					cpx n_q = 1.0;
+					double Nq_tmp = 1.0;
+					for(int id = 0; id < q.size(); id++){
+						int id2 = (id - 1) < 0? q.size() - id - 1 : id - 1;
+						n_q *= double(2 * int(mb_states[n][q[id]]) - 1.0) * chi(q[id], q[id2]);
+						if(q[id2] != q[id])
+							Nq_tmp *= double(2 * int(mb_states[n][q[id]]) - 1.0);
+					}
+					traces_pred2(0) += n_q;
+					correlation_Nq(0) += Nq_tmp;
 				}
+				
+				
+				for(auto q : multi_index(this->V, this->V, this->V, this->V))
+				{
+					cpx n_q = 1.0;
+					double Nq_tmp = 1.0;
+					for(int id = 0; id < q.size(); id++){
+						int id2 = (id - 1) < 0? q.size() - id - 1 : id - 1;
+						n_q *= double(2 * int(mb_states[n][q[id]]) - 1.0) * chi(q[id], q[id2]);
+						if(q[id2] != q[id])
+							Nq_tmp *= double(2 * int(mb_states[n][q[id]]) - 1.0);
+					}
+					traces_pred2(1) += n_q;
+					correlation_Nq(1) += Nq_tmp;
+				}
+				
+				for(auto q : multi_index(this->V,this->V, this->V,this->V, this->V,this->V))
+				{
+					cpx n_q = 1.0;
+					double Nq_tmp = 1.0;
+					for(int id = 0; id < q.size(); id++){
+						int id2 = (id - 1) < 0? q.size() - id - 1 : id - 1;
+						n_q *= double(2 * int(mb_states[n][q[id]]) - 1.0) * chi(q[id], q[id2]);
+						if(q[id2] != q[id])
+							Nq_tmp *= double(2 * int(mb_states[n][q[id]]) - 1.0);
+					}
+					traces_pred2(2) += n_q;
+					correlation_Nq(2) += Nq_tmp;
+				}
+				
+				for(auto q : multi_index(this->V,this->V, this->V,this->V, this->V,this->V, this->V,this->V))
+				{
+					cpx n_q = 1.0;
+					double Nq_tmp = 1.0;
+					for(int id = 0; id < q.size(); id++){
+						int id2 = (id - 1) < 0? q.size() - id - 1 : id - 1;
+						n_q *= double(2 * int(mb_states[n][q[id]]) - 1.0) * chi(q[id], q[id2]);
+						if(q[id2] != q[id])
+							Nq_tmp *= double(2 * int(mb_states[n][q[id]]) - 1.0);
+					}
+					traces_pred2(3) += n_q;
+					correlation_Nq(3) += Nq_tmp;
+				}
+
+				// for(auto q : multi_index(this->V,this->V, this->V,this->V, this->V,this->V, this->V,this->V, this->V,this->V))
+				// {
+				// 	cpx n_q = 1.0;
+				// 	double Nq_tmp = 1.0;
+				// 	for(int id = 0; id < q.size(); id++){
+				// 		int id2 = (id - 1) < 0? q.size() - id - 1 : id - 1;
+				// 		n_q *= double(2 * int(mb_states[n][q[id]]) - 1.0) * chi(q[id], q[id2]);
+				// 		if(id > 0 && q[id] != q[id2])
+				// 			Nq_tmp *= double(2 * int(mb_states[n][q[id]]) - 1.0);
+				// 	}
+				// 	traces_pred2(4) += n_q;
+				// 	correlation_Nq(4) += Nq_tmp;
+				// }
+				
+				#pragma omp critical
+				{
+					// std::cout << n << "\t\t" << entanglement::entropy::vonNeumann(lambdas) << std::endl;
+					entropy 			+= single_particle::entanglement::vonNeumann(lambdas);
+					entropy_single_site += single_particle::entanglement::vonNeumann_helper(lambda);
+				} 
 			}
-			S(VA) 		= entropy / (double)mb_states.size();				// entanglement of subsystem VA
-			S_site(VA) 	= entropy_single_site / double(mb_states.size());	// single site entanglement at site VA
+			std::cout << VA << "\t\t";
+			for(int k = 0; k < traces.size(); k++)
+				std::cout << std::real(traces(k)) / double(num_states) << "\t\t";
+			std::cout << std::endl;
+			std::cout << VA << "\t\t";
+			for(int k = 0; k < traces.size(); k++)
+				std::cout <<  std::real(traces_pred(k)) / double(num_states) << "\t\t";
+			std::cout << std::endl;
+			std::cout << VA << "\t\t";
+			for(int k = 0; k < traces.size(); k++)
+				std::cout <<  std::real(traces_pred2(k)) / double(num_states) << "\t\t";
+			std::cout << std::endl;
+			std::cout << "\n Check product: \n";
+			for(int k = 0; k < traces.size(); k++)
+				printSeparated(std::cout, "\t", 16, true, std::string(2*k+2, 'N'), std::real(correlation_Nq(k)) / double(num_states));
+			std::cout << std::endl;
+			S(VA - subsystem_sizes(0)) 			= entropy / (double)num_states /  (VA * std::log(2));			// entanglement of subsystem VA
+			S_site(VA - subsystem_sizes(0)) 	= entropy_single_site / double(num_states);						// single site entanglement at site VA
 
     		std::cout << " - - - - - - finished entropy size VA: " << VA << " in time:" << tim_s(start_VA) << " s - - - - - - " << std::endl; // simuVAtion end
 		}
@@ -235,7 +411,7 @@ void ui::parse_cmd_options(int argc, std::vector<std::string> argv)
 	this->V = std::pow(this->L, DIM);
 
     //<! FOLDER
-    std::string folder = "." + kPSep + "results" + kPSep;
+    std::string folder = "." + kPSep + "results" + kPSep + "dim=" + std::to_string(DIM) + kPSep;
     switch(this->boundary_conditions){
         case 0: folder += "PBC" + kPSep; break;
         case 1: folder += "OBC" + kPSep; break;

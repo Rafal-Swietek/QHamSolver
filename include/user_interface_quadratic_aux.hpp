@@ -224,7 +224,8 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
 {
     clk::time_point start = std::chrono::system_clock::now();
 	
-	std::string dir = this->saving_dir + "Entropy" + kPSep + "MixingExpMany2" + kPSep;
+	// std::string dir = this->saving_dir + "Entropy" + kPSep + "Degeneracy" + kPSep;
+	std::string dir = this->saving_dir + "Entropy" + kPSep + "MixingExpMany" + kPSep;
 	if(this->op)	dir += "RandomChoice" + kPSep + "SameHamiltonian" + kPSep;
 	else 			dir += "RandomChoice" + kPSep + "DifferentHamiltonian" + kPSep;
 	// #ifdef FREE_FERMIONS
@@ -258,12 +259,12 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
 		Gammas = arma::Col<u64>({1, 2, 4, 10, u64(this->V / 2), u64(this->V), u64(2 * this->V), u64(this->V * std::log(this->V))});
 		// subsystem_sizes_MB = subsystem_sizes;
 	}
-	// arma::vec zetas = arma::linspace(0.15, 0.95, 17);
-	arma::vec zetas = arma::vec({0.01, 0.02, 0.05, 0.1, 0.2, 0.25, 0.5, 0.75, 1.0});
+	arma::vec zetas = arma::linspace(0.2, 1, 9);
+	// arma::vec zetas = arma::vec({0.01, 0.02, 0.05, 0.1, 0.2, 0.25, 0.5, 0.75, 1.0});
 	Gammas = arma::Col<u64>(zetas.size(), arma::fill::zeros);
 	for(int iiz = 0; iiz < zetas.size(); iiz++){
-		// Gammas(iiz) = u64( std::pow(dim, zetas(iiz)) );
-		Gammas(iiz) = u64( zetas(iiz) * dim );
+		Gammas(iiz) = u64( std::pow(dim, zetas(iiz)) );
+		// Gammas(iiz) = u64( zetas(iiz) * dim );
 	}
 
 	const int Gamma_max = Gammas.size();
@@ -354,35 +355,35 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
 		std::cout << " - - - - - - finished setting slater converter in : " << tim_s(start) << " s for realis = " << realis << " - - - - - - " << std::endl;
 		start = std::chrono::system_clock::now();
 
-		// arma::Mat<element_type> HSyk2_MB(dim, dim, arma::fill::zeros);
-		// for(u64 alfa = 0; alfa < _hilbert_space.get_hilbert_space_size(); alfa++)
-		// {
-		// 	u64 state = _hilbert_space(alfa);
-		// 	for(int i = 0; i < this->V; i++)
-		// 	{
-		// 		auto [_spin, _] = operators::sigma_z<double>(state, this->V, i);
-		// 		if( _spin > 0){
-		// 			HSyk2_MB(alfa, alfa) += HSyk2_SP(i, i);
-		// 		}
-		// 		u64 mask_i = reverseBits( ULLPOW(i)-1, this->V );
-		// 		for(int j = i+1; j < this->V; j++)
-		// 		{
-		// 			u64 mask_j = reverseBits( ULLPOW(j)-1, this->V );
-		// 			double sign1 = (__builtin_popcountll(state & mask_i) % 2)? -1 : +1;
-		// 			auto [val1, cm] = operators::sigma_minus<double>(state, this->V, j);
+		arma::Mat<element_type> HSyk2_MB(dim, dim, arma::fill::zeros);
+		for(u64 alfa = 0; alfa < _hilbert_space.get_hilbert_space_size(); alfa++)
+		{
+			u64 state = _hilbert_space(alfa);
+			for(int i = 0; i < this->V; i++)
+			{
+				auto [_spin, _] = operators::sigma_z<double>(state, this->V, i);
+				if( _spin > 0){
+					HSyk2_MB(alfa, alfa) += HSyk2_SP(i, i);
+				}
+				u64 mask_i = reverseBits( ULLPOW(i)-1, this->V );
+				for(int j = i+1; j < this->V; j++)
+				{
+					u64 mask_j = reverseBits( ULLPOW(j)-1, this->V );
+					double sign1 = (__builtin_popcountll(state & mask_i) % 2)? -1 : +1;
+					auto [val1, cm] = operators::sigma_minus<double>(state, this->V, j);
 
-		// 			double sign2 = (__builtin_popcountll(cm & mask_j) % 2)? -1 : +1;
-		// 			auto [val2, cpcm] = operators::sigma_plus<double>(cm, this->V, i);
-		// 			if(std::abs(val1 * val2) > 0)
-		// 			{
-		// 				u64 beta = _hilbert_space.find(cpcm);
-		// 				auto _val_ = val1 * val2 * sign1 * sign2;
-		// 				HSyk2_MB(beta, alfa) += sign1 * sign2 * HSyk2_SP(i, j);
-		// 				HSyk2_MB(alfa, beta) += my_conjungate(sign1 * sign2 * HSyk2_SP(i, j));
-		// 			}
-		// 		}		
-		// 	}	
-		// }
+					double sign2 = (__builtin_popcountll(cm & mask_j) % 2)? -1 : +1;
+					auto [val2, cpcm] = operators::sigma_plus<double>(cm, this->V, i);
+					if(std::abs(val1 * val2) > 0)
+					{
+						u64 beta = _hilbert_space.find(cpcm);
+						auto _val_ = val1 * val2 * sign1 * sign2;
+						HSyk2_MB(beta, alfa) += sign1 * sign2 * HSyk2_SP(i, j);
+						HSyk2_MB(alfa, beta) += my_conjungate(sign1 * sign2 * HSyk2_SP(i, j));
+					}
+				}		
+			}	
+		}
 		// arma::vec eigE_syk2MB; 
 		// arma::Mat<element_type> eigV_syk2MB;
 		// arma::eig_sym(eigE_syk2MB, eigV_syk2MB, HSyk2_MB);
@@ -499,17 +500,27 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
 				// for(u64 unused = 0; unused < 1; unused++)
 				// {
 					auto start_G = std::chrono::system_clock::now();
-					arma::Col<int> indices = random_integers.uniform(20 * Gammas(Gamma_max-1), 0, num_states - 1);
-					if(gamma_a < dim){
-						indices = arma::unique(indices);
-						indices = indices.rows(0, gamma_a - 1);
+					arma::Col<u64> indices;// = random_integers.uniform(gamma_a, 0, num_states - 1);
+					if(gamma_a < dim)
+					{
+						// indices = arma::unique(indices);
+						// indices = indices.rows(0, gamma_a - 1);
+						std::vector<u64> _indices_;
+						std::vector<u64> all_ind(dim);	std::iota(std::begin(all_ind), std::end(all_ind), 0);
+						for(u64 y = 0; y < gamma_a; y++){
+							int element_idx = random_integers.uniform_dist<int>(0, all_ind.size() - 1);
+							_indices_.push_back( all_ind[element_idx] );
+							all_ind.erase(all_ind.begin() + element_idx);
+							// std::cout << all_ind << std::endl;
+						}
+						indices = arma::conv_to<arma::Col<u64>>::from(_indices_);
 					} else {
-						indices = arma::conv_to<arma::Col<int>>::from(arma::linspace(0, dim-1, dim));
+						indices = arma::conv_to<arma::Col<u64>>::from(arma::linspace(0, dim-1, dim));
 					}
 					_extra_debug_(  std::cout << arma::sort(indices) << std::endl; )
-					int id = random_integers.uniform_dist<int>(0, gamma_a-1);
 					
 					#if _MAT_ENSEMBLE_ == 2
+						int id = random_integers.uniform_dist<int>(0, gamma_a-1);
 						arma::Col<element_type>  coeff = random_matrix.generate_matrix(gamma_a).col(id);
 					#else
 						arma::Col<element_type> coeff = random_coeff.gaussian(gamma_a, 0, 1);

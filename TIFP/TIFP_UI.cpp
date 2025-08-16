@@ -21,102 +21,12 @@ void ui::make_sim(){
     printAllOptions();
 
     this->ptr_to_model = create_new_model_pointer();
+    auto full_model = std::make_unique<QHS::QHamSolver<TIFP>>(this->boundary_conditions, this->L, this->J, this->c, 0, 0, 0, 0);
+    auto H = full_model->get_dense_hamiltonian();
+    arma::vec E = arma::eig_sym(H);
+    E.save(arma::hdf5_name("fullspectrum" + this->set_info({"z1", "z2", "zz"}) + ".hdf5", "energies"));
 
-    // const int _L = this->L;
-    // auto make_Cl = [&](int ell) -> QOps::_global_fun
-    // {
-    //     const int _L = this->L;
-    //     return [_L, ell](u64 state)
-    //             {
-    //                 cpx val = 1.0;
-    //                 for(int i = ell; i < _L; i += 4){
-    //                     cpx res = 1.0;
-    //                     std::tie(res, state) = X(state, _L, i);
-    //                     val *= res;
-    //                     if(i + 1 < _L) 
-    //                         std::tie(res, state) = Y(state, _L, i + 1);
-    //                     val *= res;
-    //                 }
-    //                 return std::make_pair(state, val);
-    //             };
-    // };
-    // auto make_C3 = [&]() -> QOps::_global_fun
-    // {
-    //     const int _L = this->L;
-    //     return [_L](u64 state)
-    //             {
-    //                 cpx val = 1.0;
-    //                 for(int i = 0; i < _L; i += 4){
-    //                     cpx res = 1.0;
-    //                     std::tie(res, state) = Y(state, _L, i);
-    //                     val *= res;
-    //                     if(i + 3 < _L) 
-    //                         std::tie(res, state) = X(state, _L, i + 3);
-    //                     val *= res;
-    //                 }
-    //                 return std::make_pair(state, val);
-    //             };
-    // };
-    // auto C0C2 = [_L](u64 state)
-    //             {
-    //                 cpx val = 1.0;
-    //                 for(int i = 0; i < _L; i += 2){
-    //                     cpx res = 1.0;
-    //                     std::tie(res, state) = X(state, _L, i);
-    //                     val *= res;
-    //                     if(i + 1 < _L) 
-    //                         std::tie(res, state) = Y(state, _L, i + 1);
-    //                     val *= res;
-    //                 }
-    //                 return std::make_pair(state, val);
-    //             };
-    // auto C0C3 = [_L](u64 state)
-    //             {
-    //                 cpx val = 1.0;
-    //                 for(int i = 0; i < _L; i++){
-    //                     if( i%4 != 2 ){
-    //                         cpx res = 1.0;
-    //                         auto op = (i % 4 == 0)? Z : ( (i % 4 == 1)? Y : X);
-    //                         std::tie(res, state) = op(state, _L, i);
-    //                         val *= res;
-    //                     }
-    //                 }
-    //                 return std::make_pair(state, val);
-    //             };
-
-    // auto C0fun = make_Cl(0);
-    // auto C1fun = make_Cl(1);
-    // auto C2fun = make_Cl(2);
-    // auto C3fun = make_C3();
-    // std::vector<int> secs = (this->L % 2 == 0)? std::vector<int>({-1, 1}) : std::vector<int>({1});
-    // u64 dim = 0;
-    // for(int k = 0; k < 1; k++){
-    //     for(int z : {-1, 1}){
-    //         for(int z1 : secs){
-    //             for(int z2 : {-1, 1}){
-    //                 for(int z3 : {1}){
-    //                     v_1d<QOps::genOp> symmetry_generators;
-    //                     symmetry_generators.emplace_back(QOps::_spin_flip_z_symmetry(this->L, z));
-    //                     if(this->L % 2 == 0){
-    //                         symmetry_generators.emplace_back( QOps::generic_operator<>(L, C0C2, z2) );
-    //                         symmetry_generators.emplace_back( QOps::generic_operator<>(L, C0C3, z2) );
-    //                     }
-    //                     auto _hilbert_space = QHS::point_symmetric( this->L, 
-    //                                                             symmetry_generators, 
-    //                                                             1,
-    //                                                             k,
-    //                                                             -1
-    //                                                             );
-    //                     auto dim_tmp = _hilbert_space.get_hilbert_space_size();
-    //                     dim += dim_tmp;
-    //                     printSeparated(std::cout, "\t", 16, true, k, z, z1, z2, z3, dim_tmp);
-    //                 }
-    //             }
-    //         }
-    //     }
-    // }
-    // std::cout << dim << "\t\t" << ULLPOW(this->L) << std::endl;
-    
+    return;
     // compare_energies(); return;
     
 	clk::time_point start = std::chrono::system_clock::now();
@@ -935,8 +845,107 @@ void ui::printAllOptions() const{
     
     
 
+    // const int _L = this->L;
+    // auto make_Cl = [&](int ell) -> QOps::_global_fun
+    // {
+    //     const int _L = this->L;
+    //     return [_L, ell](u64 state)
+    //             {
+    //                 cpx val = 1.0;
+    //                 for(int i = ell; i < _L; i += 4){
+    //                     cpx res = 1.0;
+    //                     std::tie(res, state) = X(state, _L, i);
+    //                     val *= res;
+    //                     if(i + 1 < _L) 
+    //                         std::tie(res, state) = Y(state, _L, i + 1);
+    //                     val *= res;
+    //                 }
+    //                 return std::make_pair(state, val);
+    //             };
+    // };
+    // auto make_C3 = [&]() -> QOps::_global_fun
+    // {
+    //     const int _L = this->L;
+    //     return [_L](u64 state)
+    //             {
+    //                 cpx val = 1.0;
+    //                 for(int i = 0; i < _L; i += 4){
+    //                     cpx res = 1.0;
+    //                     std::tie(res, state) = Y(state, _L, i);
+    //                     val *= res;
+    //                     if(i + 3 < _L) 
+    //                         std::tie(res, state) = X(state, _L, i + 3);
+    //                     val *= res;
+    //                 }
+    //                 return std::make_pair(state, val);
+    //             };
+    // };
+    // auto C0C2 = [_L](u64 state)
+    //             {
+    //                 cpx val = 1.0;
+    //                 for(int i = 0; i < _L; i += 2){
+    //                     cpx res = 1.0;
+    //                     std::tie(res, state) = X(state, _L, i);
+    //                     val *= res;
+    //                     if(i + 1 < _L) 
+    //                         std::tie(res, state) = Y(state, _L, i + 1);
+    //                     val *= res;
+    //                 }
+    //                 return std::make_pair(state, val);
+    //             };
+    // auto C0C3 = [_L](u64 state)
+    //             {
+    //                 cpx val = 1.0;
+    //                 for(int i = 0; i < _L; i++){
+    //                     if( i%4 != 2 ){
+    //                         cpx res = 1.0;
+    //                         auto op = (i % 4 == 0)? Z : ( (i % 4 == 1)? Y : X);
+    //                         std::tie(res, state) = op(state, _L, i);
+    //                         val *= res;
+    //                     }
+    //                 }
+    //                 return std::make_pair(state, val);
+    //             };
+
+    // auto C0fun = make_Cl(0);
+    // auto C1fun = make_Cl(1);
+    // auto C2fun = make_Cl(2);
+    // auto C3fun = make_C3();
+    // std::vector<int> secs = (this->L % 2 == 0)? std::vector<int>({-1, 1}) : std::vector<int>({1});
+    // u64 dim = 0;
+    // for(int k = 0; k < 1; k++){
+    //     for(int z : {-1, 1}){
+    //         for(int z1 : secs){
+    //             for(int z2 : {-1, 1}){
+    //                 for(int z3 : {1}){
+    //                     v_1d<QOps::genOp> symmetry_generators;
+    //                     symmetry_generators.emplace_back(QOps::_spin_flip_z_symmetry(this->L, z));
+    //                     if(this->L % 2 == 0){
+    //                         symmetry_generators.emplace_back( QOps::generic_operator<>(L, C0C2, z2) );
+    //                         symmetry_generators.emplace_back( QOps::generic_operator<>(L, C0C3, z2) );
+    //                     }
+    //                     auto _hilbert_space = QHS::point_symmetric( this->L, 
+    //                                                             symmetry_generators, 
+    //                                                             1,
+    //                                                             k,
+    //                                                             -1
+    //                                                             );
+    //                     auto dim_tmp = _hilbert_space.get_hilbert_space_size();
+    //                     dim += dim_tmp;
+    //                     printSeparated(std::cout, "\t", 16, true, k, z, z1, z2, z3, dim_tmp);
+    //                 }
+    //             }
+    //         }
+    //     }
+    // }
+    // std::cout << dim << "\t\t" << ULLPOW(this->L) << std::endl;
+    
 
 
     // std::cout << " - - - - - - FINISHED DIAGONALIZATION OF SUPERHAMILTONIAN IN : " << tim_s(starter) << " seconds - - - - - - " << std::endl; // simulation end
     // return;
 // //
+
+
+
+

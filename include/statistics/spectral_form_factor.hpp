@@ -40,6 +40,7 @@ namespace statistics{
         double eta = 0.5;           //!< gaussian filter width
         double stddev = 1.0;        //!< standard deviation of energies
         double mean = 1.0;          //!< mean energy
+        double kappa = 0.0;         //!< openness of the system (dephasing)
 
         //<! finite temperature sff
         double inv_temperature = 0.0;   //<! inverse temperature
@@ -68,8 +69,8 @@ namespace statistics{
         /// @param _eta filter wifth
         /// @param _beta inverse temperature
         /// @param _cut_edges cut spectral edges (5-10 points) due to unfolding?
-        explicit SFF(double _eta, double _beta = 0.0, double _eps = 0.5, bool _cut_edges = false)
-            : eta(_eta), inv_temperature(_beta), energy_density(_eps), cut_edges(_cut_edges)
+        explicit SFF(double _eta, double _beta = 0.0, double _eps = 0.5, double _kappa = 0.0, bool _cut_edges = false)
+            : eta(_eta), inv_temperature(_beta), energy_density(_eps), kappa(_kappa), cut_edges(_cut_edges)
             {};
 
         auto calculate(const arma::vec& E, const arma::vec& times) ->  arma::cx_vec;

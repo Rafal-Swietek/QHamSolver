@@ -63,9 +63,10 @@ void ui::make_sim(){
             printSeparated(std::cout, "\t", 16, true, this->L, this->g);
 
             this->reset_model_pointer();
-
-            this->eigenstate_entanglement_degenerate(); 
-            continue;
+            
+            this->matrix_elements(); continue;
+            
+            this->eigenstate_entanglement(); continue;
 
             diagonal_matrix_elements();
             std::cout << "\t\t - - - - - - FINISHED ITERATION IN : " << tim_s(start_loop) << " seconds\n\t\t\t Total time : " << tim_s(start) << " s - - - - - - " << std::endl; // simulation end

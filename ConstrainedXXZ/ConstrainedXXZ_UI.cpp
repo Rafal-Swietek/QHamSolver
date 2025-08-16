@@ -22,7 +22,7 @@ void ui::make_sim(){
 
     this->ptr_to_model = create_new_model_pointer();
 
-    compare_energies(); return;
+    // compare_energies(); return;
     
 	clk::time_point start = std::chrono::system_clock::now();
     switch (this->fun)
@@ -52,10 +52,41 @@ void ui::make_sim(){
             this->L = system_size;
             this->J = Jx;
             this->site = this->L / 2.;
-            const auto start_loop = std::chrono::system_clock::now();
+            
+
+            auto start_loop = std::chrono::system_clock::now();
             std::cout << " - - START NEW ITERATION:\t\t par = "; // simulation end
             printSeparated(std::cout, "\t", 16, true, this->L, this->J);
+            v_1d<QOps::genOp> symmetry_generators;
+            auto Translate = QOps::__builtins::translation(this->L, 1);
+            auto flip = QOps::__builtins::spin_flip_x(this->L);
+            const int Lx = this->L;
+            const float Sz = this->syms.Sz;
+            auto some_kernel = [&Translate, &flip, Sz, Lx](u64 n){
+                // n = std::get<0>(flip(n));
+                int num_particles = Sz / _Spin + Lx / 2;
+                // printSeparated(std::cout, "\t", 20, true, n, boost::dynamic_bitset<>(Lx, n), num_particles);
+                return ( !( (n) & std::get<0>( Translate(n) ) ) ) && (__builtin_popcountll(n) == num_particles);
+                // return !( (n) & std::get<0>( Translate(n) ) );
+            };
+            symmetry_generators.emplace_back(QOps::_parity_symmetry(this->L, this->syms.p_sym));
+            std::cout << "\t\t - - - - - - FINISHED generators : " << tim_s(start_loop) << " seconds\n\t\t\t Total time : " << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
+            start_loop = std::chrono::system_clock::now();
+
+            auto _hilbert_PXP    = QHS::constrained_hilbert_space(this->L, std::move(some_kernel));
+            auto _second_hilbert = QHS::point_symmetric( this->L, symmetry_generators, this->boundary_conditions, this->syms.k_sym, 0);
+            std::cout << "\t\t - - - - - - FINISHED hilbert spaces : " << tim_s(start_loop) << " seconds\n\t\t\t Total time : " << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
+            start_loop = std::chrono::system_clock::now();
+
+            auto _hilbert_space = tensor(_second_hilbert, _hilbert_PXP);
+            // this->_hilbert_space = _second_hilbert;
+            u64 dim = _hilbert_space.get_hilbert_space_size();
+            std::cout << "\t\t - - - - - - FINISHED tensor hilbert spaces : " << tim_s(start_loop) << " seconds\n\t\t\t Total time : " << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
             
+            printSeparated(std::cout, "\t", 16, true, this->L, this->syms.n, "Sz=", this->syms.Sz, "k=", this->syms.k_sym, this->syms.p_sym, dim);
+            continue;
+
+
             auto kernel = [&](int k, int p)
                                     {
                                         v_1d<QOps::genOp> symmetry_generators;
@@ -80,7 +111,7 @@ void ui::make_sim(){
                                         // this->diagonalize();
                                         // this->eigenstate_entanglement();
                                         // this->eigenstate_entanglement_degenerate();
-                                        printSeparated(std::cout, "\t", 16, true, this->L, k, p, dim);
+                                        printSeparated(std::cout, "\t", 16, true, this->L, this->syms.n, this->syms.Sz, k, p, dim);
                                     };
             loopSymmetrySectors(kernel); continue;
             this->reset_model_pointer();
@@ -156,9 +187,10 @@ void ui::eigenstate_entanglement(){
         return abs(x - E_av) < abs(y - E_av);
     });
     const long E_av_idx = i - begin(E);
-    long int E_min = dim > 1e5? 0 : E_av_idx - 5;
-    long int E_max = dim > 1e5? dim : E_av_idx + 5;
+    long int E_min = dim > 1e5? 0 : E_av_idx - 2;
+    long int E_max = dim > 1e5? dim : E_av_idx + 2;
     printSeparated(std::cout, "\t", 16, true, "Mean Energy:", E_av, E_av_idx, E_min, E_max);
+    
     const auto new_size = E_max - E_min;
     arma::mat S(new_size, subsystem_sizes.size(), arma::fill::zeros);
     arma::vec Ecut(new_size, arma::fill::zeros);
@@ -311,10 +343,19 @@ void ui::parse_cmd_options(int argc, std::vector<std::string> argv)
     choosen_option = "-p";
     this->set_option(this->syms.p_sym, argv, choosen_option);
 
-    choosen_option = "-Sz";
-    this->set_option(this->syms.Sz, argv, choosen_option);
-    if(this->L % 2 == 1 && this->syms.Sz == 0.0)
-        this->syms.Sz = _Spin;
+    choosen_option = "-n";
+    this->set_option(this->syms.n, argv, choosen_option);
+
+    if(this->syms.n == 0){
+        choosen_option = "-Sz";
+        this->set_option(this->syms.Sz, argv, choosen_option);
+        if(this->L % 2 == 1 && this->syms.Sz == 0.0)
+            this->syms.Sz = _Spin;
+    } else{
+        this->syms.Sz = _Spin * (this->syms.n - 0.5) * this->L;
+    }
+    
+    
 
     //<! FOLDER
     std::string folder = this->dir_prefix + kPSep + "results" + kPSep;
@@ -351,6 +392,7 @@ void ui::set_default(){
     this->syms.k_sym = 0;
     this->syms.p_sym = 1;
     this->syms.Sz = (this->L%2) * _Spin;
+    this->syms.n = 0;
 }
 
 /// @brief 
@@ -399,6 +441,7 @@ void ui::printAllOptions() const{
     std::cout << "k  = " << this->syms.k_sym << std::endl;
     std::cout << "p  = " << this->syms.p_sym << std::endl;
     std::cout << "Sz  = " << this->syms.Sz << std::endl;
+    std::cout << "n  = " << this->syms.n << std::endl;
 		                                            
         std::cout << std::endl;
     printSeparated(std::cout, "\t", 16, true, "----------------------------------------------------------------------------------------------------");

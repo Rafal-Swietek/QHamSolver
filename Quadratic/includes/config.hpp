@@ -8,7 +8,7 @@
 #define CONFIG 2
 
 #ifndef _MAT_ENSEMBLE_
-    #define _MAT_ENSEMBLE_ 1
+    #define _MAT_ENSEMBLE_ 0
 #endif
 constexpr int _mat_ensemble = _MAT_ENSEMBLE_;
 
@@ -29,12 +29,12 @@ constexpr int _mat_ensemble = _MAT_ENSEMBLE_;
 #endif
 
 #ifndef DIM
-    #define DIM 1
+    #define DIM 3
 #endif
 
 
 #ifndef MODEL
-    #define MODEL 1
+    #define MODEL 0
 #endif
 
 //------------------- Translate Macro

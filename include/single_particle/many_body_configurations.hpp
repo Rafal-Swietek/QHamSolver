@@ -43,7 +43,7 @@ namespace QHS{
         {
             std::vector<boost::dynamic_bitset<>> mb_states;
             num_of_states = u64(std::min((double)num_of_states, binom(volume, num_particles)));
-        // #pragma omp parallel for
+        #pragma omp parallel for
             for(u64 id = 0; id < num_of_states; id++){
                 long num_up = num_particles;
                 long num_down = volume - num_up;
@@ -61,7 +61,7 @@ namespace QHS{
                         // state.push_back(0);
                     }
                 }
-                // #pragma omp critical
+                #pragma omp critical
                 {
                     mb_states.emplace_back(state);
                 }

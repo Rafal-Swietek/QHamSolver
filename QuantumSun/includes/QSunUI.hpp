@@ -61,6 +61,7 @@ namespace QSunUI{
         void agp_save();
         void ground_state();
         void geometric_tensor();
+        void quench_fourier();
     };
 }
 

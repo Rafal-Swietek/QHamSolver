@@ -22,6 +22,7 @@ namespace ConstrainedXXZ_UI{
             int k_sym;
             int p_sym;
             float Sz;
+            float n;
         } syms;
         
         /// @brief 

@@ -63,8 +63,8 @@ void pertIsing::create_hamiltonian()
         std::cout << this->_couplings << std::endl;
     #endif
 
-    // const double rescale = 1. / (this->system_size * std::log(this->system_size));
-    const double rescale = 1. / std::sqrt(this->system_size);
+    const double rescale = 1. / (this->system_size * std::log(this->system_size));
+    // const double rescale = 1. / (this->system_size);
     for (size_t k = 0; k < this->dim; k++) {
 		size_t base_state = this->_hilbert_space(k);
 	    for (int i = 0; i < this->system_size; i++) 

@@ -64,7 +64,7 @@ void ui::make_sim(){
 
             this->reset_model_pointer();
             
-            this->matrix_elements(); continue;
+            // this->matrix_elements(); continue;
             
             this->eigenstate_entanglement(); continue;
 

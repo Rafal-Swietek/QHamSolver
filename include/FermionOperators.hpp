@@ -2,7 +2,16 @@
 
 namespace operators{
     namespace fermions{
-        namespace spinless{ 
+        namespace spinless{
+
+            inline
+            double
+            calculate_sign(u64 base_vec, unsigned int L, int site){
+                u64 mask = reverseBits( ULLPOW(site)-1, L );
+                // u64 mask = ULLPOW(site)-1;
+                return (__builtin_popcountll(base_vec & mask) % 2)? -1 : +1;
+            };
+
             /// @brief SigmaZ operator on input site
             /// @tparam _ty template for return type
             /// @param base_vec Input state to act SigmaZ on
@@ -29,8 +38,7 @@ namespace operators{
             inline
             std::pair<_ty, u64> 
             create(u64 base_vec, unsigned int L, int site) {
-                u64 mask = reverseBits( ULLPOW(site)-1, L );
-                double sign = (__builtin_popcountll(base_vec & mask) % 2)? -1 : +1;
+                double sign = calculate_sign(base_vec, L, site);
                 return std::make_pair(
                     _ty( checkBit(base_vec, L - 1 - site)? 0.0 : sign ),
                     flip(base_vec, BinaryPowers[L - 1 - site], L - 1 - site)
@@ -47,8 +55,7 @@ namespace operators{
             inline
             std::pair<_ty, u64> 
             anihilate(u64 base_vec, unsigned int L, int site) {
-                u64 mask = reverseBits( ULLPOW(site)-1, L );
-                double sign = (__builtin_popcountll(base_vec & mask) % 2)? -1 : +1;
+                double sign = calculate_sign(base_vec, L, site);
                 return std::make_pair(
                     _ty( checkBit(base_vec, L - 1 - site)? sign : 0.0 ),
                     flip(base_vec, BinaryPowers[L - 1 - site], L - 1 - site)

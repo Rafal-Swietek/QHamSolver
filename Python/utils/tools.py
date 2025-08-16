@@ -18,7 +18,7 @@ def remove_fluctuations(data, bucket_size=10, type = 'mean'):
     data:           Input data to average points
     bucket_size:    Number of elements in average for new point in running mean (size of window)
     """
-    new_data = np.zeros(data.shape);
+    new_data = data;
     half_bucket = int(bucket_size // 2)
     for k in range(half_bucket, len(data) - half_bucket):
         average = 0
