@@ -141,12 +141,13 @@ void ui::make_sim(){
                                     };
             // loopSymmetrySectors(kernel); continue;
             this->reset_model_pointer();
-            auto Hamil = this->ptr_to_model->get_hamiltonian();
-            this->l_steps = 0.05 * Hamil.n_cols;
-            if(this->l_steps > 200) this->l_steps = 200;
-            auto polfed = polfed::POLFED<ui::element_type>(Hamil, this->l_steps, this->l_bundle, -1, this->tol, 0.2, this->seed, true);
-            continue;
-            this->eigenstate_entanglement_degenerate(); 
+            // auto Hamil = this->ptr_to_model->get_hamiltonian();
+            // this->l_steps = 0.05 * Hamil.n_cols;
+            // if(this->l_steps > 200) this->l_steps = 200;
+            // auto polfed = polfed::POLFED<ui::element_type>(Hamil, this->l_steps, this->l_bundle, -1, this->tol, 0.2, this->seed, true);
+            // continue;
+            // this->eigenstate_entanglement_degenerate(); 
+            spectrals();
             continue;
 
             diagonal_matrix_elements();
@@ -161,7 +162,7 @@ void ui::make_sim(){
 
 void ui::spectrals()
 {
-	std::string dir = this->saving_dir + "Spectrals_SzSz" + kPSep;
+	std::string dir = this->saving_dir + "Spectrals_SzSz2" + kPSep;
 	createDirs(dir);
 	
     const size_t dim_max = 1e5;
@@ -183,17 +184,20 @@ void ui::spectrals()
 	double window_width = 0.04;
 	auto _hilbert_space = this->ptr_to_model->get_model_ref().get_hilbert_space();
 	
+    // const size_t dim_full = ULLPOW(this->L);
     arma::sp_mat kinetic(dim, dim);
+    // arma::sp_cx_mat U_U1(dim_full, dim);
     auto check_spin = QOps::__builtins::get_digit(this->L);
 
     for (u64 k = 0; k < dim; k++) 
     {
 		double s_i, s_j;
 		u64 base_state = _hilbert_space(k);
+        // U_U1(base_state, k) = 1.0;
 		for (int j = 0; j < this->L; j++) 
         {
 			s_i = check_spin(base_state, j) ? 0.5 : -0.5;				// true - spin up, false - spin down
-            int nei = j + 1;
+            int nei = j + 2;
             if(nei >= this->L)
                 nei = (this->boundary_conditions)? -1 : nei % this->L;
             
@@ -205,8 +209,13 @@ void ui::spectrals()
 		}
 	}
     kinetic = kinetic * 4. / std::sqrt(this->L);
-	double _operator_HSnorm = arma::trace(kinetic * kinetic) / dim;
+    double _operator_HSnorm = arma::trace(kinetic * kinetic) / double(dim);
 	kinetic = kinetic / std::sqrt(_operator_HSnorm);
+    // arma::sp_cx_mat kinetic2 = U_U1.t() * energy_current() * U_U1;
+    // // arma::sp_cx_mat kinetic2 = U_U1.t() * spin_current() * U_U1;
+	// cpx _operator_HSnorm = arma::trace(kinetic2 * kinetic2) / double(dim);
+	// kinetic2 = kinetic2 / std::sqrt(_operator_HSnorm);
+    // kinetic = arma::imag(kinetic2);
 	std::cout << "Hilbert-Schmidt Norm\t\t" << _operator_HSnorm << "\t\tNew Norm\t\t" << arma::trace(kinetic * kinetic) / dim << std::endl;
 
     auto subsystem_sizes = arma::conv_to<arma::Col<int>>::from(arma::linspace(0, this->L, this->L + 1));
@@ -416,7 +425,7 @@ void ui::spectrals()
 			quench.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "quench",   arma::hdf5_opts::append));
 			arma::vec( {quench_E} ).save(   arma::hdf5_name(dir_realis + info + ".hdf5", "quench_energy",   arma::hdf5_opts::append));
 			arma::vec( {tot_spin_init} ).save(   arma::hdf5_name(dir_realis + info + ".hdf5", "tot_spin_init",   arma::hdf5_opts::append));
-			arma::vec( {_operator_HSnorm} ).save(   arma::hdf5_name(dir_realis + info + ".hdf5", "HSnorm",   arma::hdf5_opts::append));
+			// arma::vec( {_operator_HSnorm} ).save(   arma::hdf5_name(dir_realis + info + ".hdf5", "HSnorm",   arma::hdf5_opts::append));
 
 			arma::vec( {wH} ).save(   arma::hdf5_name(dir_realis + info + ".hdf5", "wH",   arma::hdf5_opts::append));
 			arma::vec( {r} ).save(   arma::hdf5_name(dir_realis + info + ".hdf5", "gap_ratio",   arma::hdf5_opts::append));
@@ -565,6 +574,36 @@ void ui::check_symmetry_generators()
     }
 }
 
+/// @brief Create energy current for this specific model
+arma::sp_cx_mat ui::spin_current(){
+
+    const size_t dim_max = ULLPOW(this->L);
+    auto check_spin = QOps::__builtins::get_digit(this->L);
+    
+    arma::sp_cx_mat js(dim_max, dim_max);
+    for(int i = 0; i < this->L; i++)
+    {
+        int nei = (this->boundary_conditions)? i + 1 : (i + 1)%this->L;
+        // printSeparated(std::cout, "\t", 20, true, "site", i, nei, nei2);
+        if(nei < this->L){
+            for(long k = 0; k < dim_max; k++)
+            {
+                double Si = double(check_spin(k, i)) - 0.5;
+                double Snei = double(check_spin(k, nei)) - 0.5;
+                {
+                    auto [val, state_tmp]   = operators::sigma_x<cpx>(k, this->L, i);
+                    auto [val2, new_idx]    = operators::sigma_y(state_tmp, this->L, nei);
+                    js(new_idx, k) -= (val * val2);
+                }{
+                    auto [val, state_tmp]   = operators::sigma_x<cpx>(k, this->L, nei);
+                    auto [val2, new_idx]    = operators::sigma_y(state_tmp, this->L, i);
+                    js(new_idx, k) += (val * val2);
+                }
+            }
+        }
+    }
+    return js;
+}
 
 /// @brief Create energy current for this specific model
 arma::sp_mat ui::energy_current(){
