@@ -19,7 +19,7 @@
 
     //<! Macro to set element type to double for real momentum sectors
     #ifndef USE_REAL_SECTORS
-        // #define USE_REAL_SECTORS
+        #define USE_REAL_SECTORS
     #endif
 
     #ifndef USE_EXP_COUPLING

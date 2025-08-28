@@ -30,11 +30,6 @@ void XXZsym::init()
                                 );
     this->dim = this->_hilbert_space.get_hilbert_space_size();
     _debug_end( std::cout << "\t\tFinished setting generating reduced basis (U(1) x point symmetries) with size:\t dim=" << this->dim << "\tin " << tim_s(start) << " seconds" << std::endl; )
-
-    // create hamiltonian
-    _debug_start( start = std::chrono::system_clock::now(); )
-    this->create_hamiltonian();
-    _debug_end( std::cout << "\t\tFinished generating Hamiltonian in " << tim_s(start) << " seconds" << std::endl; )
     // std::cout << "Mapping:\n" << this->_hilbert_space.get_mapping() << std::endl;
     // std::cout << "Hamiltonian:\n" << arma::Mat<elem_ty>(this->H) << std::endl;
 }
@@ -64,22 +59,6 @@ XXZsym::XXZsym(int _BC, unsigned int L, double J1, double J2, double delta1, dou
     this->_J1 = J1;
     this->_J2 = J2;
     this->_delta1 = delta1;
-
-    if( std::abs(delta2) > 0 )
-    {
-    #ifdef USE_EXP_COUPLING
-        size_t _dim = binom(L, L / 2);
-        delta2 = std::pow(_dim, -delta2);
-        std::cout << "----------------------------" << std::endl;
-        printSeparated(std::cout, "\t", 20, true, "CHECK DIM:", this->dim, _dim, delta2);
-        std::cout << "----------------------------" << std::endl;
-        this->_delta2 = delta2;
-    #else
-        this->_delta2 = delta2;
-    #endif
-    } else {
-        this->_delta2 = delta2;
-    }
     
     this->_hz = hz;
     
@@ -99,6 +78,24 @@ XXZsym::XXZsym(int _BC, unsigned int L, double J1, double J2, double delta1, dou
         }
     #endif
     this->init(); 
+    if( std::abs(delta2) > 0 )
+    {
+    #ifdef USE_EXP_COUPLING
+        delta2 = std::pow(this->dim, -delta2);
+        std::cout << "----------------------------" << std::endl;
+        printSeparated(std::cout, "\t", 20, true, "CHECK DIM:", this->dim, this->dim, delta2);
+        std::cout << "----------------------------" << std::endl;
+        this->_delta2 = delta2;
+    #else
+        this->_delta2 = delta2;
+    #endif
+    } else {
+        this->_delta2 = delta2;
+    }
+    // create hamiltonian
+    _debug_start( clk::time_point start = std::chrono::system_clock::now(); )
+    this->create_hamiltonian();
+    _debug_end( std::cout << "\t\tFinished generating Hamiltonian in " << tim_s(start) << " seconds" << std::endl; )
 }
 
 /// @brief Constructor from input stream
