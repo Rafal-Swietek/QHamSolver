@@ -86,7 +86,7 @@ namespace statistics{
     // #pragma omp parallel for reduction(+: ent)
         for (long k = (long)_min; k < (long)_max; k++) 
         {
-            arma::vec state_k = arma::normalise(new_basis.col(k));
+            arma::Col<_type> state_k = arma::normalise(new_basis.col(k));
             auto c_k = dot_prod(state_k, _state);
             double val = std::abs(std::conj(c_k) * c_k);
             pr += std::pow(val, q);

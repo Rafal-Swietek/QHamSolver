@@ -64,7 +64,22 @@ XXZsym::XXZsym(int _BC, unsigned int L, double J1, double J2, double delta1, dou
     this->_J1 = J1;
     this->_J2 = J2;
     this->_delta1 = delta1;
-    this->_delta2 = delta2;
+
+    if( std::abs(delta2) > 0 )
+    {
+    #ifdef USE_EXP_COUPLING
+        size_t _dim = binom(L, L / 2);
+        delta2 = std::pow(_dim, -delta2);
+        std::cout << "----------------------------" << std::endl;
+        printSeparated(std::cout, "\t", 20, true, "CHECK DIM:", this->dim, _dim, delta2);
+        std::cout << "----------------------------" << std::endl;
+        this->_delta2 = delta2;
+    #else
+        this->_delta2 = delta2;
+    #endif
+    } else {
+        this->_delta2 = delta2;
+    }
     
     this->_hz = hz;
     

@@ -41,17 +41,22 @@ XXZ::XXZ(int _BC, unsigned int L, double J1, double J2, double delta1, double de
     // if(this->_add_edge_fields)
     //     this->_add_parity_breaking = false;
     //<! disorder terms
-    size_t _dim = binom(L, L / 2);
-    w = std::pow(_dim, -w);
-    std::cout << "----------------------------" << std::endl;
-    printSeparated(std::cout, "\t", 20, true, "CHECK DIM:", this->dim, _dim, w);
-    std::cout << "----------------------------" << std::endl;
-
-    this->_w = w;
     if(std::abs(w) > 0){
+        #ifdef USE_EXP_COUPLING
+            size_t _dim = binom(L, L / 2);
+            w = std::pow(_dim, -w);
+            std::cout << "----------------------------" << std::endl;
+            printSeparated(std::cout, "\t", 20, true, "CHECK DIM:", this->dim, _dim, w);
+            std::cout << "----------------------------" << std::endl;
+            this->_w = w;
+        #else
+            this->_w = w;
+        #endif
         this->_use_disorder = true;
         this->_seed = seed;
         this->_add_parity_breaking = false;
+    } else {
+            this->_w = w;
     }
     init(); 
 }
@@ -102,6 +107,9 @@ void XXZ::create_hamiltonian()
     std::vector<int> neighbor_distance = {1, 2};
     auto check_spin = QOps::__builtins::get_digit(this->system_size);
 
+    if(this->_boundary_condition){
+        this->_disorder(0) = 2;
+    }
     for (u64 k = 0; k < this->dim; k++) 
     {
 		double s_i, s_j;
