@@ -162,7 +162,7 @@ void ui::make_sim(){
 
 void ui::spectrals()
 {
-	std::string dir = this->saving_dir + "Spectrals_SzSz" + kPSep;
+	std::string dir = this->saving_dir + "Spectrals_SzSz2" + kPSep;
 	createDirs(dir);
 	
     const size_t dim_max = 1e5;
@@ -199,7 +199,7 @@ void ui::spectrals()
 		for (int j = 0; j < this->L; j++) 
         {
 			s_i = check_spin(base_state, j) ? 0.5 : -0.5;				// true - spin up, false - spin down
-            int nei = j + 1;
+            int nei = j + 2;
             if(nei >= this->L)
                 nei = (this->boundary_conditions)? -1 : nei % this->L;
             
@@ -444,7 +444,7 @@ void ui::spectrals()
         #endif
         std::cout << " - - - - - - finished diagonalization of unperturbed H in : " << tim_s(start) << " s for realis = " << realis << " - - - - - - " << std::endl; // simulation end
         start = std::chrono::system_clock::now();
-        
+
 		outer_threads = this->thread_number;
 		omp_set_num_threads(1);
 		std::cout << outer_threads << "\t\t" << omp_get_num_threads() << std::endl;

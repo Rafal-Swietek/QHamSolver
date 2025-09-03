@@ -1,6 +1,18 @@
 import numpy as np
 import decimal
 
+parity_sectors = [-1, 1]
+def get_sectors(L, BOUNDARY_COND = 0, hz = 0):
+    translation_real_sectors = [0, L // 2] if BOUNDARY_COND == 0 and L % 2 == 0 else [0]
+    translation_imag_sectors = range(1, L // 2 + L % 2)
+    
+    spin_flip_X_sectors = [-1, 1] if hz == 0 and (L % 2 == 0) else [1]
+
+    real_sectors = [[ks, ps, zx] for ks in translation_real_sectors for ps in parity_sectors for zx in spin_flip_X_sectors]
+    imag_sectors = [[kx, 1, zx] for kx in translation_imag_sectors for zx in spin_flip_X_sectors]
+
+    return real_sectors, imag_sectors
+
 def format_number(num):
     """
     Get number of zeros I think
