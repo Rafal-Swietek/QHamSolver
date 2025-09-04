@@ -892,13 +892,16 @@ void ui::quench_fourier()
 	if(this->g >= 1) bandwidth = 2 * dE_base * ( std::sqrt(2 * dim_log) - std::log(dim_log * 4 * constants<double>::pi) / std::sqrt(2*dim_log) / 2 );
 	else			 bandwidth = 4 * dE_base;
 
-	double tH = 2 * dim / dE_base;
+	double tH = 1.5 * dim / dE_base;
 	double dt = 10 * tH / this->num_of_points;	//constants<double>::two_pi / bandwidth;
+	if(dt > constants<double>::two_pi / bandwidth)
+		dt = constants<double>::two_pi / bandwidth;
+
 	double tmin = tH - this->num_of_points / 2 * dt;
 	if( tmin < 0 ) tmin = tH / 10;
 	tmin = 0;
 	arma::vec times = tmin + arma::linspace(0, this->num_of_points * dt, this->num_of_points + 1);
-	const arma::vec omegax = arma::logspace(std::log10(1.0/dim) - 1, std::log10( bandwidth ) + 1, 10 * this->L);
+	const arma::vec omegax = arma::logspace(std::log10(1.0/dim) - 1, std::log10( bandwidth ) + 0.2, 10 * this->L);
 	const arma::vec energy_density = arma::regspace(0.05, 0.02, 0.95);
 	
 	int Ll = this->L;
