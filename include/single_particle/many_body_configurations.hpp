@@ -42,7 +42,7 @@ namespace QHS{
         std::vector<boost::dynamic_bitset<>> mb_config(u64 num_of_states, long int volume, disorder<double>& random_gen, int num_particles = 1)
         {
             std::vector<boost::dynamic_bitset<>> mb_states;
-            num_of_states = u64(std::min((double)num_of_states, binom(volume, num_particles)));
+            num_of_states = std::min(num_of_states, (u64)binom(volume, num_particles));
         #pragma omp parallel for
             for(u64 id = 0; id < num_of_states; id++){
                 long num_up = num_particles;
