@@ -1054,6 +1054,8 @@ void ui::quench_fourier()
 			createDirs(dir_realis);
 			times.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "times"));
 			quench.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "quench",   arma::hdf5_opts::append));
+			E.save(arma::hdf5_name(dir_realis + info + ".hdf5", "E",   arma::hdf5_opts::append));
+			coeff.save(arma::hdf5_name(dir_realis + info + ".hdf5", "coefficients",   arma::hdf5_opts::append));
 			arma::vec( {quench_E} ).save(   arma::hdf5_name(dir_realis + info + ".hdf5", "quench_energy",   arma::hdf5_opts::append));
 			arma::vec( {bandwidth} ).save(   arma::hdf5_name(dir_realis + info + ".hdf5", "bandwidth",   arma::hdf5_opts::append));
 			arma::vec( {tH} ).save(   arma::hdf5_name(dir_realis + info + ".hdf5", "tH",   arma::hdf5_opts::append));
