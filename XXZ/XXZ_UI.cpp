@@ -133,13 +133,14 @@ void ui::make_sim(){
                                         this->syms.zx_sym = zx;
                                         
                                         this->reset_model_pointer();
-                                        this->diagonal_matrix_elements();
+                                        // this->diagonal_matrix_elements();
+                                        this->spectrals();
                                         // this->diagonalize();
                                         // this->eigenstate_entanglement();
                                         // this->eigenstate_entanglement_degenerate();
 
                                     };
-            // loopSymmetrySectors(kernel); continue;
+            loopSymmetrySectors(kernel); continue;
             this->reset_model_pointer();
             // auto Hamil = this->ptr_to_model->get_hamiltonian();
             // this->l_steps = 0.05 * Hamil.n_cols;
@@ -162,7 +163,8 @@ void ui::make_sim(){
 
 void ui::spectrals()
 {
-	std::string dir = this->saving_dir + "Spectrals_SzSz2" + kPSep;
+	std::string dir = this->saving_dir + "Spectrals_SzSz" + kPSep;
+    // std::string dir = this->saving_dir + "energy_current" + kPSep;
 	createDirs(dir);
 	
     const size_t dim_max = 1e5;
@@ -199,7 +201,7 @@ void ui::spectrals()
 		for (int j = 0; j < this->L; j++) 
         {
 			s_i = check_spin(base_state, j) ? 0.5 : -0.5;				// true - spin up, false - spin down
-            int nei = j + 2;
+            int nei = j + 1;
             if(nei >= this->L)
                 nei = (this->boundary_conditions)? -1 : nei % this->L;
             
@@ -215,12 +217,15 @@ void ui::spectrals()
     
     double _operator_HSnorm = arma::trace(kinetic * kinetic) / double(dim);
 	kinetic = kinetic / std::sqrt(_operator_HSnorm);
-    // arma::sp_cx_mat kinetic2 = U_U1.t() * energy_current() * U_U1;
-    // // arma::sp_cx_mat kinetic2 = U_U1.t() * spin_current() * U_U1;
-	// cpx _operator_HSnorm = arma::trace(kinetic2 * kinetic2) / double(dim);
+
+    // const auto U = this->ptr_to_model->get_model_ref().get_hilbert_space().symmetry_rotation();
+    // arma::sp_cx_mat kinetic2 = U.t() * energy_current() * U;
+    // // // arma::sp_cx_mat kinetic2 = U_U1.t() * spin_current() * U_U1;
+	// cpx _operator_HSnorm = arma::trace(kinetic2 * kinetic2.t()) / double(dim);
+    // std::cout << "Hilbert-Schmidt Norm\t\t" << _operator_HSnorm << std::endl;
 	// kinetic2 = kinetic2 / std::sqrt(_operator_HSnorm);
     // kinetic = arma::imag(kinetic2);
-	std::cout << "Hilbert-Schmidt Norm\t\t" << _operator_HSnorm << "\t\tNew Norm\t\t" << arma::trace(kinetic * kinetic) / dim << std::endl;
+	std::cout << "Hilbert-Schmidt Norm\t\t" << _operator_HSnorm << "\t\tNew Norm\t\t" << arma::trace(kinetic * kinetic.t()) / dim << std::endl;
 
     auto subsystem_sizes = arma::conv_to<arma::Col<int>>::from(arma::linspace(0, this->L, this->L + 1));
 	std::cout << subsystem_sizes.t() << std::endl;
@@ -367,7 +372,25 @@ void ui::spectrals()
                 }
             }
 		}
-		std::cout << " - - - - - - finished \hat{V} matrix elements at finite energy density in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
+
+        arma::vec _spectral_fun_all(omegax.size()-1, arma::fill::zeros);
+        arma::vec _element_count_all(omegax.size()-1, arma::fill::zeros);
+        const double dw_log = std::log10(omegax[1]) - std::log10(omegax[0]);
+        const double w0_log = std::log10(omegax[0]);
+        {
+            for(int n = 0; n < E.size() - 1; n++){
+                for(int m = n+1; m < E.size() - 1; m++){
+                    double wnm = E(m) - E(n);
+                    const auto idx = int( (std::log10(wnm) - w0_log) / dw_log);
+                    if(idx < omegax.size() && idx >= 0){
+                        _spectral_fun_all(idx) += 2 * std::abs(mat_elem(n, m) * mat_elem(m, n));
+                        _element_count_all(idx) += 2;
+                    }
+                }	
+            }
+            std::cout << " - - - - - - finished spectral function at all energy density for realis = " << realis << " in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
+        }
+		std::cout << " - - - - - - finished \hat{V} matrix elements in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
 
         if(dim < dim_max){
             start = std::chrono::system_clock::now();
@@ -450,41 +473,79 @@ void ui::spectrals()
 		std::cout << outer_threads << "\t\t" << omp_get_num_threads() << std::endl;
 
 	    arma::vec energy_density2 = arma::vec({0.0, 0.0831, 0.1265, 0.1572, 0.1814, 0.2017, 0.2194, 0.235, 0.2493, 0.2623, 0.2744, 0.2857, 0.2964, 0.3065, 0.3162, 0.3254, 0.3343, 0.3429, 0.3512, 0.3592, 0.367, 0.3747, 0.3821, 0.3894, 0.3965, 0.4036, 0.4105, 0.4172, 0.4239, 0.4306, 0.4371, 0.4436, 0.45, 0.4563, 0.4627, 0.4689, 0.4752, 0.4814, 0.4876, 0.4938, 0.5, 0.5062, 0.5124, 0.5186, 0.5248, 0.5311, 0.5373, 0.5437, 0.55, 0.5564, 0.5629, 0.5694, 0.5761, 0.5828, 0.5895, 0.5964, 0.6035, 0.6106, 0.6179, 0.6253, 0.633, 0.6408, 0.6488, 0.6571, 0.6657, 0.6746, 0.6838, 0.6935, 0.7036, 0.7143, 0.7256, 0.7377, 0.7507, 0.765, 0.7806, 0.7983, 0.8186, 0.8428, 0.8735, 0.9169, 1.0	});
-		arma::vec part_ratio_d2(size, arma::fill::zeros);
-		arma::vec part_ratio_d2_comp(size, arma::fill::zeros);
+		
+        const u64 _size_ipr = dim > 40000? num_of_states : size;
+        arma::vec part_ratio_d2(_size_ipr, arma::fill::zeros);
+		arma::vec part_ratio_d2_comp(_size_ipr, arma::fill::zeros);
 		arma::mat ldos(num_of_states, energy_density.size()-1, arma::fill::zeros);
         arma::mat ldos2(num_of_states, energy_density2.size()-1, arma::fill::zeros);
 
-    #pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
-		for(int n = 0; n < size; n++)
-		{
-            const u64 _idx_ = dim < dim_max? n - Emin : n;
-			arma::Col<element_type> eigenstate = arma::normalise(V.col(n));
-			
-            part_ratio_d2_comp(n) = statistics::participation_ratio(eigenstate, 2);
-            part_ratio_d2(n) = statistics::participation_ratio(eigenstate, V0, 2);
-			
-			//!------- LDOS CALCULATION
-			if(n >= Emin && n < Emax)
-			{
-				// const auto idx = int( (std::log10(E0(n)) - E0(0)) / energy_window);
-				arma::Col<element_type> overlaps = V0.t() * eigenstate; //.rows(indices_E0);
-				for(int e = 0; e < energy_density.size()-1; e++)
-				{
-					double E_minus = energy_density(e) * dE0 + E0(0);
-					double E_plus = energy_density(e+1) * dE0 + E0(0);
-					arma::uvec indices = arma::find(E0 >= E_minus && E0 < E_plus);
-					ldos(_idx_, e) = arma::accu( arma::square( arma::abs(overlaps.rows(indices)) ) ) / double(indices.size());
+        if(dim > 40000)
+        {
+        #pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
+            for(int n = 0; n < num_of_states; n++)
+            {
+                arma::Col<element_type> eigenstate = arma::normalise(V.col(n + Emin));
+                
+                part_ratio_d2_comp(n) = statistics::participation_ratio(eigenstate, 2);
+                part_ratio_d2(n) = statistics::participation_ratio(eigenstate, V0, 2);
+                
+                //!------- LDOS CALCULATION
+
+                // const auto idx = int( (std::log10(E0(n)) - E0(0)) / energy_window);
+                arma::Col<element_type> overlaps = V0.t() * eigenstate; //.rows(indices_E0);
+                for(int e = 0; e < energy_density.size()-1; e++)
+                {
+                    double E_minus = energy_density(e) * dE0 + E0(0);
+                    double E_plus = energy_density(e+1) * dE0 + E0(0);
+                    arma::uvec indices = arma::find(E0 >= E_minus && E0 < E_plus);
+                    ldos(n, e) = arma::accu( arma::square( arma::abs(overlaps.rows(indices)) ) ) / double(indices.size());
                 }
                 for(int e = 0; e < energy_density2.size()-1; e++)
-				{
-					double E_minus = energy_density2(e) * dE0 + E0(0);
-					double E_plus = energy_density2(e+1) * dE0 + E0(0);
-					arma::uvec indices = arma::find(E0 >= E_minus && E0 < E_plus);
-					ldos2(n-Emin, e) = arma::accu( arma::square( arma::abs(overlaps.rows(indices)) ) ) / double(indices.size());
-				}
-			}
-		}
+                {
+                    double E_minus = energy_density2(e) * dE0 + E0(0);
+                    double E_plus = energy_density2(e+1) * dE0 + E0(0);
+                    arma::uvec indices = arma::find(E0 >= E_minus && E0 < E_plus);
+                    ldos2(n, e) = arma::accu( arma::square( arma::abs(overlaps.rows(indices)) ) ) / double(indices.size());
+                }
+            }
+        } 
+        else 
+        {
+        #pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
+            for(int n = 0; n < size; n++)
+            {
+                const u64 _idx_ = dim < dim_max? n - Emin : n;
+                arma::Col<element_type> eigenstate = arma::normalise(V.col(n));
+                
+                part_ratio_d2_comp(n) = statistics::participation_ratio(eigenstate, 2);
+                part_ratio_d2(n) = statistics::participation_ratio(eigenstate, V0, 2);
+                
+                //!------- LDOS CALCULATION
+                if(n >= Emin && n < Emax)
+                {
+                    // const auto idx = int( (std::log10(E0(n)) - E0(0)) / energy_window);
+                    arma::Col<element_type> overlaps = V0.t() * eigenstate; //.rows(indices_E0);
+                    for(int e = 0; e < energy_density.size()-1; e++)
+                    {
+                        double E_minus = energy_density(e) * dE0 + E0(0);
+                        double E_plus = energy_density(e+1) * dE0 + E0(0);
+                        arma::uvec indices = arma::find(E0 >= E_minus && E0 < E_plus);
+                        ldos(_idx_, e) = arma::accu( arma::square( arma::abs(overlaps.rows(indices)) ) ) / double(indices.size());
+                    }
+                    for(int e = 0; e < energy_density2.size()-1; e++)
+                    {
+                        double E_minus = energy_density2(e) * dE0 + E0(0);
+                        double E_plus = energy_density2(e+1) * dE0 + E0(0);
+                        arma::uvec indices = arma::find(E0 >= E_minus && E0 < E_plus);
+                        ldos2(n-Emin, e) = arma::accu( arma::square( arma::abs(overlaps.rows(indices)) ) ) / double(indices.size());
+                    }
+                }
+            }
+        }
+        outer_threads = 1;
+		omp_set_num_threads(this->thread_number);
+
 		std::cout << " - - - - - - finished IPR all for q=2 in : " << tim_s(start) << " s for realis = " << realis << " - - - - - - " << std::endl; // simulation end
         start = std::chrono::system_clock::now();
         mat_elem = V0.t() * kinetic * V0;
@@ -525,7 +586,24 @@ void ui::spectrals()
                 }
             }
 		}
-		std::cout << " - - - - - - finished \hat{V} matrix elements in unperturbed basis at finite energy density in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
+
+        arma::vec _spectral_fun_all0(omegax.size()-1, arma::fill::zeros);
+        arma::vec _element_count_all0(omegax.size()-1, arma::fill::zeros);
+        {
+            for(int n = 0; n < E.size() - 1; n++){
+                for(int m = n+1; m < E.size() - 1; m++){
+                    double wnm = E(m) - E(n);
+                    const auto idx = int( (std::log10(wnm) - w0_log) / dw_log);
+                    if(idx < omegax.size() && idx >= 0){
+                        _spectral_fun_all0(idx) += 2 * std::abs(mat_elem(n, m) * mat_elem(m, n));
+                        _element_count_all0(idx) += 2;
+                    }
+                }	
+            }
+            std::cout << " - - - - - - finished spectral function at all energy density for realis = " << realis << " in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
+            // start = std::chrono::system_clock::now();
+        }
+		std::cout << " - - - - - - finished \hat{V} matrix elements in unperturbed basis in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
     	omp_set_num_threads(this->thread_number);
         {
             #ifdef USE_SYMMETRIES
@@ -541,6 +619,8 @@ void ui::spectrals()
 			_spectral_fun.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "spectral_fun",   arma::hdf5_opts::append));
 			_spectral_fun_typ.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "log(_spectral_fun_typ)",   arma::hdf5_opts::append));
 			_element_count.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "element_count",   arma::hdf5_opts::append));
+            _spectral_fun_all.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "spectral_fun_all",   arma::hdf5_opts::append));
+            _element_count_all.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "element_count_all",   arma::hdf5_opts::append));
 
 			_susc.save(	 arma::hdf5_name(dir_realis + info + ".hdf5", "susc",     arma::hdf5_opts::append));
 			_susc_r.save(arma::hdf5_name(dir_realis + info + ".hdf5", "susc_reg", arma::hdf5_opts::append));
@@ -577,6 +657,8 @@ void ui::spectrals()
 			_spectral_fun0.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "spectral_fun0",   arma::hdf5_opts::append));
 			_spectral_fun_typ0.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "log(_spectral_fun_typ)0",   arma::hdf5_opts::append));
 			_element_count0.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "element_count0",   arma::hdf5_opts::append));
+            _spectral_fun_all0.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "spectral_fun_all0",   arma::hdf5_opts::append));
+            _element_count_all0.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "element_count_all0",   arma::hdf5_opts::append));
 		}
 		std::cout << " - - - - - - finished realisation realis = " << realis << " in : " << tim_s(start_re) << " s - - - - - - " << std::endl; // simulation end
 	}
@@ -753,12 +835,13 @@ arma::sp_mat ui::energy_current(){
 
     const size_t dim_max = ULLPOW(this->L);
     auto check_spin = QOps::__builtins::get_digit(this->L);
-    _assert_(this->J2 == 0.0 && this->delta2 == 0, "Energy current implemented only for integrable case, no nearest neighbour terms yet!");
+    // _assert_(this->J2 == 0.0 && this->delta2 == 0, "Energy current implemented only for integrable case, no nearest neighbour terms yet!");
     double Jx = this->J1;
     double Jy = this->J1;
     double Jz = this->delta1;
     arma::sp_mat jE(dim_max, dim_max);
     printSeparated(std::cout, "\t", 20, true, "Start Current", Jx, Jy, Jz);
+    auto start = std::chrono::system_clock::now();
     for(int i = 0; i < this->L; i++)
     {
         int nei = (this->boundary_conditions)? i + 1 : (i + 1)%this->L;
@@ -771,26 +854,32 @@ arma::sp_mat ui::energy_current(){
                 double Snei = double(check_spin(k, nei)) - 0.5;
                 double Snei2 = double(check_spin(k, nei2)) - 0.5;
                 {
+                    // + Sx Sz Sy
                     auto [val, state_tmp]   = operators::sigma_x<cpx>(k, this->L, i);
                     auto [val2, new_idx]    = operators::sigma_y(state_tmp, this->L, nei2);
                     jE(new_idx, k) += std::imag(Jx * Jy * Snei * val * val2);
                 }{
+                    // - Sy Sz Sx
                     auto [val, state_tmp]   = operators::sigma_x<cpx>(k, this->L, nei2);
                     auto [val2, new_idx]    = operators::sigma_y(state_tmp, this->L, i);
                     jE(new_idx, k) -= std::imag(Jx * Jy * Snei * val * val2);
                 }{
+                    // + Sy Sx Sz
                     auto [val, state_tmp]   = operators::sigma_x<cpx>(k, this->L, nei);
                     auto [val2, new_idx]    = operators::sigma_y(state_tmp, this->L, i);
                     jE(new_idx, k) += std::imag(Jz * Jy * Snei2 * val * val2);
                 }{
+                    // - Sx Sy Sz
                     auto [val, state_tmp]   = operators::sigma_x<cpx>(k, this->L, i);
                     auto [val2, new_idx]    = operators::sigma_y(state_tmp, this->L, nei);
                     jE(new_idx, k) -= std::imag(Jz * Jx * Snei2 * val * val2);
                 }{
+                    // Sz Sy Sx
                     auto [val, state_tmp]   = operators::sigma_x<cpx>(k, this->L, nei2);
                     auto [val2, new_idx]    = operators::sigma_y(state_tmp, this->L, nei);
                     jE(new_idx, k) += std::imag(Jz * Jx * Si * val * val2);
                 }{
+                    // - Sz Sx Sy
                     auto [val, state_tmp]   = operators::sigma_x<cpx>(k, this->L, nei);
                     auto [val2, new_idx]    = operators::sigma_y(state_tmp, this->L, nei2);
                     jE(new_idx, k) -= std::imag(Jz * Jy * Si * val * val2);
@@ -798,6 +887,7 @@ arma::sp_mat ui::energy_current(){
             }
         }
     }
+    std::cout << " - - - - - - finished energy current in : " << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
 
     return jE / double(this->L);
 }
