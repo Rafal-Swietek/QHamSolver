@@ -899,7 +899,8 @@ void ui::quench_fourier()
 
 	double tmin = tH - this->num_of_points / 2 * dt;
 	if( tmin < 0 ) tmin = tH / 10;
-	tmin = tH;
+	
+	tmin = 0;
 	arma::vec times = tmin + arma::linspace(0, this->num_of_points * dt, this->num_of_points + 1);
 	const arma::vec omegax = arma::logspace(std::log10(1.0/dim) - 1, std::log10( bandwidth ) + 0.2, 10 * this->L);
 	const arma::vec energy_density = arma::regspace(0.05, 0.02, 0.95);
@@ -1056,6 +1057,7 @@ void ui::quench_fourier()
 			quench.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "quench",   arma::hdf5_opts::append));
 			E.save(arma::hdf5_name(dir_realis + info + ".hdf5", "E",   arma::hdf5_opts::append));
 			coeff.save(arma::hdf5_name(dir_realis + info + ".hdf5", "coefficients",   arma::hdf5_opts::append));
+			diag_mat_elem.save(arma::hdf5_name(dir_realis + info + ".hdf5", "diag_mat_elem",   arma::hdf5_opts::append));
 			arma::vec( {quench_E} ).save(   arma::hdf5_name(dir_realis + info + ".hdf5", "quench_energy",   arma::hdf5_opts::append));
 			arma::vec( {bandwidth} ).save(   arma::hdf5_name(dir_realis + info + ".hdf5", "bandwidth",   arma::hdf5_opts::append));
 			arma::vec( {tH} ).save(   arma::hdf5_name(dir_realis + info + ".hdf5", "tH",   arma::hdf5_opts::append));
