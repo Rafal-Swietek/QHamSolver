@@ -893,7 +893,7 @@ void ui::quench_fourier()
 	else			 bandwidth = 4 * dE_base;
 
 	double tH = 2 * dim / dE_base;
-	double dt = constants<double>::two_pi / bandwidth;
+	double dt = 10 * constants<double>::two_pi / bandwidth;
 	if(dt > constants<double>::two_pi / bandwidth)
 		dt = constants<double>::two_pi / bandwidth;
 
