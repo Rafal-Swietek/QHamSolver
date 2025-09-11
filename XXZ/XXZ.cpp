@@ -107,8 +107,9 @@ void XXZ::create_hamiltonian()
     std::vector<int> neighbor_distance = {1, 2};
     auto check_spin = QOps::__builtins::get_digit(this->system_size);
 
-    if(this->_boundary_condition){
-        this->_disorder(0) = 2;
+    if(this->_boundary_condition)
+    {
+        this->_disorder(0) += 2;
     }
     for (u64 k = 0; k < this->dim; k++) 
     {
