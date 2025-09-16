@@ -893,16 +893,17 @@ void ui::quench_fourier()
 	else			 bandwidth = 4 * dE_base;
 
 	double tH = 2 * dim / dE_base;
-	double dt = 10 * constants<double>::two_pi / bandwidth;
+	double dt = constants<double>::two_pi / bandwidth;
 	if(dt > constants<double>::two_pi / bandwidth)
 		dt = constants<double>::two_pi / bandwidth;
+	// dt = dt/50;
 
 	double tmin = tH - this->num_of_points / 2 * dt;
 	if( tmin < 0 ) tmin = tH / 10;
-	
-	tmin = 0;
+
+	tmin = tH;
 	arma::vec times = tmin + arma::linspace(0, this->num_of_points * dt, this->num_of_points + 1);
-	const arma::vec omegax = arma::logspace(std::log10(1.0/dim) - 1, std::log10( bandwidth ) + 0.2, 10 * this->L);
+	const arma::vec omegax = arma::logspace(std::log10(1.0/dim) - 1, std::log10( 3 * bandwidth ), 20 * this->L);
 	const arma::vec energy_density = arma::regspace(0.05, 0.02, 0.95);
 	
 	int Ll = this->L;
@@ -935,28 +936,37 @@ void ui::quench_fourier()
 			return std::abs(x - E_av) < std::abs(y - E_av);
 		});
 		const u64 idx = i - begin(Hdiagonal);
-		double quench_E = std::real( Hdiagonal(idx) );
+		double quench_E = std::real( this->ptr_to_model->get_dense_hamiltonian()(idx, idx) );
+		printSeparated(std::cout, "\t", 20, true, quench_E, E_av, idx, boost::dynamic_bitset<>(this->L, idx));
 
-
+		// arma::Col<element_type> init_state(dim, arma::fill::zeros);
+		// init_state(idx) = 1;
 		arma::Col<element_type> coeff = V.row(idx).t();
-
+	// 	arma::Col<element_type> coeff(dim, arma::fill::zeros);// = V * init_state;
+	// #pragma omp parallel for
+	// 	for(long alfa = 0; alfa < dim; alfa++)
+	// 	{
+	// 		arma::Col<element_type> state = V.col(alfa);
+	// 		coeff(alfa) = arma::cdot(state, init_state);
+	// 	}
 		arma::vec quench(times.size(), arma::fill::zeros);
-		arma::cx_mat psi(dim, times.size(), arma::fill::zeros);
+		// arma::cx_mat psi(dim, times.size(), arma::fill::zeros);
 
 		start = std::chrono::system_clock::now();
 		std::cout << " - - - - - - finished finding product state with energy E = " << quench_E << " compared to mean energy <H> = " << E_av << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
 
 		start = std::chrono::system_clock::now();
-	#pragma omp parallel for
-		for(long t_idx = 0; t_idx < times.size(); t_idx++)
-		{
-			double time = times(t_idx);
-			for(long alfa = 0; alfa < dim; alfa++)
-			{
-				auto state = V.col(alfa);
-				psi.col(t_idx) += std::exp(-1i * time * E(alfa)) * state * state(idx);
-			}
-		}
+	// #pragma omp parallel for
+		// for(long t_idx = 0; t_idx < times.size(); t_idx++)
+		// {
+		// 	double time = times(t_idx);
+		// 	for(long alfa = 0; alfa < dim; alfa++)
+		// 	{
+		// 		auto state = V.col(alfa);
+		// 		// psi.col(t_idx) += std::exp(-1i * time * E(alfa)) * state * state(idx);
+		// 		psi.col(t_idx) += std::exp(-1i * time * E(alfa)) * state * coeff(alfa);
+		// 	}
+		// }
 
 		std::cout << " - - - - - - finished preparing initial states for all times in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
 		
@@ -986,8 +996,23 @@ void ui::quench_fourier()
 
 		start = std::chrono::system_clock::now();
 	#pragma omp parallel for
-		for(long t_idx = 0; t_idx < times.size(); t_idx++)
-			quench(t_idx) = std::real( arma::cdot(psi.col(t_idx), op_mat * psi.col(t_idx)) );
+		for(long t_idx = 0; t_idx < times.size(); t_idx++){
+			// quench(t_idx) = std::real( arma::cdot(psi.col(t_idx), op_mat * psi.col(t_idx)) );
+			double time = times(t_idx);
+			arma::cx_vec init_state(dim, arma::fill::zeros);
+			for(long alfa = 0; alfa < dim; alfa++)
+			{
+				auto state = V.col(alfa);
+				// psi.col(t_idx) += std::exp(-1i * time * E(alfa)) * state * state(idx);
+				init_state += std::exp(-1i * time * E(alfa)) * state * coeff(alfa);
+			}
+			quench(t_idx) = std::real( arma::cdot(init_state, op_mat * init_state) );
+			// cpx _Q_tmp;
+			// for(long alfa = 0; alfa < dim; alfa++)
+			// 	for(long beta = 0; beta < dim; beta++)
+			// 		_Q_tmp += std::exp(-1i * time * (E(alfa) - E(beta))) * coeff(alfa) * std::conj(coeff(beta)) * mat_elem(alfa, beta);
+			// quench(t_idx) = std::real(_Q_tmp);
+		}
 		
 		std::cout << " - - - - - - finished time evolution for Sz_L in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
 		
