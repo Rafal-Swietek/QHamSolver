@@ -125,6 +125,7 @@ namespace Fermions_UI{
 
 
         virtual void eigenstate_entanglement() override;
+        void purity();
     };
 }
 
