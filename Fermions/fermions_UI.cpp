@@ -244,7 +244,7 @@ void ui::eigenstate_entanglement()
 
         for(int iiLA = 0; iiLA < subsystem_sizes.size(); iiLA++){
             int LA = subsystem_sizes[iiLA];
-            // S(n, iiLA) = entropy::schmidt_decomposition(state, LA, this->L);
+            S(n, iiLA) = entropy::schmidt_decomposition(state, LA, this->L);
 
             arma::uvec row_idx = arma::regspace<arma::uvec>(0, LA-1);
             arma::uvec col_idx = arma::regspace<arma::uvec>(0, LA-1);
@@ -327,7 +327,6 @@ void ui::purity()
     // auto subsystem_sizes = arma::Col<int>( { int(this->L) / 2} );
     std::cout << subsystem_sizes.t() << std::endl;
 
-    arma::mat S(size, subsystem_sizes.size(), arma::fill::zeros);
     arma::mat Scorr(size, subsystem_sizes.size(), arma::fill::zeros);
     arma::mat Scorr_site(size, subsystem_sizes.size(), arma::fill::zeros);
     arma::mat Purity(size, subsystem_sizes.size()+1, arma::fill::zeros);
@@ -410,7 +409,6 @@ void ui::purity()
         // #pragma omp parallel for
         for(int iiLA = 0; iiLA < subsystem_sizes.size(); iiLA++){
             int LA = subsystem_sizes[iiLA];
-            // S(n, iiLA) = entropy::schmidt_decomposition(state, LA, this->L);
 
             arma::uvec row_idx = arma::regspace<arma::uvec>(0, LA-1);
             arma::uvec col_idx = arma::regspace<arma::uvec>(0, LA-1);
