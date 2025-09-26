@@ -69,5 +69,5 @@ def info(L, N = 1, t1=0, t2=0, V1=0, V2=0, mu=0, k=0, p=1, zx=1, BOUNDARY_COND =
     info = info_base(L, N, t1, t2, V1, V2, mu)
     if BOUNDARY_COND == 'PBC':                          info += ",k=%d"%k
     if BOUNDARY_COND == 'OBC' or (k==0 or k==L/2):      info += ",p=%d"%p
-    if N == L//2 and mu==0:                             info += ",zx=%d"%zx
+    # if not(BOUNDARY_COND == 'PBC') or N == L//2 and mu==0:                             info += ",zx=%d"%zx
     return info

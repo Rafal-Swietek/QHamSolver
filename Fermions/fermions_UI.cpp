@@ -140,7 +140,7 @@ void ui::eigenstate_entanglement()
 	}else{
         this->ptr_to_model->diagonalization();
     }
-    const int size = min(20, int(0.02 * dim));
+    const int size = this->boundary_conditions == 2? (dim > dim_cut? this->l_steps : dim) : min(20, int(0.02 * dim));
 
     std::cout << " - - - - - - FINISHED DIAGONALIZATION IN : " << tim_s(start) << " seconds - - - - - - " << std::endl; // simulation end
     
@@ -152,8 +152,8 @@ void ui::eigenstate_entanglement()
         return abs(x - E_av) < abs(y - E_av);
     });
     const long Eav_idx = i - begin(E);
-    const long Emin = Eav_idx - size / 2;
-    printSeparated(std::cout, "\t", 20, true, E_av, Eav_idx, Emin, dim);
+    const long Emin = this->boundary_conditions == 2? 0 : Eav_idx - size / 2;
+    printSeparated(std::cout, "\t", 20, true, arma::trace(this->ptr_to_model->get_hamiltonian()) / double(dim), E_av, Eav_idx, Emin, dim);
 
     const auto _hilbert = this->ptr_to_model->get_model_ref().get_hilbert_space();
     const auto U = _hilbert.symmetry_rotation();
@@ -259,7 +259,8 @@ void ui::eigenstate_entanglement()
             Trace4(n, iiLA) = std::real( arma::trace(J_m_VA * J_m_VA * J_m_VA * J_m_VA) );
             Trace6(n, iiLA) = std::real( arma::trace(J_m_VA * J_m_VA * J_m_VA * J_m_VA * J_m_VA * J_m_VA) );
         }
-        std::cout << " - - - - - - Finished state n = " << n << " in: " << tim_s(start_n) << " seconds - - - - - - " << std::endl; // simulation end
+        if(this->boundary_conditions != 2)
+            std::cout << " - - - - - - Finished state n = " << n << " in: " << tim_s(start_n) << " seconds - - - - - - " << std::endl; // simulation end
     }
     std::cout << " - - - - - - FINISHED ENTROPY CALCULATION IN : " << tim_s(start) << " seconds - - - - - - " << std::endl; // simulation end
     
@@ -334,10 +335,10 @@ void ui::purity()
     arma::mat Trace6(size, subsystem_sizes.size()+1, arma::fill::zeros);
     arma::vec NonGauss(size, arma::fill::zeros);
 
-    outer_threads = this->thread_number;
-    omp_set_num_threads(1);
+    // outer_threads = this->thread_number;
+    // omp_set_num_threads(1);
 
-#pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
+// #pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
     for(int n = 0; n < size; n++){
         clk::time_point start_n = std::chrono::system_clock::now();
         // int idx = 0;
@@ -406,7 +407,7 @@ void ui::purity()
         Trace4(n, subsystem_sizes.size()) = std::real( arma::trace(J_m_MB * J_m_MB * J_m_MB * J_m_MB) );
         Trace6(n, subsystem_sizes.size()) = std::real( arma::trace(J_m_MB * J_m_MB * J_m_MB * J_m_MB * J_m_MB * J_m_MB) );
     
-        // #pragma omp parallel for
+    // #pragma omp parallel for
         for(int iiLA = 0; iiLA < subsystem_sizes.size(); iiLA++){
             int LA = subsystem_sizes[iiLA];
 
@@ -427,8 +428,8 @@ void ui::purity()
     }
     std::cout << " - - - - - - FINISHED ENTROPY CALCULATION IN : " << tim_s(start) << " seconds - - - - - - " << std::endl; // simulation end
     
-    omp_set_num_threads(this->thread_number);
-    outer_threads = 1;
+    // omp_set_num_threads(this->thread_number);
+    // outer_threads = 1;
     
     E.save(arma::hdf5_name(dir + filename + ".hdf5", "energies"));
 	// S.save(arma::hdf5_name(dir + filename + ".hdf5", "entropy", arma::hdf5_opts::append));

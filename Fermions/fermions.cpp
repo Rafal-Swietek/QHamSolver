@@ -39,7 +39,8 @@ void Fermions::init()
                                 QHS::point_symmetric<QOps::particle::fermion>( this->system_size, v_1d<QOps::genOp>(), 1, 0, 0 ),
                                 U1Hilbert(this->system_size, this->syms.N)
                                     );
-        // this->_hilbert_space = QHS::point_symmetric( this->system_size, v_1d<QOps::genOp>(), 1, 0, 0 );
+        // auto _hilbert_space2 = U1Hilbert(this->system_size, this->syms.N);
+        // std::cout << _hilbert_space2.get_hilbert_space_size() << "\tfbisdnfas" << std::endl;
     }
     this->dim = this->_hilbert_space.get_hilbert_space_size();
     _debug_end( std::cout << "\t\tFinished setting generating reduced basis (U(1) x point symmetries) with size:\t dim=" << this->dim << "\tin " << tim_s(start) << " seconds" << std::endl; )
@@ -83,7 +84,7 @@ Fermions::Fermions(int _BC, unsigned int L, unsigned int N, double t1, double t2
     this->syms.p_sym = psym;
     this->syms.zx_sym = zxsym;
     this->syms.N = N;
-    this->_use_symmetries = use_syms;
+    this->_use_symmetries = this->_boundary_condition == 2? false : use_syms;
 
     #ifdef USE_REAL_SECTORS
         if(this->_boundary_condition == 0){ // only for PBC
@@ -147,10 +148,19 @@ void Fermions::create_hamiltonian()
     
     std::vector<int> neighbor_distance = {1, 2};
     auto check_spin = QOps::__builtins::get_digit(this->system_size);
-
     for (u64 k = 0; k < this->dim; k++) {
 		double n_i, n_j;
 		u64 base_state = this->_hilbert_space(k);
+        
+        // APERIODIC BOUNDARY CONDITIONS
+        if(this->_boundary_condition == 2)
+        {
+            n_i = check_spin(base_state, 0) ? 1 : 0;
+            this->H(k, k) += 0.4 * n_i;
+
+            n_i = check_spin(base_state, this->system_size-1) ? 1 : 0;
+            this->H(k, k) += -0.6 * n_i;
+        }
 		for (int j = 0; j < this->system_size; j++) {
 			n_i = check_spin(base_state, j) ? 1 : 0;				// true - spin up, false - spin down
             
@@ -158,7 +168,7 @@ void Fermions::create_hamiltonian()
                 int r = neighbor_distance[a];
                 int nei = j + r;
                 if(nei >= this->system_size)
-                    nei = (this->_boundary_condition)? -1 : nei % this->system_size;
+                    nei = (this->_boundary_condition > 0)? -1 : nei % this->system_size;
 
                 
                 if (nei >= 0) //<! boundary conditions
