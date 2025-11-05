@@ -107,7 +107,8 @@ void ui::make_sim(){
 		eigenstate_entanglement();
 		break;
 	case 3:
-		eigenstate_entanglement_degenerate();
+		// eigenstate_entanglement_degenerate();
+		non_gaussianity();
 		break;
 	case 4:
 		diagonal_matrix_elements();
@@ -168,11 +169,11 @@ void ui::make_sim(){
 						// printSeparated(std::cout, "\t", 16, true, this->L, this->J, this->w, this->g);
 						// do_stuff(); continue;
 
-						geometric_tensor(); continue;
+						// geometric_tensor(); continue;
 
-						quench_fourier(); continue;
+						// quench_fourier(); continue;
 
-						eigenstate_entanglement_manybody(); continue;
+						// eigenstate_entanglement_manybody(); continue;
 						spectrals(); continue;
 						spectral_form_factor(); continue;
 						eigenstate_entanglement(); continue;
@@ -575,7 +576,7 @@ void ui::spectrals_other_operators()
 
 void ui::spectrals()
 {
-	std::string dir = this->saving_dir + "SpectralFunctions2" + kPSep;
+	std::string dir = this->saving_dir + "SpectralFunctions" + kPSep;
 	createDirs(dir);
 	
 	size_t dim = this->ptr_to_model->get_hilbert_size();
@@ -583,22 +584,16 @@ void ui::spectrals()
 
 	const size_t size = dim > 1e5? this->l_steps : dim;
 
-	arma::vec energies(size, arma::fill::zeros);
-
 	int Ll = this->L;
 	int counter = 0;
 	
 	const double _bandwidth_def = RP_data::default_pars::getBandwidth(this->g, this->L);
 	
 	const arma::vec betas = arma::logspace(-2, 2, 100);
-	const arma::vec omegax = arma::logspace(std::log10(1.0/dim) - 2, std::log10( _bandwidth_def ) + 1, 40 * this->L);
+	const arma::vec omegax = arma::logspace(std::log10(1.0/dim) - 2, std::log10( _bandwidth_def ) + 1, 10 * this->L);
 	const arma::vec energy_density = arma::regspace(0.05, 0.02, 0.95);
 
-	arma::Mat<element_type> spectral_fun(omegax.size()-1, energy_density.size(), arma::fill::zeros);
-	arma::Mat<element_type> spectral_fun_typ(omegax.size()-1, energy_density.size(), arma::fill::zeros);
-	arma::Mat<element_type> element_count(omegax.size()-1, energy_density.size(), arma::fill::zeros);
-	
-	double window_width = 0.04;
+	double window_width = 0.05;
 
 // #pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
 	for(int realis = 0; realis < this->realisations; realis++)
@@ -626,9 +621,7 @@ void ui::spectrals()
 		});
 		const long Eav_idx = i - std::begin(E);
 
-		std::string dir_realis = dir + "realisation=" + std::to_string(this->jobid + realis) + kPSep;
-		createDirs(dir_realis);
-		E.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "energies"));
+		
 		
 		long int E_min = dim < 0? 0 : Eav_idx - long(dim / 4);
 		long int E_max = dim > 1e5? dim : Eav_idx + long(dim / 4);
@@ -638,6 +631,20 @@ void ui::spectrals()
 			wH += E(i+1) - E(i);
 		
 		wH /= double(E_max - E_min);
+		
+		// Compute gaps = diff(E)
+		arma::vec gaps = arma::diff(E);
+
+		// Prepare vectors for shifted versions of gaps
+		arma::vec gaps_left  = gaps.head(gaps.n_elem - 1);
+		arma::vec gaps_right = gaps.tail(gaps.n_elem - 1);
+
+		// Compute elementwise min and max
+		arma::vec min_gaps = arma::min(gaps_left, gaps_right);
+		arma::vec max_gaps = arma::max(gaps_left, gaps_right);
+
+		// Compute ratio
+		arma::vec ratio_tmp = min_gaps / max_gaps;
 
 		start = std::chrono::system_clock::now();
 		// arma::Mat<element_type> mat_elem = V * Sz_ops[i] * V.t();
@@ -660,68 +667,70 @@ void ui::spectrals()
 
 		std::cout << " - - - - - - finished AGP in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
 		start = std::chrono::system_clock::now();
-		arma::Mat<element_type> _integrated_spectral_fun(omegax.size()-1, energy_density.size(), arma::fill::zeros);
-		arma::Mat<element_type> _spectral_fun(omegax.size()-1, energy_density.size(), arma::fill::zeros);
-		arma::Mat<element_type> _spectral_fun_typ(omegax.size()-1, energy_density.size(), arma::fill::zeros);
-		arma::Mat<element_type> _element_count(omegax.size()-1, energy_density.size(), arma::fill::zeros);
+		arma::vec _spectral_fun(omegax.size()-1, arma::fill::zeros);
+		arma::vec _spectral_fun_typ(omegax.size()-1, arma::fill::zeros);
+		arma::vec _element_count(omegax.size()-1, arma::fill::zeros);
 		
+		const double dw_log = std::log10(omegax[1]) - std::log10(omegax[0]);
+        const double w0_log = std::log10(omegax[0]);
+		for(int n = 0; n < E.size() - 1; n++){
+			for(int m = n+1; m < E.size() - 1; m++){
+				double wnm = E(m) - E(n);
+				const auto idx = int( (std::log10(wnm) - w0_log) / dw_log);
+				if(idx < omegax.size() && idx >= 0){
+					const double _b_ = std::abs(mat_elem(n, m));
+					_spectral_fun(idx) += 2 * _b_ * _b_;
+					_spectral_fun_typ(idx) += 2 * std::log(_b_ * _b_);
+					_element_count(idx) += 2;
+				}
+			}	
+		}
+		std::cout << " - - - - - - finished spectral function in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
+
+		arma::Mat<element_type> _spectral_fun_eps(omegax.size()-1, energy_density.size(), arma::fill::zeros);
+		arma::Mat<element_type> _spectral_fun_typ_eps(omegax.size()-1, energy_density.size(), arma::fill::zeros);
+		arma::Mat<element_type> _element_count_eps(omegax.size()-1, energy_density.size(), arma::fill::zeros);
+		
+		const double window_width = 0.05;
 		const double bandwidth = E(E.size() - 1) - E(0);
 	#pragma omp parallel for
-		for(int ii = 0; ii < energy_density.size(); ii++){
+		for(int ii = 0; ii < energy_density.size(); ii++)
+		{
 			const double eps = energy_density(ii);
 			const double energyx = eps * bandwidth + E(0);
-			spectrals::preset_omega set_omega(E, window_width, energyx);
-			arma::vec omegas_i, matter;
-				std::tie(omegas_i, matter) = set_omega.get_matrix_elements(mat_elem);
-				for(int k = 0; k < omegax.size() - 1; k++){
-					arma::uvec indices = arma::find(omegas_i >= omegax[k] && omegas_i < omegax[k+1]);
-					if(indices.size() > 0){
-						_element_count(k, ii) = indices.size();
-						arma::vec x = arma::vec( omegas_i.elem(indices) );
-						arma::vec y = arma::vec( matter.elem(indices) );
-						_spectral_fun(k, ii) = arma::accu( y );
-						_spectral_fun_typ(k, ii) = arma::accu( arma::log(y) );
-						if(indices.size() > 1)
-							_integrated_spectral_fun(k, ii) = simpson_rule(x, y);
+			for(int n = 0; n < E.size() - 1; n++)
+			{
+				for(int m = n+1; m < E.size() - 1; m++){
+					if (abs((E(n) + E(m)) / 2. - energyx) < window_width / 2.){
+						double wnm = E(m) - E(n);
+						const auto idx = int( (std::log10(wnm) - w0_log) / dw_log);
+						if(idx < omegax.size() && idx >= 0){
+							const double _b_ = std::abs(mat_elem(n, m));
+							_spectral_fun_eps(idx, ii) += 2 * _b_ * _b_;
+							_spectral_fun_typ_eps(idx, ii) += 2 * std::log(_b_ * _b_);
+							_element_count_eps(idx, ii) += 2;
+						}
 					}
-				}
+				}	
+			}
 		}
-		std::cout << " - - - - - - finished Sz_L matrix elements at finite energy density in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
-	// 	start = std::chrono::system_clock::now();
-
-	// 	arma::Mat<element_type> _spectral_fun_beta(omegax.size()-1, betas.size(), arma::fill::zeros);
-	// 	arma::vec _partition_fun(betas.size(), arma::fill::zeros);
-		
-	// 	double _delta_log_omegax = std::log(omegax(1)) - std::log(omegax(0));
-	// #pragma omp parallel for
-	// 	for(int iiB = 0; iiB < betas.size(); iiB++){
-	// 		double beta = betas(iiB);
-	// 		double _Z = 0;
-	// 		for(int n = 0; n < dim; n++){
-	// 			double _thermal_weight = std::exp(-beta * (E(n) - E(0)) );
-	// 			_Z += _thermal_weight;
-	// 			for(int m = n + 1; m < dim; m++){
-	// 				double omega = E(m) - E(n);
-	// 				u64 idx_w;
-	// 				if(omega < omegax(0))
-	// 					idx_w = 0;
-	// 				else
-	// 					idx_w = 1 + int( (std::log(omega) - std::log(omegax(0))) / _delta_log_omegax );
-	// 				_spectral_fun_beta(idx_w, iiB) += 2 * _thermal_weight * mat_elem(n, m);
-	// 			}
-	// 		}
-	// 		_spectral_fun_beta(iiB) = _spectral_fun_beta(iiB) / _Z;
-	// 		_partition_fun(iiB) = _Z;
-	// 	}
-	// 	std::cout << " - - - - - - finished Sz_L matrix elements at finite temperature in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
+		std::cout << " - - - - - - finished spectral at finite energy density in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
 		// #ifndef MY_MAC
 		{
-			omegax.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "omegas",   arma::hdf5_opts::append));
-			_integrated_spectral_fun.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "integrated_spectral_fun",   arma::hdf5_opts::append));
+			std::string dir_realis = dir + "realisation=" + std::to_string(this->jobid + realis) + kPSep;
+			createDirs(dir_realis);
+			E.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "energies"));
+			ratio_tmp.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "gap_ratio", arma::hdf5_opts::append));
+			omegax.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "omegas", arma::hdf5_opts::append));
 			energy_density.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "energy_density",   arma::hdf5_opts::append));
-			_spectral_fun.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "spectral_fun",   arma::hdf5_opts::append));
-			_spectral_fun_typ.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "log(_spectral_fun_typ)",   arma::hdf5_opts::append));
-			_element_count.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "element_count",   arma::hdf5_opts::append));
+			
+			_spectral_fun.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "spectral_fun_all",   arma::hdf5_opts::append));
+			_spectral_fun_typ.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "log(_spectral_fun_typ)_all",   arma::hdf5_opts::append));
+			_element_count.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "element_count_all",   arma::hdf5_opts::append));
+
+			_spectral_fun_eps.save(arma::hdf5_name(dir_realis + info + ".hdf5", "spectral_fun",   arma::hdf5_opts::append));
+			_element_count_eps.save(arma::hdf5_name(dir_realis + info + ".hdf5", "element_count",   arma::hdf5_opts::append));
+			_spectral_fun_typ_eps.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "log(_spectral_fun_typ)",   arma::hdf5_opts::append));
 
 			// betas.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "betas",   arma::hdf5_opts::append));
 			// _partition_fun.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "partition_fun",   arma::hdf5_opts::append));
@@ -730,13 +739,6 @@ void ui::spectrals()
 			_susc.save(	 arma::hdf5_name(dir_realis + info + ".hdf5", "susc",     arma::hdf5_opts::append));
 			_susc_r.save(arma::hdf5_name(dir_realis + info + ".hdf5", "susc_reg", arma::hdf5_opts::append));
 		}
-		spectral_fun += _spectral_fun;
-		element_count += _element_count;
-		spectral_fun_typ += _spectral_fun_typ;
-		// #endif
-		
-		energies += E;
-		counter++;
 		std::cout << " - - - - - - finished realisation realis = " << realis << " in : " << tim_s(start_re) << " s - - - - - - " << std::endl; // simulation end
 	}
 	if(counter == 0) return;
@@ -1811,6 +1813,9 @@ void ui::parse_cmd_options(int argc, std::vector<std::string> argv)
 				break;
 		}
 	#else
+		#ifdef _UNIFORM_DIAG
+			folder += "UNIFORM" + kPSep;
+		#endif
 		switch(_mat_ensemble){
 			case 0: folder += "GOE" + kPSep; break;
 			case 1: folder += "GUE" + kPSep; break;
