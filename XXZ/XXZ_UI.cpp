@@ -172,20 +172,53 @@ void ui::fractality_in_clean_basis(){
 	std::string info = this->set_info();
 	const size_t size = dim > dim_max? this->l_steps : dim;
 
+    clk::time_point start = std::chrono::system_clock::now();
+    auto _hilbert_space = this->ptr_to_model->get_model_ref().get_hilbert_space();
+    arma::vec E0;
+    arma::mat V0(dim, dim);
+    u64 col_start = 0;
+    auto kernel = [&](int ks, int ps, int zxs)
+        {
+            auto model_sym = std::make_unique<QHS::QHamSolver<XXZsym>>(this->boundary_conditions, this->L, this->J1, this->J2, this->delta1, this->delta2, this->hz, ks, ps, zxs, this->syms.Sz);
+            model_sym->diagonalization();
+            u64 dim_sector = model_sym->get_hilbert_size();
+            const arma::vec Esym = model_sym->get_eigenvalues();
+            const auto& Vsym = model_sym->get_eigenvectors();
+            const auto U = model_sym->get_model_ref().get_hilbert_space().symmetry_rotation(_hilbert_space);
+
+            if(ks > 0 && ks < this->L / 2.){
+                E0 = arma::join_cols(E0, Esym, Esym);
+                V0.cols(col_start, col_start + dim_sector - 1) = arma::real(U * Vsym);
+                col_start += dim_sector;
+                V0.cols(col_start, col_start + dim_sector - 1) = arma::real(U * Vsym);
+                col_start += dim_sector;
+            } else {
+                E0 = arma::join_cols(E0, Esym);
+                V0.cols(col_start, col_start + dim_sector - 1) = arma::real(U * Vsym);
+                col_start += dim_sector;
+            }
+            
+        };
+    loopSymmetrySectors(kernel);
+
+    // std::cout << "DIM_TOT = " << dim_tot << std::endl;
+    auto permut = sort_permutation(E0, [](const double a, const double b)
+                            { return a < b; });
+    apply_permutation(E0, permut);
+    std::cout << " - - - - - - finished collecting unperturbed eigenstates in : " << tim_s(start) << " s. Found D0 = " << col_start << " eigenvalues in H0 for D = " << dim << " hilbert space size - - - - - - " << std::endl; // simulation end
     for(int realis = 0; realis < this->realisations; realis++)
 	{
 		clk::time_point start_re = std::chrono::system_clock::now();
 		if(realis > 0)
 			this->ptr_to_model->generate_hamiltonian();
 		
-		clk::time_point start = std::chrono::system_clock::now();
+		start = std::chrono::system_clock::now();
 		if(dim > dim_max){
 			this->ptr_to_model->diag_sparse(this->l_steps, this->l_bundle, this->tol, this->seed);	
 		}
 		else{
         	this->ptr_to_model->diagonalization();
 		}
-        auto _hilbert_space = this->ptr_to_model->get_model_ref().get_hilbert_space();
 		std::cout << " - - - - - - finished diagonalization in : " << tim_s(start) << " s for realis = " << realis << " - - - - - - " << std::endl; // simulation end
 		start = std::chrono::system_clock::now();
 		
@@ -198,19 +231,20 @@ void ui::fractality_in_clean_basis(){
 		});
 		const long Eav_idx = i - std::begin(E);
 
+        u64 num_of_states_for_Cn = 10;//std::min( (u64)50, u64(0.01*dim) );
+
         u64 num_of_states = std::min( u64(this->l_steps), u64(0.1*dim) );
 		u64	Emin = Eav_idx - num_of_states / 2;
 		u64	Emax = Eav_idx + num_of_states / 2;
         const arma::vec energy_density = arma::regspace(0.05, 0.02, 0.95);
-		
+
         const u64 _size_ipr = dim > 40000? num_of_states : size;
         arma::vec qs = arma::linspace(0, 3.0, 16);
         arma::mat part_ratio_d2(num_of_states, qs.size(), arma::fill::zeros);
 		arma::mat part_ratio_d2_comp(num_of_states, qs.size(), arma::fill::zeros);
 		arma::mat ldos(num_of_states, energy_density.size()-1, arma::fill::zeros);
 
-        arma::vec E0_midspectrum;
-        arma::vec overlaps_midspectrum;
+        arma::mat coefficients(dim, num_of_states_for_Cn, arma::fill::zeros);
     #pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
         for(int n = 0; n < num_of_states; n++)
         {
@@ -219,41 +253,13 @@ void ui::fractality_in_clean_basis(){
             for(int iiq = 0; iiq < qs.size(); iiq++)
                 part_ratio_d2_comp(n, iiq) = statistics::participation_ratio(eigenstate, qs(iiq));
 
-            arma::vec E0;
-            arma::vec overlaps;
-            auto kernel = [&](int ks, int ps, int zxs)
-            {
-                auto model_sym = std::make_unique<QHS::QHamSolver<XXZsym>>(this->boundary_conditions, this->L, this->J1, this->J2, this->delta1, this->delta2, this->hz, ks, ps, zxs, this->syms.Sz);
-                model_sym->diagonalization();
-                const arma::vec Esym = model_sym->get_eigenvalues();
-		        const auto& Vsym = model_sym->get_eigenvectors();
-                const auto U = model_sym->get_model_ref().get_hilbert_space().symmetry_rotation(_hilbert_space);
-
-                arma::vec coeffs(Esym.size());
-                for(u64 k = 0; k < Esym.size(); k++){
-                    arma::cx_vec state = U * Vsym.col(k);
-                    coeffs(k) = std::abs(dot_prod(eigenstate, state));
-                }
-                if(ks > 0 && ks < this->L / 2.){
-                    E0 = arma::join_cols(E0, Esym, Esym);
-                    overlaps = arma::join_cols(overlaps, coeffs, coeffs);
-                } else {
-                    E0 = arma::join_cols(E0, Esym);
-                    overlaps = arma::join_cols(overlaps, coeffs);
-                }
-            };
-            loopSymmetrySectors(kernel);
+            arma::vec overlaps = arma::abs(V0.t() * eigenstate);
               
-            // std::cout << "DIM_TOT = " << dim_tot << std::endl;
-            auto permut = sort_permutation(E0, [](const double a, const double b)
-                                    { return a < b; });
-            apply_permutation(E0, permut);
             apply_permutation(overlaps, permut);
             
-            if(n == num_of_states / 2){
-                E0_midspectrum = E0;
-                overlaps_midspectrum = overlaps;
-            }
+            if(n >= (num_of_states - num_of_states_for_Cn) / 2 && n < (num_of_states + num_of_states_for_Cn) / 2)
+                 coefficients.col(n - (num_of_states - num_of_states_for_Cn) / 2) = arma::square(overlaps);
+            
             for(int iiq = 0; iiq < qs.size(); iiq++)
                 for(int n0 = 0; n0 < dim; n0++)
                     part_ratio_d2(n, iiq) += std::pow(overlaps(n0), qs(iiq));
@@ -268,12 +274,15 @@ void ui::fractality_in_clean_basis(){
                 ldos(n, e) = arma::accu( arma::square( arma::abs(overlaps.rows(indices)) ) ) / double(indices.size());
             }
         }
-         std::string dir_realis = dir + "realisation=" + std::to_string(this->jobid + realis) + kPSep;
+        std::cout << " - - - - - - finished realization = " << realis << " in : " << tim_s(start_re) << " s for realis = " << realis << " - - - - - - " << std::endl; // simulation end
+        coefficients /= double(num_of_states_for_Cn);
+		
+        std::string dir_realis = dir + "realisation=" + std::to_string(this->jobid + realis) + kPSep;
         
         createDirs(dir_realis);
         E.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "energies"));
-        E0_midspectrum.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "E0",   arma::hdf5_opts::append));
-        overlaps_midspectrum.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "coefficients",   arma::hdf5_opts::append));
+        E0.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "E0",   arma::hdf5_opts::append));
+        coefficients.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "coefficients",   arma::hdf5_opts::append));
         
         ldos.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "LDOS",   arma::hdf5_opts::append));
         energy_density.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "energy_density",   arma::hdf5_opts::append));

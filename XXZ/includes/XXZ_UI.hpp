@@ -105,7 +105,7 @@ namespace XXZ_UI{
         for (int ks = 0; ks <= this->L / 2.; ks++) {
                 // if(k_real_sec(ks)) continue;
 				v_1d<int> psec = k_real_sec(ks)? v_1d<int>({-1, 1}) : v_1d<int>({1});
-                std::cout << ks << "\t\t" << psec << std::endl;
+                // std::cout << ks << "\t\t" << psec << std::endl;
                 for(auto& ps : psec){
                     for(auto& zxs : zxsec){
                             //<! create local lambda for multithreading enivorontment
