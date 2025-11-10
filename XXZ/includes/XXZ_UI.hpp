@@ -102,7 +102,8 @@ namespace XXZ_UI{
         // #else
 		// 	for (int ks = 1; ks < this->L/2.0; ks++) {
         // #endif
-        for (int ks = 0; ks < this->L; ks++) {
+        for (int ks = 0; ks <= this->L / 2.; ks++) {
+                // if(k_real_sec(ks)) continue;
 				v_1d<int> psec = k_real_sec(ks)? v_1d<int>({-1, 1}) : v_1d<int>({1});
                 std::cout << ks << "\t\t" << psec << std::endl;
                 for(auto& ps : psec){
@@ -116,7 +117,9 @@ namespace XXZ_UI{
                 }
             }
 		}
-    
+        
+
+        void fractality_in_clean_basis();
         
         // ----------------------------------- OVERRIDEN METHODS
         // arma::SpMat<ui::element_type> create_supercharge(bool dagger = false);

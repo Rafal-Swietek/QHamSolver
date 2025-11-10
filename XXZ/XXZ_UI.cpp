@@ -102,6 +102,8 @@ void ui::make_sim(){
 		break;
     case 5: 
         spectrals(); break;
+    case 6: 
+        fractality_in_clean_basis(); break;
 	default:
 		#define generate_scaling_array(name) arma::linspace(this->name, this->name + this->name##s * (this->name##n - 1), this->name##n)
         #define for_loop(param, var) for (auto& param : generate_scaling_array(var))
@@ -140,7 +142,7 @@ void ui::make_sim(){
                                         // this->eigenstate_entanglement_degenerate();
 
                                     };
-            loopSymmetrySectors(kernel); continue;
+            // loopSymmetrySectors(kernel); continue;
             this->reset_model_pointer();
             // auto Hamil = this->ptr_to_model->get_hamiltonian();
             // this->l_steps = 0.05 * Hamil.n_cols;
@@ -160,10 +162,133 @@ void ui::make_sim(){
 	std::cout << " - - - - - - FINISHED CALCULATIONS IN : " << tim_s(start) << " seconds - - - - - - " << std::endl; // simulation end
 }
 
+void ui::fractality_in_clean_basis(){
+
+    std::string dir = this->saving_dir + "Fractality" + kPSep;
+    // std::string dir = this->saving_dir + "energy_current" + kPSep;
+	createDirs(dir);
+    const size_t dim_max = 1e5;
+	size_t dim = this->ptr_to_model->get_hilbert_size();
+	std::string info = this->set_info();
+	const size_t size = dim > dim_max? this->l_steps : dim;
+
+    for(int realis = 0; realis < this->realisations; realis++)
+	{
+		clk::time_point start_re = std::chrono::system_clock::now();
+		if(realis > 0)
+			this->ptr_to_model->generate_hamiltonian();
+		
+		clk::time_point start = std::chrono::system_clock::now();
+		if(dim > dim_max){
+			this->ptr_to_model->diag_sparse(this->l_steps, this->l_bundle, this->tol, this->seed);	
+		}
+		else{
+        	this->ptr_to_model->diagonalization();
+		}
+        auto _hilbert_space = this->ptr_to_model->get_model_ref().get_hilbert_space();
+		std::cout << " - - - - - - finished diagonalization in : " << tim_s(start) << " s for realis = " << realis << " - - - - - - " << std::endl; // simulation end
+		start = std::chrono::system_clock::now();
+		
+		const arma::vec E = this->ptr_to_model->get_eigenvalues();
+		const auto& V = this->ptr_to_model->get_eigenvectors();
+		double E_av = arma::trace(E) / double(dim);
+
+		auto i = std::min_element(std::begin(E), std::end(E), [=](double x, double y) {
+			return abs(x - E_av) < abs(y - E_av);
+		});
+		const long Eav_idx = i - std::begin(E);
+
+        u64 num_of_states = std::min( u64(this->l_steps), u64(0.1*dim) );
+		u64	Emin = Eav_idx - num_of_states / 2;
+		u64	Emax = Eav_idx + num_of_states / 2;
+        const arma::vec energy_density = arma::regspace(0.05, 0.02, 0.95);
+		
+        const u64 _size_ipr = dim > 40000? num_of_states : size;
+        arma::vec qs = arma::linspace(0, 3.0, 16);
+        arma::mat part_ratio_d2(num_of_states, qs.size(), arma::fill::zeros);
+		arma::mat part_ratio_d2_comp(num_of_states, qs.size(), arma::fill::zeros);
+		arma::mat ldos(num_of_states, energy_density.size()-1, arma::fill::zeros);
+
+        arma::vec E0_midspectrum;
+        arma::vec overlaps_midspectrum;
+    #pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
+        for(int n = 0; n < num_of_states; n++)
+        {
+            arma::Col<element_type> eigenstate = arma::normalise(V.col(n + Emin));
+            
+            for(int iiq = 0; iiq < qs.size(); iiq++)
+                part_ratio_d2_comp(n, iiq) = statistics::participation_ratio(eigenstate, qs(iiq));
+
+            arma::vec E0;
+            arma::vec overlaps;
+            auto kernel = [&](int ks, int ps, int zxs)
+            {
+                auto model_sym = std::make_unique<QHS::QHamSolver<XXZsym>>(this->boundary_conditions, this->L, this->J1, this->J2, this->delta1, this->delta2, this->hz, ks, ps, zxs, this->syms.Sz);
+                model_sym->diagonalization();
+                const arma::vec Esym = model_sym->get_eigenvalues();
+		        const auto& Vsym = model_sym->get_eigenvectors();
+                const auto U = model_sym->get_model_ref().get_hilbert_space().symmetry_rotation(_hilbert_space);
+
+                arma::vec coeffs(Esym.size());
+                for(u64 k = 0; k < Esym.size(); k++){
+                    arma::cx_vec state = U * Vsym.col(k);
+                    coeffs(k) = std::abs(dot_prod(eigenstate, state));
+                }
+                if(ks > 0 && ks < this->L / 2.){
+                    E0 = arma::join_cols(E0, Esym, Esym);
+                    overlaps = arma::join_cols(overlaps, coeffs, coeffs);
+                } else {
+                    E0 = arma::join_cols(E0, Esym);
+                    overlaps = arma::join_cols(overlaps, coeffs);
+                }
+            };
+            loopSymmetrySectors(kernel);
+              
+            // std::cout << "DIM_TOT = " << dim_tot << std::endl;
+            auto permut = sort_permutation(E0, [](const double a, const double b)
+                                    { return a < b; });
+            apply_permutation(E0, permut);
+            apply_permutation(overlaps, permut);
+            
+            if(n == num_of_states / 2){
+                E0_midspectrum = E0;
+                overlaps_midspectrum = overlaps;
+            }
+            for(int iiq = 0; iiq < qs.size(); iiq++)
+                for(int n0 = 0; n0 < dim; n0++)
+                    part_ratio_d2(n, iiq) += std::pow(overlaps(n0), qs(iiq));
+                    
+            //!------- LDOS CALCULATION
+            double dE0 = E0(E0.size() - 1) - E0(0);
+            for(int e = 0; e < energy_density.size()-1; e++)
+            {
+                double E_minus = energy_density(e) * dE0 + E0(0);
+                double E_plus = energy_density(e+1) * dE0 + E0(0);
+                arma::uvec indices = arma::find(E0 >= E_minus && E0 < E_plus);
+                ldos(n, e) = arma::accu( arma::square( arma::abs(overlaps.rows(indices)) ) ) / double(indices.size());
+            }
+        }
+         std::string dir_realis = dir + "realisation=" + std::to_string(this->jobid + realis) + kPSep;
+        
+        createDirs(dir_realis);
+        E.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "energies"));
+        E0_midspectrum.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "E0",   arma::hdf5_opts::append));
+        overlaps_midspectrum.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "coefficients",   arma::hdf5_opts::append));
+        
+        ldos.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "LDOS",   arma::hdf5_opts::append));
+        energy_density.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "energy_density",   arma::hdf5_opts::append));
+        
+        qs.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "qs",   arma::hdf5_opts::append));
+        part_ratio_d2.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "P2",   arma::hdf5_opts::append));
+        part_ratio_d2_comp.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "P2_comp",   arma::hdf5_opts::append));
+        // energy_density.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "energy_density",   arma::hdf5_opts::append));
+        // energy_density.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "energy_density",   arma::hdf5_opts::append));
+    }
+}
 
 void ui::spectrals()
 {
-	std::string dir = this->saving_dir + "Spectrals_SzSz" + kPSep;
+	std::string dir = this->saving_dir + "Spectrals_kinetic" + kPSep;
     // std::string dir = this->saving_dir + "energy_current" + kPSep;
 	createDirs(dir);
 	
@@ -191,6 +316,7 @@ void ui::spectrals()
     // arma::sp_mat U_U1(dim_full, dim);
     auto check_spin = QOps::__builtins::get_digit(this->L);
 
+    // auto op = std::make_unique<QHS::QHamSolver<XXZ>>(this->boundary_conditions, this->L, 1, 0, 0, 0, 0, this->syms.Sz, this->add_parity_breaking, this->w, this->seed);
     for (u64 k = 0; k < dim; k++) 
     {
 		double s_i;
@@ -203,18 +329,34 @@ void ui::spectrals()
 			s_i = check_spin(base_state, j) ? 0.5 : -0.5;				// true - spin up, false - spin down
             int nei = j + 1;
             if(nei >= this->L)
-                nei = (this->boundary_conditions)? -1 : nei % this->L;
+                nei = (this->boundary_conditions>0)? -1 : nei % this->L;
             
             double s_j = check_spin(base_state, nei) ? 0.5 : -0.5;				// true - spin up, false - spin down
             if(nei >= 0){
-                s_j = check_spin(base_state, nei) ? 0.5 : -0.5;
-
-                kinetic(k, k) += s_i * s_j;
+                auto [val, state_tmp]   = operators::sigma_minus<cpx>(base_state, this->L, nei);
+                auto [val2, state]      = operators::sigma_plus<cpx>(state_tmp, this->L, j);
+                u64 idx = _hilbert_space.find(state);
+                try {
+                    kinetic(idx, k) += 1.0;
+                    kinetic(k, idx) += 1.0;
+                } 
+                catch (const std::exception& err) {
+                    // std::cout << "Exception:\t" << err.what() << "\n";
+                    // std::cout << "SHit ehhh..." << std::endl;
+                    // printSeparated(std::cout, "\t", 14, true, new_idx, idx, this->_hilbert_space(k), 1.0/);
+                }
             }
 		}
 	}
-    kinetic = kinetic * 4. / std::sqrt(this->L);
-    
+    kinetic = kinetic * 1. / std::sqrt(this->L);
+    // auto kernel = [&check_spin, Ll](u64 state) -> std::pair<u64, double>
+	// 			{ 
+	// 			double s_i = check_spin(state, Ll-1) ? 0.5 : -0.5;
+	// 			return std::make_pair(state, s_i);
+	// 			};
+    // auto _operator = QOps::generic_operator<double>(this->L, std::move(kernel), 1.0);
+    // kinetic = (_operator.to_matrix(dim));
+
     double _operator_HSnorm = arma::trace(kinetic * kinetic) / double(dim);
 	kinetic = kinetic / std::sqrt(_operator_HSnorm);
 
