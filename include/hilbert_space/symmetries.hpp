@@ -56,6 +56,7 @@ namespace QHS{
 		auto get_sectors() 		  const { return this-> _sectors; }
 
 		arma::SpMat<elem_ty> symmetry_rotation() const;
+		arma::SpMat<elem_ty> symmetry_rotation(const hilbert_space_base& global_hilbert_space) const;
 
 		//<!------------------------------------------- Tensor product
 		// auto tensor(const hilbert_space_base& global_hilbert_space)
@@ -274,6 +275,34 @@ namespace QHS{
 		return U / std::sqrt(this->_symmetry_group.size());
 	}
 
+	/// @brief Generate Unitary transformation to full hilbert space from reduced basis
+	/// @return unitary transformation U
+	template <QOps::particle _particle_type>
+	inline
+	arma::SpMat<elem_ty>
+	point_symmetric<_particle_type>::symmetry_rotation(const hilbert_space_base& global_hilbert_space) const
+	{
+		const u64 dim_tot = global_hilbert_space.get_hilbert_space_size();
+		arma::SpMat<elem_ty> U(dim_tot, this->dim);
+	#pragma omp parallel for
+		for (long int k = 0; k < this->dim; k++) {
+			for (auto& G : this->_symmetry_group) {
+				auto [idx, sym_eig] = G(this->mapping[k]);
+				
+				// Find idx in global hilbert space
+				u64 idx_global = global_hilbert_space.find(idx);
+			#ifdef USE_REAL_SECTORS
+				if(idx_global < dim_tot) // only if exists global in sector
+					U(idx_global, k) += std::real(sym_eig / (this->_normalisation[k]) );
+			#else
+				if(idx_global < dim_tot) // only if exists in global sector
+					U(idx_global, k) += std::conj(sym_eig / (this->_normalisation[k]) );
+			#endif
+				// CONJUNGATE YOU MORON CAUSE YOU RETURN TO FULL STATE, I.E. INVERSE MAPPING!!!!!! 
+			}
+		}
+		return U / std::sqrt(this->_symmetry_group.size());
+	}
 
 	/// @brief Find symmetry generator returning to SEC state
 	/// @param new_state input state
