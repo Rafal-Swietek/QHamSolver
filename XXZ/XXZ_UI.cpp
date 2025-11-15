@@ -297,7 +297,7 @@ void ui::fractality_in_clean_basis(){
 
 void ui::spectrals()
 {
-	std::string dir = this->saving_dir + "Spectrals_kinetic" + kPSep;
+	std::string dir = this->saving_dir + "Spectrals_SzSz" + kPSep;
     // std::string dir = this->saving_dir + "energy_current" + kPSep;
 	createDirs(dir);
 	
@@ -342,18 +342,19 @@ void ui::spectrals()
             
             double s_j = check_spin(base_state, nei) ? 0.5 : -0.5;				// true - spin up, false - spin down
             if(nei >= 0){
-                auto [val, state_tmp]   = operators::sigma_minus<cpx>(base_state, this->L, nei);
-                auto [val2, state]      = operators::sigma_plus<cpx>(state_tmp, this->L, j);
-                u64 idx = _hilbert_space.find(state);
-                try {
-                    kinetic(idx, k) += 1.0;
-                    kinetic(k, idx) += 1.0;
-                } 
-                catch (const std::exception& err) {
-                    // std::cout << "Exception:\t" << err.what() << "\n";
-                    // std::cout << "SHit ehhh..." << std::endl;
-                    // printSeparated(std::cout, "\t", 14, true, new_idx, idx, this->_hilbert_space(k), 1.0/);
-                }
+                // auto [val, state_tmp]   = operators::sigma_minus<cpx>(base_state, this->L, nei);
+                // auto [val2, state]      = operators::sigma_plus<cpx>(state_tmp, this->L, j);
+                // u64 idx = _hilbert_space.find(state);
+                // try {
+                //     kinetic(idx, k) += 1.0;
+                //     kinetic(k, idx) += 1.0;
+                // } 
+                // catch (const std::exception& err) {
+                //     // std::cout << "Exception:\t" << err.what() << "\n";
+                //     // std::cout << "SHit ehhh..." << std::endl;
+                //     // printSeparated(std::cout, "\t", 14, true, new_idx, idx, this->_hilbert_space(k), 1.0/);
+                // }
+                kinetic(k, k) += s_i * s_j;
             }
 		}
 	}
