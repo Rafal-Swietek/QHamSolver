@@ -224,6 +224,14 @@ void ui::fractality_in_clean_basis(){
 		
 		const arma::vec E = this->ptr_to_model->get_eigenvalues();
 		const auto& V = this->ptr_to_model->get_eigenvectors();
+        const auto& H = this->ptr_to_model->get_hamiltonian();
+        arma::sp_mat H2 = H*H;
+
+        arma::vec gec(dim, arma::fill::zeros);
+        for(u64 k = 0; k < dim; k++)
+            gec(k) = 2 * H2(k,k) - H(k,k) * H(k,k);   
+        gec = gec / arma::trace(H2);
+
 		double E_av = arma::trace(E) / double(dim);
 
 		auto i = std::min_element(std::begin(E), std::end(E), [=](double x, double y) {
@@ -262,7 +270,7 @@ void ui::fractality_in_clean_basis(){
             
             for(int iiq = 0; iiq < qs.size(); iiq++)
                 for(int n0 = 0; n0 < dim; n0++)
-                    part_ratio_d2(n, iiq) += std::pow(overlaps(n0), qs(iiq));
+                    part_ratio_d2(n, iiq) += std::pow(overlaps(n0), 2*qs(iiq));
                     
             //!------- LDOS CALCULATION
             double dE0 = E0(E0.size() - 1) - E0(0);
@@ -275,13 +283,13 @@ void ui::fractality_in_clean_basis(){
             }
         }
         std::cout << " - - - - - - finished realization = " << realis << " in : " << tim_s(start_re) << " s for realis = " << realis << " - - - - - - " << std::endl; // simulation end
-        coefficients /= double(num_of_states_for_Cn);
 		
         std::string dir_realis = dir + "realisation=" + std::to_string(this->jobid + realis) + kPSep;
         
         createDirs(dir_realis);
         E.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "energies"));
         E0.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "E0",   arma::hdf5_opts::append));
+        gec.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "GEC",   arma::hdf5_opts::append));
         coefficients.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "coefficients",   arma::hdf5_opts::append));
         
         ldos.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "LDOS",   arma::hdf5_opts::append));
