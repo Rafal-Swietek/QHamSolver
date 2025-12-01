@@ -104,6 +104,8 @@ void ui::make_sim(){
         spectrals(); break;
     case 6: 
         fractality_in_clean_basis(); break;
+    case 7: 
+        spectral_form_factor(); break;
 	default:
 		#define generate_scaling_array(name) arma::linspace(this->name, this->name + this->name##s * (this->name##n - 1), this->name##n)
         #define for_loop(param, var) for (auto& param : generate_scaling_array(var))
