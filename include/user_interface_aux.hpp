@@ -350,6 +350,9 @@ arma::vec user_interface<Hamiltonian>::get_eigenvalues(std::string prefix, bool 
 		name = this->saving_dir + "Spectrals_SzSz" + kPSep + prefix + this->set_info({});
 		if(!loaded)
 			loaded = eigenvalues.load(arma::hdf5_name(name + ".hdf5", "energies"));
+		name = this->saving_dir + "ENERGIES" + kPSep + prefix + this->set_info({});
+		if(!loaded)
+			loaded = eigenvalues.load(arma::hdf5_name(name + ".hdf5", "energy"));
 		if(!loaded){
 			std::cout << "Not found:\t" << name << std::endl;
 			if(diag_if_empty){
