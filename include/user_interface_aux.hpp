@@ -354,7 +354,7 @@ arma::vec user_interface<Hamiltonian>::get_eigenvalues(std::string prefix, bool 
 		if(!loaded)
 			loaded = eigenvalues.load(arma::hdf5_name(name + ".hdf5", "energy"));
 		if(!loaded){
-			std::cout << "Not found:\t" << name << std::endl;
+			// std::cout << "Not found:\t" << name << std::endl;
 			if(diag_if_empty){
 				ptr_to_model->diagonalization(false);
 				eigenvalues = ptr_to_model->get_eigenvalues();	
