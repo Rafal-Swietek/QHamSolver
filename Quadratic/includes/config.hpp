@@ -69,8 +69,10 @@ constexpr int _mat_ensemble = _MAT_ENSEMBLE_;
     #define print_model(x) "Chosen Rozenzweig-Porter (RP) model with GOE matrix elements!"
     #define pprint_model(x) print_model(x)
     const auto model = "RP";
-    #ifndef _UNIFORM_DIAG
-        #define _UNIFORM_DIAG
+    #if defined(MY_MAC)
+        #ifndef _UNIFORM_DIAG
+            // #define _UNIFORM_DIAG
+        #endif
     #endif
 #else
     #define print_model(x) "DEFAULT: Chosen SYK2 model with GOE matrix elements in " #x "-dimensions!"
