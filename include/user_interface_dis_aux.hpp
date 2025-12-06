@@ -135,7 +135,7 @@ void user_interface_dis<Hamiltonian>::spectral_form_factor(){
 		u64 E_av_idx = spectrals::get_mean_energy_index(eigenvalues);
 		const u64 num = dim / 2;
 		const u64 num2 = std::min( u64(500), dim/10);
-
+		printSeparated(std::cout, "\t", 16, true, E_av_idx, arma::trace(eigenvalues) / double(eigenvalues.size()), num, num2);
 		// ------------------------------------- calculate level statistics
 			double r1_tmp = 0, r2_tmp = 0, wH_mean_r = 0, wH_typ_r = 0;
 			int count = 0;
