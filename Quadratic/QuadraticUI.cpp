@@ -13,6 +13,7 @@ void ui::make_sim(){
     printAllOptions();
 	
 	this->ptr_to_model = this->create_new_model_pointer();
+	
 	// arma::Mat<element_type> H = this->ptr_to_model->get_dense_hamiltonian();
 	// H.save(   arma::hdf5_name("HamiltonianRP.hdf5", "H"));
 	// auto do_stuff = [&]()
@@ -163,7 +164,7 @@ void ui::make_sim(){
 						this->w = wx;
 						this->g = gx;
 						this->site = this->L / 2.;
-						// this->reset_model_pointer();
+						this->reset_model_pointer();
 						const auto start_loop = std::chrono::system_clock::now();
 						// std::cout << " - - START NEW ITERATION:\t\t par = "; // simuVAtion end
 						// printSeparated(std::cout, "\t", 16, true, this->L, this->J, this->w, this->g);
@@ -1251,8 +1252,14 @@ void ui::total_spin()
 			}
 		}
 	}
+	arma::vec x = arma::round(arma::diagvec( arma::mat(total_spin) ));
+	x = arma::unique(x);
+	// std::cout << arma::mat(total_spin) << std::endl;
+	std::cout << x << std::endl;
+
 	double _operator_HSnorm = arma::trace(total_spin * total_spin) / dim;
 	total_spin = total_spin / std::sqrt(_operator_HSnorm);
+	
 	std::cout << "Hilbert-Schmidt Norm\t\t" << _operator_HSnorm << "\t\t" << this->L * (this->L-1) << "\t\tNew Norm\t\t" << arma::trace(total_spin * total_spin) / dim << std::endl;
 
 // #pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
@@ -1799,7 +1806,13 @@ void ui::parse_cmd_options(int argc, std::vector<std::string> argv)
 	// #else
 	// 	folder += "FreeFermions" + kPSep;
 	// #endif
-	folder += model + kPSep;
+	// folder += model + kPSep;
+	#if defined(FREE_FERMIONS) && defined(_BOUNDARY_TERMS)
+		std::string model_suff = "_BOUNDARY";
+		folder += model + model_suff + kPSep;
+	#else
+		folder += model + kPSep;
+	#endif
 	#if !defined(SYK) && !defined(PLRB) && !defined(RP)
 		folder += "dim=" + std::to_string(DIM) + kPSep;
 	#endif

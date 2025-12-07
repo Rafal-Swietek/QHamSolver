@@ -105,6 +105,10 @@ void Quadratic::create_hamiltonian()
                 }
             }
         }
+        #if defined(_BOUNDARY_TERMS)
+            this->H(0, 0) = -0.6;
+            this->H(this->dim-1, this->dim-1) = +0.4;
+        #endif
     #elif defined(RP)
         #ifdef _UNIFORM_DIAG
             arma::mat H0 = arma::diagmat( this->disorder_generator.uniform(this->dim, -2, 2) );

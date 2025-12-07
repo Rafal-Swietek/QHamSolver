@@ -34,7 +34,7 @@ constexpr int _mat_ensemble = _MAT_ENSEMBLE_;
 
 
 #ifndef MODEL
-    #define MODEL 5
+    #define MODEL 3
 #endif
 
 //------------------- Translate Macro
@@ -59,6 +59,11 @@ constexpr int _mat_ensemble = _MAT_ENSEMBLE_;
     #define print_model(x) "Chosen Free fermion model in " #x "-dimensions!"
     #define pprint_model(x) print_model(x)
     const auto model = "FreeFermions";
+    #if defined(MY_MAC)
+        #ifndef _BOUNDARY_TERMS
+            #define _BOUNDARY_TERMS
+        #endif
+    #endif
 #elif MODEL == 4
     #define PLRB
     #define print_model(x) "Chosen power-law random banded (PLRB) model with GOE matrix elements in!"
