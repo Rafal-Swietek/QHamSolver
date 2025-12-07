@@ -20,7 +20,7 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement()
 	createDirs(dir);
 	
 	double filling = 1. / 3.;
-	const long N = int(this->V / 2);
+	const long N = this->site;// int(this->V / 2);
 
 	std::string info = this->set_info();
 	std::string filename = info + "_N=" + std::to_string(N);
