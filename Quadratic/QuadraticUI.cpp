@@ -1789,7 +1789,9 @@ void ui::parse_cmd_options(int argc, std::vector<std::string> argv)
 	// #endif
 
 	set_volume();
-	
+
+	choosen_option = "-site";
+    this->set_option(this->site, argv, choosen_option);
     //<! FOLDER
     std::string folder = "results" + kPSep;
 	
