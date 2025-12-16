@@ -33,20 +33,22 @@ public:
 };
 //! ^^^ might not be necesarry ^^^
 
-
+#ifdef ADD_CURRENT
+    using elem_ty = cpx;
+#else
+    using elem_ty = double;
+#endif
 /// @brief Fully anisotropic spin chain (XXZ)
 class XXZ : 
-    public QHS::hamiltonian_base<double, U1Hilbert>
+    public QHS::hamiltonian_base<elem_ty, U1Hilbert>
 {
     //<! ----------------------------------------------------- INHERIT TYPEDEFs FROM BASE
-    typedef typename QHS::hamiltonian_base<double, U1Hilbert>::matrix        matrix;
-    typedef typename QHS::hamiltonian_base<double, U1Hilbert>::sparse_matrix sparse_matrix;
+    typedef typename QHS::hamiltonian_base<elem_ty, U1Hilbert>::matrix        matrix;
+    typedef typename QHS::hamiltonian_base<elem_ty, U1Hilbert>::sparse_matrix sparse_matrix;
 
     //<! ----------------------------------------------------- MODEL PARAMETERS
 private:
     disorder<double> disorder_generator;    // generator for random disorder and couplings
-    
-    arma::vec _disorder;                    // disorder array on Z field
     
     double _w = 0.0;                        // disorder value on top of uniform field
     double _hz = 0.0;                       // uniform longitudinal field
@@ -86,6 +88,8 @@ private:
     }
 
 public:
+    arma::vec _disorder;                    // disorder array on Z field
+    
     //<! ----------------------------------------------------- CONSTRUCTORS
     ~XXZ() { DESTRUCTOR_CALL; }
     XXZ() = default;
@@ -96,7 +100,7 @@ public:
     //<! ----------------------------------------------------- HAMILTONIAN BUILDERS
     virtual void create_hamiltonian() override;
     virtual sparse_matrix create_local_hamiltonian(int site) override;
-    virtual void set_hamiltonian_elements(u64 k, double value, u64 new_idx) override;
+    virtual void set_hamiltonian_elements(u64 k, elem_ty value, u64 new_idx) override;
 
     //<! ----------------------------------------------------- OVERRIDEN OPERATORS
     virtual std::ostream& write(std::ostream&) const override;

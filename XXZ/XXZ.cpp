@@ -44,7 +44,7 @@ XXZ::XXZ(int _BC, unsigned int L, double J1, double J2, double delta1, double de
     if(std::abs(w) > 0){
         #ifdef USE_EXP_COUPLING
             size_t _dim = binom(L, L / 2);
-            w = std::pow(_dim, -w);
+            w = std::pow(_dim / std::sqrt(L), -w);
             std::cout << "----------------------------" << std::endl;
             printSeparated(std::cout, "\t", 20, true, "CHECK DIM:", this->dim, _dim, w);
             std::cout << "----------------------------" << std::endl;
@@ -71,12 +71,12 @@ XXZ::XXZ(std::istream& os)
 /// @param k current basis state
 /// @param value value of matrix element
 /// @param new_idx new index to be found in hilbert space
-void XXZ::set_hamiltonian_elements(u64 k, double value, u64 new_idx)
+void XXZ::set_hamiltonian_elements(u64 k, elem_ty value, u64 new_idx)
 {
     u64 idx = this->_hilbert_space.find(new_idx);
     try {
         H(idx, k) += value;
-        H(k, idx) += value;
+        H(k, idx) += my_conjungate( value );
     } 
     catch (const std::exception& err) {
         std::cout << "Exception:\t" << err.what() << "\n";
@@ -107,6 +107,10 @@ void XXZ::create_hamiltonian()
     std::vector<int> neighbor_distance = {1, 2};
     auto check_spin = QOps::__builtins::get_digit(this->system_size);
 
+    double Jx = this->_J1;
+    double Jy = this->_J1;
+    double Jz = this->_delta1;
+    
     if(this->_boundary_condition > 0)
     {
         this->_disorder(0) += 0.8;
@@ -147,6 +151,77 @@ void XXZ::create_hamiltonian()
                     this->H(k, k) += interaction[a] * s_i * s_j;
                 }
             }
+            //<! Add spin current to break degeneracies
+            #ifdef ADD_CURRENT
+            int nei = j + 1;
+            if(nei >= this->system_size)
+                nei = (this->_boundary_condition>0)? -1 : nei % this->system_size;
+            
+            int nei2 = j + 2;
+            if(nei2 >= this->system_size)
+                nei2 = (this->_boundary_condition>0)? -1 : nei2 % this->system_size;
+            // {
+            //     auto [val, state_tmp]   = operators::sigma_x<cpx>(base_state, this->system_size, j);
+            //     auto [val2, new_idx]    = operators::sigma_y(state_tmp, this->system_size, nei);
+            //     u64 idx = _hilbert_space.find(new_idx);
+            //     if(idx < dim)
+            //         this->H(idx, k) -= 0.6*(val * val2);
+            // }
+            // {
+            //     auto [val, state_tmp]   = operators::sigma_x<cpx>(base_state, this->system_size, nei);
+            //     auto [val2, new_idx]    = operators::sigma_y(state_tmp, this->system_size, j);
+            //     u64 idx = _hilbert_space.find(new_idx);
+            //     if(idx < dim)
+            //         this->H(idx, k) += 0.6*(val * val2);
+            // }
+            double Si = double(check_spin(base_state, j)) - 0.5;
+            double Snei = double(check_spin(base_state, nei)) - 0.5;
+            double Snei2 = double(check_spin(base_state, nei2)) - 0.5;
+            {
+                // + Sx Sz Sy
+                auto [val, state_tmp]   = operators::sigma_x<cpx>(base_state, this->system_size, j);
+                auto [val2, new_idx]    = operators::sigma_y(state_tmp, this->system_size, nei2);
+                u64 idx = _hilbert_space.find(new_idx);
+                if(idx < dim)
+                    this->H(idx, k) += 0.8*(Jx * Jy * Snei * val * val2);
+            }{
+                // - Sy Sz Sx
+                auto [val, state_tmp]   = operators::sigma_x<cpx>(base_state, this->system_size, nei2);
+                auto [val2, new_idx]    = operators::sigma_y(state_tmp, this->system_size, j);
+                u64 idx = _hilbert_space.find(new_idx);
+                if(idx < dim)
+                    this->H(idx, k) -= 0.8*(Jx * Jy * Snei * val * val2);
+            }{
+                // + Sy Sx Sz
+                auto [val, state_tmp]   = operators::sigma_x<cpx>(base_state, this->system_size, nei);
+                auto [val2, new_idx]    = operators::sigma_y(state_tmp, this->system_size, j);
+                u64 idx = _hilbert_space.find(new_idx);
+                if(idx < dim)
+                    this->H(idx, k) += 0.8*(Jz * Jy * Snei2 * val * val2);
+            }{
+                // - Sx Sy Sz
+                auto [val, state_tmp]   = operators::sigma_x<cpx>(base_state, this->system_size, j);
+                auto [val2, new_idx]    = operators::sigma_y(state_tmp, this->system_size, nei);
+                u64 idx = _hilbert_space.find(new_idx);
+                if(idx < dim)
+                    this->H(idx, k) -= 0.8*(Jz * Jx * Snei2 * val * val2);
+                
+            }{
+                // Sz Sy Sx
+                auto [val, state_tmp]   = operators::sigma_x<cpx>(base_state, this->system_size, nei2);
+                auto [val2, new_idx]    = operators::sigma_y(state_tmp, this->system_size, nei);
+                u64 idx = _hilbert_space.find(new_idx);
+                if(idx < dim)
+                    this->H(idx, k) += 0.8*(Jz * Jx * Si * val * val2);
+            }{
+                // - Sz Sx Sy
+                auto [val, state_tmp]   = operators::sigma_x<cpx>(base_state, this->system_size, nei);
+                auto [val2, new_idx]    = operators::sigma_y(state_tmp, this->system_size, nei2);
+                u64 idx = _hilbert_space.find(new_idx);
+                if(idx < dim)
+                    this->H(idx, k) -= 0.8*(Jz * Jy * Si * val * val2);
+            }
+            #endif
 		}
 		//std::cout << std::bitset<4>(base_state) << "\t";
 	}

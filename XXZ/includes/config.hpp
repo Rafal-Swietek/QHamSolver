@@ -22,6 +22,12 @@
         // #define USE_REAL_SECTORS
     #endif
 
+    //<! Macro to control if adding spin current of integrable XXZ
+    #ifndef ADD_CURRENT
+        #define ADD_CURRENT
+    #endif
+
+    //<! Macro to control if perturbation is exponentially small or regular
     #ifndef USE_EXP_COUPLING
         #define USE_EXP_COUPLING
     #endif
