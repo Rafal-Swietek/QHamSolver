@@ -355,8 +355,8 @@ void ui::fractality_in_clean_basis(){
 
 void ui::spectrals()
 {
-	// std::string dir = this->saving_dir + "Spectrals_SzSz" + kPSep;
-    std::string dir = this->saving_dir + "energy_current" + kPSep;
+	std::string dir = this->saving_dir + "Spectrals_SzSz" + kPSep;
+    // std::string dir = this->saving_dir + "energy_current" + kPSep;
     // std::string dir = this->saving_dir + "parity" + kPSep;
 	createDirs(dir);
 	
@@ -380,127 +380,131 @@ void ui::spectrals()
 	auto _hilbert_space = this->ptr_to_model->get_model_ref().get_hilbert_space();
 	
     // const size_t dim_full = ULLPOW(this->L);
-    // arma::sp_cx_mat kinetic(dim, dim);
+    arma::sp_mat kinetic(dim, dim);
+    arma::sp_mat perturbation(dim, dim);
     // // arma::sp_mat U_U1(dim_full, dim);
     auto check_spin = QOps::__builtins::get_digit(this->L);
 
+    arma::vec disorder = this->ptr_to_model->get_model_ref()._disorder;
     // auto op = std::make_unique<QHS::QHamSolver<XXZ>>(this->boundary_conditions, this->L, 1, 0, 0, 0, 0, this->syms.Sz, this->add_parity_breaking, this->w, this->seed);
-    // for (u64 k = 0; k < dim; k++) 
-    // {
-	// 	double s_i;
-	// 	u64 base_state = _hilbert_space(k);
-	// 	// s_i = check_spin(base_state, 0) ? 0.5 : -0.5;
-    //     // kinetic(k, k) = s_i;
-    //     // U_U1(base_state, k) = 1.0;
-	// 	for (int j = 0; j < this->L; j++) 
-    //     {
-	// 		s_i = check_spin(base_state, j) ? 0.5 : -0.5;				// true - spin up, false - spin down
-    //         int nei = j + 1;
-    //         if(nei >= this->L)
-    //             nei = (this->boundary_conditions>0)? -1 : nei % this->L;
-            
-    //         double s_j = check_spin(base_state, nei) ? 0.5 : -0.5;				// true - spin up, false - spin down
-    //         if(nei >= 0){
-    //             kinetic(k, k) += s_i * s_j;
-    //         }
-	// 	}
-	// }
-    // kinetic = kinetic * 1. / std::sqrt(this->L);
-    // // auto kernel = [&check_spin, Ll](u64 state) -> std::pair<u64, double>
-	// // 			{ 
-	// // 			double s_i = check_spin(state, Ll-1) ? 0.5 : -0.5;
-	// // 			return std::make_pair(state, s_i);
-	// // 			};
-    // // auto _operator = QOps::generic_operator<double>(this->L, std::move(kernel), 1.0);
-    // // kinetic = (_operator.to_matrix(dim));
-    // arma::sp_cx_mat kinetic = spin_current();
-    double Jx = this->J1;
-    double Jy = this->J1;
-    double Jz = this->delta1;
-    arma::sp_cx_mat kinetic(dim, dim);
-    for(int j = 0; j < this->L; j++)
+    for (u64 k = 0; k < dim; k++) 
     {
-        int nei = j + 1;
-        if(nei >= this->L)
-            nei = (this->boundary_conditions>0)? -1 : nei % this->L;
-        
-        int nei2 = j + 2;
-        if(nei2 >= this->L)
-            nei2 = (this->boundary_conditions>0)? -1 : nei2 % this->L;
-        if(nei >0 && nei2 > 0)
+		double s_i;
+		u64 base_state = _hilbert_space(k);
+		// s_i = check_spin(base_state, 0) ? 0.5 : -0.5;
+        // kinetic(k, k) = s_i;
+        // U_U1(base_state, k) = 1.0;
+		for (int j = 0; j < this->L; j++) 
         {
-            for(long k = 0; k < dim; k++)
-            {
-                u64 base_state = _hilbert_space(k);
-                // double Si = double(check_spin(k, i)) - 0.5;
-                // double Snei = double(check_spin(k, nei)) - 0.5;
-                // {
-                //     auto [val, state_tmp]   = operators::sigma_x<cpx>(base_state, this->L, i);
-                //     auto [val2, new_idx]    = operators::sigma_y(state_tmp, this->L, nei);
-                //     u64 idx = _hilbert_space.find(new_idx);
-                //     if(idx < dim)
-                //         kinetic(idx, k) -= (val * val2);
-                // }{
-                //     auto [val, state_tmp]   = operators::sigma_x<cpx>(base_state, this->L, nei);
-                //     auto [val2, new_idx]    = operators::sigma_y(state_tmp, this->L, i);
-                //     u64 idx = _hilbert_space.find(new_idx);
-                //     if(idx < dim)
-                //         kinetic(idx, k) += (val * val2);
-                // }
-                double Si = double(check_spin(base_state, j)) - 0.5;
-                double Snei = double(check_spin(base_state, nei)) - 0.5;
-                double Snei2 = double(check_spin(base_state, nei2)) - 0.5;
-                {
-                    // + Sx Sz Sy
-                    auto [val, state_tmp]   = operators::sigma_x<cpx>(base_state, this->L, j);
-                    auto [val2, new_idx]    = operators::sigma_y(state_tmp, this->L, nei2);
-                    u64 idx = _hilbert_space.find(new_idx);
-                    if(idx < dim)
-                        kinetic(idx, k) += 0.8*(Jx * Jy * Snei * val * val2);
-                }{
-                    // - Sy Sz Sx
-                    auto [val, state_tmp]   = operators::sigma_x<cpx>(base_state, this->L, nei2);
-                    auto [val2, new_idx]    = operators::sigma_y(state_tmp, this->L, j);
-                    u64 idx = _hilbert_space.find(new_idx);
-                    if(idx < dim)
-                        kinetic(idx, k) -= 0.8*(Jx * Jy * Snei * val * val2);
-                }{
-                    // + Sy Sx Sz
-                    auto [val, state_tmp]   = operators::sigma_x<cpx>(base_state, this->L, nei);
-                    auto [val2, new_idx]    = operators::sigma_y(state_tmp, this->L, j);
-                    u64 idx = _hilbert_space.find(new_idx);
-                    if(idx < dim)
-                        kinetic(idx, k) += 0.8*(Jz * Jy * Snei2 * val * val2);
-                }{
-                    // - Sx Sy Sz
-                    auto [val, state_tmp]   = operators::sigma_x<cpx>(base_state, this->L, j);
-                    auto [val2, new_idx]    = operators::sigma_y(state_tmp, this->L, nei);
-                    u64 idx = _hilbert_space.find(new_idx);
-                    if(idx < dim)
-                        kinetic(idx, k) -= 0.8*(Jz * Jx * Snei2 * val * val2);
-                    
-                }{
-                    // Sz Sy Sx
-                    auto [val, state_tmp]   = operators::sigma_x<cpx>(base_state, this->L, nei2);
-                    auto [val2, new_idx]    = operators::sigma_y(state_tmp, this->L, nei);
-                    u64 idx = _hilbert_space.find(new_idx);
-                    if(idx < dim)
-                        kinetic(idx, k) += 0.8*(Jz * Jx * Si * val * val2);
-                }{
-                    // - Sz Sx Sy
-                    auto [val, state_tmp]   = operators::sigma_x<cpx>(base_state, this->L, nei);
-                    auto [val2, new_idx]    = operators::sigma_y(state_tmp, this->L, nei2);
-                    u64 idx = _hilbert_space.find(new_idx);
-                    if(idx < dim)
-                        kinetic(idx, k) -= 0.8*(Jz * Jy * Si * val * val2);
-                }
+			s_i = check_spin(base_state, j) ? 0.5 : -0.5;				// true - spin up, false - spin down
+            perturbation(k,k) += disorder(j) * s_i;
+            
+            int nei = j + 1;
+            if(nei >= this->L)
+                nei = (this->boundary_conditions>0)? -1 : nei % this->L;
+            
+            double s_j = check_spin(base_state, nei) ? 0.5 : -0.5;				// true - spin up, false - spin down
+            if(nei >= 0){
+                kinetic(k, k) += s_i * s_j;
             }
-        }
-    }
+		}
+	}
+    kinetic = kinetic * 1. / std::sqrt(this->L);
+    // auto kernel = [&check_spin, Ll](u64 state) -> std::pair<u64, double>
+	// 			{ 
+	// 			double s_i = check_spin(state, Ll-1) ? 0.5 : -0.5;
+	// 			return std::make_pair(state, s_i);
+	// 			};
+    // auto _operator = QOps::generic_operator<double>(this->L, std::move(kernel), 1.0);
+    // kinetic = (_operator.to_matrix(dim));
+    // arma::sp_cx_mat kinetic = spin_current();
+    // double Jx = this->J1;
+    // double Jy = this->J1;
+    // double Jz = this->delta1;
+    // arma::sp_cx_mat kinetic(dim, dim);
+    // for(int j = 0; j < this->L; j++)
+    // {
+    //     int nei = j + 1;
+    //     if(nei >= this->L)
+    //         nei = (this->boundary_conditions>0)? -1 : nei % this->L;
+        
+    //     int nei2 = j + 2;
+    //     if(nei2 >= this->L)
+    //         nei2 = (this->boundary_conditions>0)? -1 : nei2 % this->L;
+    //     if(nei >0 && nei2 > 0)
+    //     {
+    //         for(long k = 0; k < dim; k++)
+    //         {
+    //             u64 base_state = _hilbert_space(k);
+    //             // double Si = double(check_spin(k, i)) - 0.5;
+    //             // double Snei = double(check_spin(k, nei)) - 0.5;
+    //             // {
+    //             //     auto [val, state_tmp]   = operators::sigma_x<cpx>(base_state, this->L, i);
+    //             //     auto [val2, new_idx]    = operators::sigma_y(state_tmp, this->L, nei);
+    //             //     u64 idx = _hilbert_space.find(new_idx);
+    //             //     if(idx < dim)
+    //             //         kinetic(idx, k) -= (val * val2);
+    //             // }{
+    //             //     auto [val, state_tmp]   = operators::sigma_x<cpx>(base_state, this->L, nei);
+    //             //     auto [val2, new_idx]    = operators::sigma_y(state_tmp, this->L, i);
+    //             //     u64 idx = _hilbert_space.find(new_idx);
+    //             //     if(idx < dim)
+    //             //         kinetic(idx, k) += (val * val2);
+    //             // }
+    //             double Si = double(check_spin(base_state, j)) - 0.5;
+    //             double Snei = double(check_spin(base_state, nei)) - 0.5;
+    //             double Snei2 = double(check_spin(base_state, nei2)) - 0.5;
+    //             {
+    //                 // + Sx Sz Sy
+    //                 auto [val, state_tmp]   = operators::sigma_x<cpx>(base_state, this->L, j);
+    //                 auto [val2, new_idx]    = operators::sigma_y(state_tmp, this->L, nei2);
+    //                 u64 idx = _hilbert_space.find(new_idx);
+    //                 if(idx < dim)
+    //                     kinetic(idx, k) += 0.8*(Jx * Jy * Snei * val * val2);
+    //             }{
+    //                 // - Sy Sz Sx
+    //                 auto [val, state_tmp]   = operators::sigma_x<cpx>(base_state, this->L, nei2);
+    //                 auto [val2, new_idx]    = operators::sigma_y(state_tmp, this->L, j);
+    //                 u64 idx = _hilbert_space.find(new_idx);
+    //                 if(idx < dim)
+    //                     kinetic(idx, k) -= 0.8*(Jx * Jy * Snei * val * val2);
+    //             }{
+    //                 // + Sy Sx Sz
+    //                 auto [val, state_tmp]   = operators::sigma_x<cpx>(base_state, this->L, nei);
+    //                 auto [val2, new_idx]    = operators::sigma_y(state_tmp, this->L, j);
+    //                 u64 idx = _hilbert_space.find(new_idx);
+    //                 if(idx < dim)
+    //                     kinetic(idx, k) += 0.8*(Jz * Jy * Snei2 * val * val2);
+    //             }{
+    //                 // - Sx Sy Sz
+    //                 auto [val, state_tmp]   = operators::sigma_x<cpx>(base_state, this->L, j);
+    //                 auto [val2, new_idx]    = operators::sigma_y(state_tmp, this->L, nei);
+    //                 u64 idx = _hilbert_space.find(new_idx);
+    //                 if(idx < dim)
+    //                     kinetic(idx, k) -= 0.8*(Jz * Jx * Snei2 * val * val2);
+                    
+    //             }{
+    //                 // Sz Sy Sx
+    //                 auto [val, state_tmp]   = operators::sigma_x<cpx>(base_state, this->L, nei2);
+    //                 auto [val2, new_idx]    = operators::sigma_y(state_tmp, this->L, nei);
+    //                 u64 idx = _hilbert_space.find(new_idx);
+    //                 if(idx < dim)
+    //                     kinetic(idx, k) += 0.8*(Jz * Jx * Si * val * val2);
+    //             }{
+    //                 // - Sz Sx Sy
+    //                 auto [val, state_tmp]   = operators::sigma_x<cpx>(base_state, this->L, nei);
+    //                 auto [val2, new_idx]    = operators::sigma_y(state_tmp, this->L, nei2);
+    //                 u64 idx = _hilbert_space.find(new_idx);
+    //                 if(idx < dim)
+    //                     kinetic(idx, k) -= 0.8*(Jz * Jy * Si * val * val2);
+    //             }
+    //         }
+    //     }
+    // }
     // auto parity = QOps::_parity_symmetry(this->L, this->syms.p_sym);
     // arma::sp_cx_mat kinetic = parity.to_reduced_matrix(_hilbert_space);
     // std::cout << arma::mat(arma::real(kinetic)) << std::endl;
-    cpx _operator_HSnorm = arma::trace(kinetic.t() * kinetic) / double(dim);
+    double _operator_HSnorm = arma::trace(kinetic.t() * kinetic) / double(dim);
 	kinetic = kinetic / std::sqrt(_operator_HSnorm);
 
     // const auto U = this->ptr_to_model->get_model_ref().get_hilbert_space().symmetry_rotation();
@@ -513,26 +517,26 @@ void ui::spectrals()
 	std::cout << "Hilbert-Schmidt Norm\t\t" << _operator_HSnorm << "Prediction\t\t" << this->L / 8 << "\t\tNew Norm\t\t" << arma::trace(kinetic.t() * kinetic.t()) / double(dim) << std::endl;
     
 
-    auto subsystem_sizes = arma::conv_to<arma::Col<int>>::from(arma::linspace(0, this->L, this->L + 1));
-	std::cout << subsystem_sizes.t() << std::endl;
-	std::vector<QOps::generic_operator<element_type>> permutation_op;
-	for(int LA_idx = 0; LA_idx < subsystem_sizes.size() - 1; LA_idx++)
-	{	
-		int LA = subsystem_sizes[LA_idx];
-		auto start_LA = std::chrono::system_clock::now();
-		std::vector<int> p(this->L);
-		p[LA % this->L] = 0;
-		for(int l = 0; l < this->L; l++){
-			if(l != LA % this->L){
-				p[l] = (l < (LA % this->L) )? l + 1 : l;
-			}
-		}
-		// std::cout << LA << "\t\t" << p << "\t\t" << p2 << std::endl;
-		auto permutation = QOps::_permutation_generator<element_type>(this->L, p);
-		permutation_op.push_back(permutation);
+    // auto subsystem_sizes = arma::conv_to<arma::Col<int>>::from(arma::linspace(0, this->L, this->L + 1));
+	// std::cout << subsystem_sizes.t() << std::endl;
+	// std::vector<QOps::generic_operator<element_type>> permutation_op;
+	// for(int LA_idx = 0; LA_idx < subsystem_sizes.size() - 1; LA_idx++)
+	// {	
+	// 	int LA = subsystem_sizes[LA_idx];
+	// 	auto start_LA = std::chrono::system_clock::now();
+	// 	std::vector<int> p(this->L);
+	// 	p[LA % this->L] = 0;
+	// 	for(int l = 0; l < this->L; l++){
+	// 		if(l != LA % this->L){
+	// 			p[l] = (l < (LA % this->L) )? l + 1 : l;
+	// 		}
+	// 	}
+	// 	// std::cout << LA << "\t\t" << p << "\t\t" << p2 << std::endl;
+	// 	auto permutation = QOps::_permutation_generator<element_type>(this->L, p);
+	// 	permutation_op.push_back(permutation);
 
-		std::cout << " - - - - - - set permutation matrix for LA = " << LA << " in : " << tim_s(start_LA) << " s - - - - - - " << std::endl;
-	}
+	// 	std::cout << " - - - - - - set permutation matrix for LA = " << LA << " in : " << tim_s(start_LA) << " s - - - - - - " << std::endl;
+	// }
 // #pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
 
 #ifdef USE_SYMMETRIES
@@ -587,15 +591,6 @@ void ui::spectrals()
         if(dim < dim_max){
             arma::Col<element_type> Hdiagonal = arma::diagvec( this->ptr_to_model->get_dense_hamiltonian() );
 
-            auto i2 = min_element(begin(Hdiagonal), end(Hdiagonal), [=](element_type x, element_type y) {
-                return abs(x - E_av) < abs(y - E_av);
-            });
-            const u64 idx = i2 - begin(Hdiagonal);
-            double quench_E = std::real( Hdiagonal(idx) );
-            cpx tot_spin_init = kinetic(idx, idx);
-
-            coeff = V.row(idx).t();
-
             quench = arma::vec(times.size(), arma::fill::zeros);
         //     psi = arma::cx_mat(dim, times.size(), arma::fill::zeros);
         //     start = std::chrono::system_clock::now();
@@ -616,9 +611,9 @@ void ui::spectrals()
 
         //     std::cout << " - - - - - - finished preparing initial states for all times in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
         }
-		arma::mat mat_elem = arma::abs( V.t() * kinetic * V);
+		arma::Mat<ui::element_type> mat_elem = ( V.t() * kinetic * V);
         // std::cout << mat_elem << std::endl;
-		arma::vec diag_mat_elem = arma::diagvec( mat_elem );
+		arma::Col<ui::element_type> diag_mat_elem = arma::diagvec( mat_elem );
         // std::cout << mat_elem << std::endl;
         // std::cout << V.t() * kinetic * V << std::endl;
 		// arma::mat xx = arma::abs(mat_elem);
@@ -686,11 +681,13 @@ void ui::spectrals()
         #pragma omp parallel for
             for(long t_idx = 0; t_idx < times.size(); t_idx++){
                 for(int n = 0; n < E.size() - 1; n++){
+                    quench(t_idx) += std::abs(mat_elem(n,n) * std::conj(mat_elem(n,n)));
                     for(int m = n+1; m < E.size() - 1; m++){
                         double wnm = E(m) - E(n);
-                        quench(t_idx) += 2 * mat_elem(n,m) * mat_elem(m,n) * std::cos(wnm * times(t_idx));
+                        quench(t_idx) += 2.0 * std::abs(mat_elem(n,m) * std::conj(mat_elem(m,n))) * std::cos(wnm * times(t_idx));
                     }	
                 }
+                quench(t_idx) /= double(dim);
             }
                 // quench(t_idx) = std::real( arma::cdot(psi.col(t_idx), kinetic * psi.col(t_idx)) );
             
@@ -871,8 +868,8 @@ void ui::spectrals()
 
 		std::cout << " - - - - - - finished IPR all for q=2 in : " << tim_s(start) << " s for realis = " << realis << " - - - - - - " << std::endl; // simulation end
         start = std::chrono::system_clock::now();
-        mat_elem = arma::abs(V0.t() * kinetic * V0);
-		arma::vec diag_mat_elem0 = arma::diagvec(mat_elem);
+        mat_elem = (V0.t() * kinetic * V0);
+		arma::Col<ui::element_type> diag_mat_elem0 = arma::diagvec(mat_elem);
 		// arma::mat xx = arma::abs(mat_elem);
 		// xx.save(   arma::hdf5_name("MAT_ELEM" + info + ".hdf5", "mat_elem"));
 		// xx = ( arma::mat(total_spin) );
@@ -927,6 +924,19 @@ void ui::spectrals()
             // start = std::chrono::system_clock::now();
         }
 		std::cout << " - - - - - - finished \hat{V} matrix elements in unperturbed basis in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
+        start = std::chrono::system_clock::now();
+        mat_elem = (V0.t() * perturbation * V0);
+        arma::vec FGR_width(E.size(), arma::fill::zeros);
+        arma::vec FGR_width_typ(E.size(), arma::fill::zeros);
+        for(int n = 0; n < E.size(); n++)
+        {
+            for(int m = n+1; m < E.size(); m++){
+                double _elem_ = std::abs(mat_elem(n,m));
+                FGR_width(n) += 2 * (_elem_ * _elem_);
+                FGR_width_typ(n) += 2 * std::log( (_elem_ * _elem_) );
+            }	
+        }
+        std::cout << " - - - - - - finished Fermi Golden Rule in unperturbed basis in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
     	omp_set_num_threads(this->thread_number);
         {
             #ifdef USE_SYMMETRIES
@@ -945,12 +955,15 @@ void ui::spectrals()
             _spectral_fun_all.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "spectral_fun_all",   arma::hdf5_opts::append));
             _element_count_all.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "element_count_all",   arma::hdf5_opts::append));
 
+			FGR_width.save(	 arma::hdf5_name(dir_realis + info + ".hdf5", "FGR_width",     arma::hdf5_opts::append));
+			FGR_width_typ.save(arma::hdf5_name(dir_realis + info + ".hdf5", "FGR_width_typ", arma::hdf5_opts::append));
+
 			_susc.save(	 arma::hdf5_name(dir_realis + info + ".hdf5", "susc",     arma::hdf5_opts::append));
 			_susc_r.save(arma::hdf5_name(dir_realis + info + ".hdf5", "susc_reg", arma::hdf5_opts::append));
 
 			coeff.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "coefficients", arma::hdf5_opts::append));
 			arma::vec x = arma::real(diag_mat_elem);  x.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "diag_mat",   arma::hdf5_opts::append));
-            x = arma::imag(diag_mat_elem);  x.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "diag_mat_im",   arma::hdf5_opts::append));
+            x = arma::imag(diag_mat_elem);            x.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "diag_mat_im",   arma::hdf5_opts::append));
 			times.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "times",   arma::hdf5_opts::append));
 			quench.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "autocorrelation",   arma::hdf5_opts::append));
 			// arma::vec( {quench_E} ).save(   arma::hdf5_name(dir_realis + info + ".hdf5", "quench_energy",   arma::hdf5_opts::append));
