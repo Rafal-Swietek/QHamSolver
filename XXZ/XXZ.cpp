@@ -71,7 +71,7 @@ XXZ::XXZ(std::istream& os)
 /// @param k current basis state
 /// @param value value of matrix element
 /// @param new_idx new index to be found in hilbert space
-void XXZ::set_hamiltonian_elements(u64 k, elem_ty value, u64 new_idx)
+void XXZ::set_hamiltonian_elements(u64 k, elem_ty_curr value, u64 new_idx)
 {
     u64 idx = this->_hilbert_space.find(new_idx);
     try {
