@@ -10,6 +10,18 @@ double tim_s(clk::time_point start) {
 }
 //-------------------------------------------------------------------------------------------------------------- OPERATION ON STRINGS
 
+// Count set bits in even positions (0, 2, 4, ...)
+inline
+int countEvenBits(unsigned int n) {
+    return __builtin_popcount(n & 0x55555555);
+}
+
+// Count set bits in odd positions (1, 3, 5, ...)
+inline
+int countOddBits(unsigned int n) {
+    return __builtin_popcount(n & 0xAAAAAAAA);
+}
+
 
 /// @brief Finds bit representation of number
 /// @param num input number
@@ -188,6 +200,30 @@ void apply_permutation(
 		}
 	}
 }
+template <typename T>
+inline
+void apply_permutation(
+    arma::Mat<T>& M,
+    const std::vector<std::size_t>& p
+) {
+    std::vector<bool> done(M.n_cols, false);
+
+    for (std::size_t i = 0; i < M.n_cols; ++i) {
+        if (done[i]) continue;
+
+        std::size_t prev_j = i;
+        std::size_t j = p[i];
+        done[i] = true;
+
+        while (i != j) {
+            M.swap_cols(prev_j, j);   // Armadillo built-in column swap
+            done[j] = true;
+            prev_j = j;
+            j = p[j];
+        }
+    }
+}
+
 
 //-------------------------------------------------------------------------------------------------------------- ADDITIONAL TOOLS
 

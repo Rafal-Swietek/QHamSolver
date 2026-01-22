@@ -5,9 +5,6 @@
 #endif
 
 namespace QHS{
-    //<! Enum for possible U(1) symmetries: for now charge and spin
-    enum class U1 {spin, charge};
-
     /// @brief Hilbert space creator with U(1) symmetry, either spin or charge
     /// @tparam boolean value: spinless fermions?  (valid if chosen U1 == charge)
     /// @tparam U1_sym choose U(1) symmetry: spin, charge, ...

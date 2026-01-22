@@ -109,7 +109,7 @@ namespace QOps {
 		inline
 		auto spin_flip_y(unsigned int L) -> _func<std::pair<u64, cpx>>::global
 			{ 
-				static_check((config == 2), ONLY_SPIN_HALF_OEPRATOR);
+				// static_check((config == 2), ONLY_SPIN_HALF_OEPRATOR);
 				return [L](u64 n) { 
 							const int _num_of_down_spins = L - __builtin_popcountll(n);
 							double sign = -2.0 * (_num_of_down_spins % 2) + 1.0;
@@ -121,7 +121,7 @@ namespace QOps {
 		inline
 		auto spin_flip_z(unsigned int L) -> _func<std::pair<u64, cpx>>::global
 			{ 
-				static_check((config == 2), ONLY_SPIN_HALF_OEPRATOR);
+				// static_check((config == 2), ONLY_SPIN_HALF_OEPRATOR);
 				return [L](u64 n) { 
 							const int _num_of_down_spins = L - __builtin_popcountll(n);
 							double sign = -2.0 * (_num_of_down_spins % 2) + 1.0;

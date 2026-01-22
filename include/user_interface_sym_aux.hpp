@@ -27,8 +27,8 @@ void user_interface_sym<Hamiltonian>::diagonalize(){
         H.save(arma::hdf5_name(name, "hamiltonian", arma::hdf5_opts::append));
         std::cout << "\t\t	--> finished saving Hamiltonian for " << info << " - in time : " << tim_s(start) << "s" << std::endl;
 
-        const auto U = this->ptr_to_model->get_model_ref().get_hilbert_space().symmetry_rotation();
-        arma::Mat<element_type> V = U * this->ptr_to_model->get_eigenvectors();
+        // const auto U = this->ptr_to_model->get_model_ref().get_hilbert_space().symmetry_rotation();
+        arma::Mat<element_type> V = this->ptr_to_model->get_eigenvectors();
         V.save(arma::hdf5_name(name, "eigenvectors", arma::hdf5_opts::append));
         std::cout << "\t\t	--> finished saving eigenvectors for " << info << " - in time : " << tim_s(start) << "s" << std::endl;
     }

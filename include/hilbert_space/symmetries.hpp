@@ -150,7 +150,9 @@ namespace QHS{
 
 		// remove parity for complex quasimomentum sectors
 		if (!this->_real_k_sector && this->_pos_of_parity >= 0){
-			std::cout << "Working in imaginary sector. Removing parity" << std::endl;
+			#ifndef NODEBUG
+				std::cout << "Working in imaginary sector. Removing parity" << std::endl;
+			#endif
 			sym_gen.erase(sym_gen.begin() + this->_pos_of_parity);
 		}
 
@@ -195,7 +197,9 @@ namespace QHS{
 			//<! append quasimomentum sector
 			this->_sectors.emplace_back(this->k_sector);
 		}
-		std::cout << this->_sectors.size() << "\t\t" << this->_symmetry_group.size() << std::endl;
+		#ifndef NODEBUG
+			std::cout << this->_sectors.size() << "\t\t" << this->_symmetry_group.size() << std::endl;
+		#endif
 	}
 
 	/// @brief Find super-equivalent class (SEC) representative for given set of states related by symmetry transformations
@@ -255,7 +259,7 @@ namespace QHS{
 	arma::SpMat<elem_ty>
 	point_symmetric<_particle_type>::symmetry_rotation() const
 	{
-		const u64 dim_tot = ULLPOW(this->system_size);
+		const u64 dim_tot = BinaryPowers[block_size * this->system_size];
 		arma::SpMat<elem_ty> U(dim_tot, this->dim);
 	#pragma omp parallel for
 		for (long int k = 0; k < this->dim; k++) {
@@ -358,8 +362,8 @@ namespace QHS{
 			}
 			//std::cout << map_threaded << std::endl;
 		};
-		u64 start = 0, stop = ULLPOW(this->system_size);
-		u64 _powL = BinaryPowers[this->system_size];		// maximal power (dimension without symmetries)
+		u64 start = 0, stop = BinaryPowers[block_size * this->system_size];//ULLPOW(this->system_size);
+		u64 _powL = BinaryPowers[block_size * this->system_size];		// maximal power (dimension without symmetries)
 		if (num_of_threads == 1)
 			mapping_kernel(start, stop, this->mapping, this->_normalisation);
 		else {
@@ -382,12 +386,16 @@ namespace QHS{
 			
 			for (auto& t : norm_threaded)
 				this->_normalisation.insert(this->_normalisation.end(), std::make_move_iterator(t.begin()), std::make_move_iterator(t.end()));
-
 		}
 		this->dim = this->mapping.size();
 		// for(cpx norm : this->_normalisation)
 		// 	std::cout << norm << std::endl;;
 		// std::cout << std::endl;
+		_extra_debug(
+                for(u64 elem : this->mapping)
+                    printSeparated(std::cout, "\t", 20, true, elem, boost::dynamic_bitset<>(this->system_size, elem));
+                std::cout << "Hilbert-space size = " << this->dim << std::endl;
+            );
 	}
 
 

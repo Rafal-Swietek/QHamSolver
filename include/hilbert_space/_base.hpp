@@ -83,5 +83,7 @@ namespace QHS{
                 { std::cout << "AIN'T DO NOTHING! Hilbert space is created as full." << std::endl; }
     };
 
+    //<! Enum for possible U(1) symmetries: for now charge and spin
+    enum class U1 {spin, charge};
 }
 #endif
