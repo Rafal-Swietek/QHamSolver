@@ -289,7 +289,7 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
 	
 	createDirs(dir);
 	
-	double filling = this->V%3 == 0? 1./3. : 0.5;
+	double filling = double(this->site) / double(this->V);
 	const long N = int(filling * this->V);
 
 	std::string info = this->set_info();
@@ -305,8 +305,8 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
 	arma::Col<int> subsystem_sizes = arma::conv_to<arma::Col<int>>::from(arma::linspace(1, this->V-1, this->V-1));
 	arma::Col<int> subsystem_sizes_MB = subsystem_sizes; //arma::Col<int>({this->V / 2});
 	
-	arma::Col<u64> Gammas = arma::Col<u64>({1, 4, 10, u64(N), u64(this->V / 2), u64(this->V), u64(3./2.*this->V), u64(dim / 100), u64(dim / 20), u64(dim / 10), u64(dim / 2), dim});
-	
+	arma::Col<u64> Gammas = arma::Col<u64>({1, 4, 10, u64(N), u64(this->V), u64(dim / 100), u64(dim / 20), u64(dim / 10)});
+	if(dim < 1e5) Gammas = arma::join_cols(Gammas, arma::Col<u64>({u64(dim / 5), u64(dim / 2), dim}));
 
 	const int Gamma_max = Gammas.size();
 	std::cout << dim << "\n\n" << Gammas << std::endl;
