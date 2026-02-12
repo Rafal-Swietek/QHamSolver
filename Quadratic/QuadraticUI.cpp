@@ -15,29 +15,42 @@ void ui::make_sim(){
 	this->ptr_to_model = this->create_new_model_pointer();
 	size_t dim = this->ptr_to_model->get_hilbert_size();
 
-	// arma::vec gammas = arma::linspace(0.0, 2.5, 26);
-	// arma::vec max(gammas.size());
-	// arma::vec av(gammas.size());
-	// arma::vec var(gammas.size());
-	// for(int iig = 0; iig < gammas.size(); iig++){
-	// 	this->g = gammas(iig);
-	// 	this->reset_model_pointer();
-	// 	const auto& H = this->ptr_to_model->get_hamiltonian();
-	// 	arma::sp_mat H2 = H*H;
+	arma::vec gammas = arma::linspace(0.0, 2.5, 26);
+	arma::vec max(gammas.size());
+	arma::vec av(gammas.size());
+	arma::vec var(gammas.size());
+	arma::vec kurtosis(gammas.size());
+	arma::vec binder(gammas.size());
+	for(int r = 0; r < this->realisations; r++){
+		for(int iig = 0; iig < gammas.size(); iig++){
+			this->g = gammas(iig);
+			this->reset_model_pointer();
+			const auto& H = this->ptr_to_model->get_hamiltonian();
+			arma::sp_mat H2 = H*H;
 
-	// 	arma::vec gec(dim, arma::fill::zeros);
-	// 	for(u64 k = 0; k < dim; k++)
-	// 		gec(k) = 2 * H2(k,k) - H(k,k) * H(k,k);   
-	// 	gec = dim * gec / arma::trace(H2);
-	// 	av(iig) = arma::mean(gec);
-	// 	var(iig) = arma::var(gec);
-	// 	max(iig) = arma::max(gec);
-	// }
-	// gammas.save(	  arma::hdf5_name("GEC_L=" + std::to_string(this->L) + ".hdf5", "gammas"));
-	// av.save(	  arma::hdf5_name("GEC_L=" + std::to_string(this->L) + ".hdf5", "av", arma::hdf5_opts::append));
-	// var.save(	  arma::hdf5_name("GEC_L=" + std::to_string(this->L) + ".hdf5", "var", arma::hdf5_opts::append));
-	// max.save(	  arma::hdf5_name("GEC_L=" + std::to_string(this->L) + ".hdf5", "max", arma::hdf5_opts::append));
-	// return;
+			arma::vec gec(dim, arma::fill::zeros);
+			for(u64 k = 0; k < dim; k++)
+				gec(k) = 2 * H2(k,k) - H(k,k) * H(k,k);   
+			gec = dim * gec / arma::trace(H2);
+			av(iig) += arma::mean(gec);
+			var(iig) += arma::mean( arma::square(gec) );
+			max(iig) += arma::max(gec);
+			kurtosis(iig) += arma::mean(arma::square(arma::square(gec - arma::mean(gec)))) / (var(iig) * var(iig));
+			binder(iig) += 1 - kurtosis(iig) / 3.;
+		}
+		av /= double(this->realisations);
+		var = var / double(this->realisations) - arma::square(av);
+		max /= double(this->realisations);
+		binder /= double(this->realisations);
+		kurtosis /= double(this->realisations);
+	}
+	gammas.save(	  arma::hdf5_name("GEC_L=" + std::to_string(this->L) + ".hdf5", "gammas"));
+	av.save(	  arma::hdf5_name("GEC_L=" + std::to_string(this->L) + ".hdf5", "av", arma::hdf5_opts::append));
+	var.save(	  arma::hdf5_name("GEC_L=" + std::to_string(this->L) + ".hdf5", "var", arma::hdf5_opts::append));
+	max.save(	  arma::hdf5_name("GEC_L=" + std::to_string(this->L) + ".hdf5", "max", arma::hdf5_opts::append));
+	binder.save(  arma::hdf5_name("GEC_L=" + std::to_string(this->L) + ".hdf5", "binder", arma::hdf5_opts::append));
+	kurtosis.save(arma::hdf5_name("GEC_L=" + std::to_string(this->L) + ".hdf5", "kurtosis", arma::hdf5_opts::append));
+	return;
 	// arma::Mat<element_type> H = this->ptr_to_model->get_dense_hamiltonian();
 	// H.save(   arma::hdf5_name("HamiltonianRP.hdf5", "H"));
 	// auto do_stuff = [&]()
