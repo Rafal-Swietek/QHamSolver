@@ -42,7 +42,7 @@ namespace QHS{
                 explicit ManyBodyState(const arma::Mat<_ty>& orbitals_in, int V, int N)
                     : _orbitals(orbitals_in), volume(V), num_particles(N)
                     {
-                        this->_hilbert_space = U1_hilbert_space<U1::charge, true>(this->system_size, this->num_particles);
+                        this->_hilbert_space = U1_hilbert_space<U1::charge, true>(this->volume, this->num_particles);
                         initialize(); 
                     }
 
