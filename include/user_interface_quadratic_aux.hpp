@@ -307,7 +307,7 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
 	
 	// arma::Col<u64> Gammas = arma::Col<u64>({1, 4, 10, u64(N), u64(this->V), 2*u64(this->V), 4*u64(this->V), u64(this->V*this->V), u64(dim / 100), u64(dim / 20), u64(dim / 10)});
 	// if(dim < 3e5) Gammas = arma::join_cols(Gammas, arma::Col<u64>({u64(dim / 5), u64(dim / 2), dim}));
-	arma::Col<u64> Gammas = arma::Col<u64>({1, 4, u64(N/2), u64(N-1), u64(0.9 * N), u64(N), 2*u64(N), u64(this->V), 2*u64(this->V)});
+	arma::Col<u64> Gammas = arma::Col<u64>({1, 4, u64(N/2), u64(N-1), u64(0.9 * N), u64(N), 2*u64(N), u64(this->V), 2*u64(this->V), u64(this->V * this->V)});
 
 	const int Gamma_max = Gammas.size();
 	std::cout << dim << "\n\n" << Gammas << std::endl;
