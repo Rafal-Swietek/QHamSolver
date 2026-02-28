@@ -275,7 +275,7 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
     clk::time_point start = std::chrono::system_clock::now();
 	
 	// std::string dir = this->saving_dir + "Entropy" + kPSep + "Degeneracy" + kPSep;
-	std::string dir = this->saving_dir + "Entropy" + kPSep + "MixingExpMany_um" + kPSep;
+	std::string dir = this->saving_dir + "Entropy" + kPSep + "MixingExpMany_um2" + kPSep;
 	if(this->op)	dir += "RandomChoice" + kPSep + "SameHamiltonian" + kPSep;
 	else 			dir += "RandomChoice" + kPSep + "DifferentHamiltonian" + kPSep;
 	// #ifdef FREE_FERMIONS
@@ -305,8 +305,9 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
 	arma::Col<int> subsystem_sizes = arma::conv_to<arma::Col<int>>::from(arma::linspace(1, this->V-1, this->V-1));
 	arma::Col<int> subsystem_sizes_MB = subsystem_sizes; //arma::Col<int>({this->V / 2});
 	
-	arma::Col<u64> Gammas = arma::Col<u64>({1, 4, 10, u64(N), u64(this->V), 2*u64(this->V), 4*u64(this->V), u64(this->V*this->V), u64(dim / 100), u64(dim / 20), u64(dim / 10)});
-	if(dim < 3e5) Gammas = arma::join_cols(Gammas, arma::Col<u64>({u64(dim / 5), u64(dim / 2), dim}));
+	// arma::Col<u64> Gammas = arma::Col<u64>({1, 4, 10, u64(N), u64(this->V), 2*u64(this->V), 4*u64(this->V), u64(this->V*this->V), u64(dim / 100), u64(dim / 20), u64(dim / 10)});
+	// if(dim < 3e5) Gammas = arma::join_cols(Gammas, arma::Col<u64>({u64(dim / 5), u64(dim / 2), dim}));
+	arma::Col<u64> Gammas = arma::Col<u64>({1, 4, u64(N/2), u64(N-1), u64(0.9 * N), u64(N), 2*u64(N), u64(this->V), 2*u64(this->V)});
 
 	const int Gamma_max = Gammas.size();
 	std::cout << dim << "\n\n" << Gammas << std::endl;

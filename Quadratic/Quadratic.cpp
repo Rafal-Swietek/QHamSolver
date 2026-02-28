@@ -106,8 +106,8 @@ void Quadratic::create_hamiltonian()
             }
         }
         #if defined(_BOUNDARY_TERMS)
-            this->H(0, 0) = -0.6;
-            this->H(this->dim-1, this->dim-1) = +0.4;
+            this->H(0, 0) = 0.4;
+            this->H(this->dim-1, this->dim-1) = -0.6;
         #endif
     #elif defined(RP)
         #ifdef _UNIFORM_DIAG
