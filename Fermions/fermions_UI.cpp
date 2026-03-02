@@ -119,7 +119,7 @@ void ui::eigenstate_entanglement()
 {
     clk::time_point start = std::chrono::system_clock::now();
 	
-	std::string dir = this->saving_dir + "Entropy" + kPSep + "Eigenstate" + kPSep;
+	std::string dir = this->saving_dir + "Entropy" + kPSep + "Eigenstate2" + kPSep;
 	createDirs(dir);
 	
 	std::string info = this->set_info();
@@ -132,8 +132,9 @@ void ui::eigenstate_entanglement()
         emtpy_vec.save(arma::hdf5_name(dir + filename + ".hdf5", "nope"));
         return;
     }
-    const size_t dim_cut = 7e4;
-
+    const size_t dim_cut = 7e0;
+    if(dim < 5000)
+        this->l_steps = u64(dim / 10.0);
     if(dim > dim_cut){
         double error = this->ptr_to_model->diag_sparse(this->l_steps, this->l_bundle, this->tol, this->seed);
         _assert_(error < 1e-10, "POLFED FAILED: Maximal Error = ");
