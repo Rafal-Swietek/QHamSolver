@@ -414,7 +414,7 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
 		start = std::chrono::system_clock::now();
 		
 		// #pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
-			for(int ii = 0; ii < Gammas.size(); ii++)
+			for(int ii = 0; ii < Gammas.size()-1; ii++) // SKIP V^2 for now.
 			{
 				int gamma_a = Gammas(ii);
 				int counter_states = 0;
