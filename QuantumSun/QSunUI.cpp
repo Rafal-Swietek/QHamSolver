@@ -13,10 +13,104 @@ void ui::make_sim(){
 	clk::time_point start = std::chrono::system_clock::now();
 
 	this->ptr_to_model = this->create_new_model_pointer();
+	size_t dim = this->ptr_to_model->get_hilbert_size();
+
+
+	// arma::vec alfas = arma::linspace(0.5, 1.5, 51);
+	// arma::vec H_trace(alfas.size());
+	// arma::vec av(alfas.size());
+	// arma::vec var(alfas.size());
+	// for(int iig = 0; iig < alfas.size(); iig++){
+	// 	this->seed = std::random_device{}();
+	// 	this->alfa = alfas(iig);
+	// 	this->reset_model_pointer();
+	// 	// disorder<double> disorder_generator = disorder<double>(this->seed);
+	// 	// disorder<int> neigh_generator = disorder<int>(this->seed);
+	// 	// GOE grain_generator(this->seed);
+	// 	// const size_t dim_loc = ULLPOW( (this->L_loc) );
+	// 	// const size_t dim_erg = ULLPOW( (this->grain_size) );
+
+	// 	// arma::sp_mat H = arma::sp_mat(dim, dim);
+	// 	// auto _disorder = disorder_generator.uniform(this->L_loc, this->h - this->w, this->h + this->w);
+	// 	// std::cout << "AAAAA: " << _disorder.t() << std::endl;
+		
+	// 	// /* Create random neighbours for coupling hamiltonian */
+	// 	// auto random_neigh = neigh_generator.uniform(this->L_loc, 0, this->grain_size - 1);
+
+	// 	// /* Create GOE Matrix */
+	// 	// arma::mat H_grain = this->gamma * grain_generator.generate_matrix(dim_erg);
+	// 	// // H_grain = H_grain - arma::trace(H_grain);
+	// 	// H_grain /= std::sqrt(ULLPOW(this->grain_size) + 1);
+	// 	// // H_grain /= std::sqrt( arma::trace(H_grain * H_grain) / double(dim_erg) );
+
+	// 	// /* Create random couplings */
+	// 	// auto _long_range_couplings = arma::vec(this->L_loc, arma::fill::zeros);
+	// 	// if(this->alfa > 0){
+			
+	// 	// 	if( std::abs(this->alfa - 1) < 1e-10){
+	// 	// 		_long_range_couplings = arma::vec(this->L_loc, arma::fill::ones);
+	// 	// 	} else {
+	// 	// 		// double u_j = 1 + disorder_generator.uniform_dist<double>(-this->zeta, this->zeta);
+	// 	// 		_long_range_couplings(0) = 1.0;
+	// 	// 		for (int j = 1; j < this->L_loc; j++){
+	// 	// 			int pos = j;
+	// 	// 			double u_j = pos + disorder_generator.uniform_dist<double>(-this->zeta, this->zeta);
+	// 	// 			_long_range_couplings(j) = std::pow(this->alfa, u_j);
+	// 	// 			printSeparated(std::cout, "\t", 20, true, pos, u_j);
+	// 	// 		}
+	// 	// 	}
+	// 	// }
+	// 	// _extra_debug(
+	// 	// 	std::cout << "disorder: \t\t" << _disorder.t() << std::endl;   
+	// 	// 	std::cout << "couplings: \t\t" << _long_range_couplings.t() << std::endl;
+	// 	// 	std::cout << "random_neigh: \t\t" << random_neigh.t() << std::endl;
+	// 	// 	std::cout << "Grain matrix: \t\t" << H_grain << std::endl;
+	// 	// )
+
+	// 	// /* Generate coupling and spin hamiltonian */
+	// 	// clk::time_point start = std::chrono::system_clock::now();
+	// 	// for (u64 k = 0; k < dim; k++) {
+	// 	// 	u64 base_state = k;
+	// 	// 	for (int j = 0; j < this->L - this->grain_size; j++)  // sum over spin d.o.f
+	// 	// 	{
+	// 	// 		const int pos_in_array = this->L - 1 - this->grain_size - j;                // array index of localised spin
+	// 	// 		/* disorder on localised spins */
+	// 	// 		auto [val, Sz_k] = operators::sigma_z<double>(base_state, this->L, j);
+	// 	// 		H(k, k) += _disorder(pos_in_array) * (val);
+			
+	// 	// 		/* coupling of localised spins to GOE grain */
+	// 	// 		int nei = random_neigh(pos_in_array);
+	// 	// 		auto [val1, Sx_k] = operators::sigma_x<double>(base_state, this->L, j);
+	// 	// 		auto [val2, SxSx_k] = operators::sigma_x<double>(Sx_k, this->L, this->L - this->grain_size + nei);
+	// 	// 		double mat_element = this->J * _long_range_couplings(pos_in_array) * (val1 * val2);
+	// 	// 		H(SxSx_k, k) += mat_element;
+	// 	// 	}
+	// 	// }
+	// 	// std::cout << " - - - - - - finished Hamiltonian in : " << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
+	// 	// // H = H + arma::kron<arma::mat>(arma::mat(H_grain), arma::mat(arma::eye<arma::mat>(dim_loc, dim_loc)));
+	// 	// // H0 = H0 + arma::kron<arma::mat>(arma::mat(H_grain), arma::mat(arma::eye<arma::mat>(dim_loc, dim_loc)));
+		
+	// 	// H = H + arma::kron<arma::sp_mat>(arma::sp_mat(arma::eye<arma::sp_mat>(dim_loc, dim_loc)), arma::sp_mat(H_grain));
+
+	// 	arma::sp_mat H = this->ptr_to_model->get_hamiltonian();
+	// 	arma::sp_mat H2 = H*H;
+	// 	H_trace(iig) = arma::trace(H2) / double(dim);
+	// 	arma::vec gec(dim, arma::fill::zeros);
+	// 	for(u64 k = 0; k < dim; k++)
+	// 		gec(k) = 2 * H2(k,k) - H(k,k) * H(k,k);   
+	// 	gec = gec / arma::trace(H2);
+	// 	av(iig) = dim * arma::mean(gec);
+	// 	var(iig) = dim * dim * arma::var(gec);
+	// }
+	// alfas.save(	  arma::hdf5_name("GEC_L=" + std::to_string(this->L) + ".hdf5", "alfas"));
+	// av.save(	  arma::hdf5_name("GEC_L=" + std::to_string(this->L) + ".hdf5", "av", arma::hdf5_opts::append));
+	// var.save(	  arma::hdf5_name("GEC_L=" + std::to_string(this->L) + ".hdf5", "var", arma::hdf5_opts::append));
+	// H_trace.save(	  arma::hdf5_name("GEC_L=" + std::to_string(this->L) + ".hdf5", "trace_H2", arma::hdf5_opts::append));
+	// std::cout << " - - - - - - FINISHED CALCULATIONS IN : " << tim_s(start) << " seconds - - - - - - " << std::endl; // simulation end
+	// return;
 	
-	
-	arma::Mat<element_type> H = this->ptr_to_model->get_dense_hamiltonian();
-	H.save(   arma::hdf5_name("HamiltonianQSM.hdf5", "H"));
+	// arma::Mat<element_type> H = this->ptr_to_model->get_dense_hamiltonian();
+	// H.save(   arma::hdf5_name("HamiltonianQSM.hdf5", "H"));
 
 	// auto Translate = QOps::__builtins::translation(this->L, 1);
 	// auto flip = QOps::__builtins::spin_flip_x(this->L);
@@ -1912,6 +2006,7 @@ void ui::multifractality(){
 
 		arma::mat H = arma::mat(dim, dim, arma::fill::zeros);
 		arma::mat H0 = arma::mat(dim, dim, arma::fill::zeros);
+		arma::mat Sz_L = arma::mat(dim, dim, arma::fill::zeros);
 		auto _disorder = disorder_generator.uniform(this->L_loc, this->h - this->w, this->h + this->w);
 		std::cout << "AAAAA: " << _disorder.t() << std::endl;
 		
@@ -1941,8 +2036,8 @@ void ui::multifractality(){
 			}
 		}
 		_extra_debug(
-			std::cout << "disorder: \t\t" << this->_disorder.t() << std::endl;   
-			std::cout << "couplings: \t\t" << this->_long_range_couplings.t() << std::endl;
+			std::cout << "disorder: \t\t" << _disorder.t() << std::endl;   
+			std::cout << "couplings: \t\t" << _long_range_couplings.t() << std::endl;
 			std::cout << "random_neigh: \t\t" << random_neigh.t() << std::endl;
 			std::cout << "Grain matrix: \t\t" << H_grain << std::endl;
 		)
@@ -1951,28 +2046,33 @@ void ui::multifractality(){
 		clk::time_point start = std::chrono::system_clock::now();
 		for (u64 k = 0; k < dim; k++) {
 			u64 base_state = k;
-			for (int j = this->grain_size; j < this->L; j++)  // sum over spin d.o.f
+			for (int j = 0; j < this->L - this->grain_size; j++)  // sum over spin d.o.f
 			{
-				const int pos_in_array = j - this->grain_size;                // array index of localised spin
-
+				const int pos_in_array = this->L - 1 - this->grain_size - j;                // array index of localised spin
 				/* disorder on localised spins */
 				auto [val, Sz_k] = operators::sigma_z<double>(base_state, this->L, j);
 				H(k, k) += _disorder(pos_in_array) * (val);
 				H0(k, k) += _disorder(pos_in_array) * (val);
+				
+				if(j == 0){
+					Sz_L(k, k) = val;
+				}
 			
 				/* coupling of localised spins to GOE grain */
 				int nei = random_neigh(pos_in_array);
 				auto [val1, Sx_k] = operators::sigma_x<double>(base_state, this->L, j);
-				auto [val2, SxSx_k] = operators::sigma_x<double>(Sx_k, this->L, nei);
+				auto [val2, SxSx_k] = operators::sigma_x<double>(Sx_k, this->L, this->L - this->grain_size + nei);
 				double mat_element = this->J * _long_range_couplings(pos_in_array) * (val1 * val2);
 				H(SxSx_k, k) += mat_element;
-				if(j < this->L - 1)
+				if(j > 0)
 					H0(SxSx_k, k) += mat_element;
 			}
 		}
 		std::cout << " - - - - - - finished Hamiltonian in : " << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
-		H = H + arma::kron<arma::mat>(arma::mat(H_grain), arma::eye<arma::mat>(dim_loc, dim_loc));
-		H0 = H0 + arma::kron<arma::mat>(arma::mat(H_grain), arma::eye<arma::mat>(dim_loc, dim_loc));
+		// H = H + arma::kron<arma::mat>(arma::mat(H_grain), arma::mat(arma::eye<arma::mat>(dim_loc, dim_loc)));
+		// H0 = H0 + arma::kron<arma::mat>(arma::mat(H_grain), arma::mat(arma::eye<arma::mat>(dim_loc, dim_loc)));
+		H = H + arma::kron<arma::mat>(arma::mat(arma::eye<arma::mat>(dim_loc, dim_loc)), arma::mat(H_grain));
+		H0 = H0 + arma::kron<arma::mat>(arma::mat(arma::eye<arma::mat>(dim_loc, dim_loc)), arma::mat(H_grain));
 
 		arma::vec E;
 		arma::mat V;
@@ -2001,6 +2101,17 @@ void ui::multifractality(){
 		u64	Emax = E_av_idx + num_of_states / 2;
 
 		std::cout << " - - - - - - finished diagonalization of L-1 sized matrix in : " << tim_s(start) << " s for realis = " << realis << " - - - - - - " << std::endl; // simulation end
+
+		H.save(   arma::hdf5_name("HamiltonianQSM.hdf5", "H"));
+		H0.save(   arma::hdf5_name("HamiltonianQSM.hdf5", "H0", arma::hdf5_opts::append));
+		E.save(   arma::hdf5_name("HamiltonianQSM.hdf5", "E", arma::hdf5_opts::append));
+		E0.save(   arma::hdf5_name("HamiltonianQSM.hdf5", "E0", arma::hdf5_opts::append));
+		V.save(   arma::hdf5_name("HamiltonianQSM.hdf5", "V", arma::hdf5_opts::append));
+		V0.save(   arma::hdf5_name("HamiltonianQSM.hdf5", "V0", arma::hdf5_opts::append));
+		arma::mat H_in_H0 = V0.t() * H * V0;
+		arma::vec Sz_L_of_H0 = arma::diagvec( V0.t() * Sz_L * V0 );
+		H_in_H0.save(   arma::hdf5_name("HamiltonianQSM.hdf5", "H_in_H0", arma::hdf5_opts::append));
+		Sz_L_of_H0.save(   arma::hdf5_name("HamiltonianQSM.hdf5", "Sz_L_of_H0", arma::hdf5_opts::append));
 		start = std::chrono::system_clock::now();
 
 		arma::mat part_ratio(num_of_states, q_ipr_list.size(), arma::fill::zeros);
