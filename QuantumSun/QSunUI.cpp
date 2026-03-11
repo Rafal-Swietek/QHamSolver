@@ -1036,30 +1036,44 @@ void ui::agp_mu()
 /// @brief Calculate matrix elements of local operators
 void ui::matrix_elements()
 {
-	std::string dir = this->saving_dir + "MatrixElements" + kPSep;
+	// std::string dir = this->saving_dir + "MatrixElements" + kPSep;
+	std::string dir = this->saving_dir + "Spectrals_IDK_what" + kPSep;
 	createDirs(dir);
 	
 	size_t dim = this->ptr_to_model->get_hilbert_size();
 	std::string info = this->set_info();
 
-	// arma::vec sites = arma::linspace(0, this->L-1, this->L);
-	arma::Col<int> sites = arma::Col<int>({0, this->grain_size, (int)this->L / 2, (int)this->L - 1});
+	arma::vec sites = arma::linspace(0, this->L-1, this->L);
+	// arma::Col<int> sites = arma::Col<int>({0, this->grain_size, (int)this->L / 2, (int)this->L - 1});
 
-	arma::vec agp_norm_Sz(sites.size(), arma::fill::zeros);
-	arma::vec typ_susc_Sz(sites.size(), arma::fill::zeros);
-	arma::mat diag_mat_elem_Sz(dim, sites.size(), arma::fill::zeros);
+	// arma::vec agp_norm_Sz(sites.size(), arma::fill::zeros);
+	// arma::vec typ_susc_Sz(sites.size(), arma::fill::zeros);
+	// arma::mat diag_mat_elem_Sz(dim, sites.size(), arma::fill::zeros);
 
-	arma::vec agp_norm_SzSz(sites.size(), arma::fill::zeros);
-	arma::vec typ_susc_SzSz(sites.size(), arma::fill::zeros);
-	arma::mat diag_mat_elem_SzSz(dim, sites.size(), arma::fill::zeros);
+	// arma::vec agp_norm_SzSz(sites.size(), arma::fill::zeros);
+	// arma::vec typ_susc_SzSz(sites.size(), arma::fill::zeros);
+	// arma::mat diag_mat_elem_SzSz(dim, sites.size(), arma::fill::zeros);
 
-	arma::vec agp_norm_kin(sites.size(), arma::fill::zeros);
-	arma::vec typ_susc_kin(sites.size(), arma::fill::zeros);
-	arma::mat diag_mat_elem_kin(dim, sites.size(), arma::fill::zeros);
+	// arma::vec agp_norm_kin(sites.size(), arma::fill::zeros);
+	// arma::vec typ_susc_kin(sites.size(), arma::fill::zeros);
+	// arma::mat diag_mat_elem_kin(dim, sites.size(), arma::fill::zeros);
 	arma::vec energies(dim, arma::fill::zeros);
 
 	int Ll = this->L;
 	int N = this->grain_size;
+
+	arma::vec omegax = arma::logspace(int(std::log10(0.1/dim)), int(std::log10( 5 + this->L )), 10 * this->L);
+	const arma::vec energy_density = arma::regspace(0.05, 0.02, 0.95);
+	const double chi = 0.341345;
+
+	const double wH = std::sqrt(this->L) / (chi * dim);
+	double tH = 1. / wH;
+	double r1 = 0.0, r2 = 0.0;
+	int time_end = (int)std::ceil(std::log10(5 * tH));
+	time_end = (time_end / std::log10(tH) < 1.5) ? time_end + 2 : time_end;
+
+	arma::vec times = arma::logspace(-2, time_end, 1000);
+
 
 	int counter = 0;
 	auto neighbor_generator = disorder<int>(this->seed);
@@ -1093,17 +1107,17 @@ void ui::matrix_elements()
 		arma::Mat<element_type> typ_susc_Sz_r(dim, sites.size(), arma::fill::zeros);
 		arma::Mat<element_type> diag_mat_elem_Sz_r(dim, sites.size(), arma::fill::zeros);
 
-		arma::Mat<element_type> agp_norm_Sx_r(dim, sites.size(), arma::fill::zeros);
-		arma::Mat<element_type> typ_susc_Sx_r(dim, sites.size(), arma::fill::zeros);
-		arma::Mat<element_type> diag_mat_elem_Sx_r(dim, sites.size(), arma::fill::zeros);
+		// arma::Mat<element_type> agp_norm_Sx_r(dim, sites.size(), arma::fill::zeros);
+		// arma::Mat<element_type> typ_susc_Sx_r(dim, sites.size(), arma::fill::zeros);
+		// arma::Mat<element_type> diag_mat_elem_Sx_r(dim, sites.size(), arma::fill::zeros);
 
-		arma::Mat<element_type> agp_norm_SzSz_r(dim, sites.size(), arma::fill::zeros);
-		arma::Mat<element_type> typ_susc_SzSz_r(dim, sites.size(), arma::fill::zeros);
-		arma::Mat<element_type> diag_mat_elem_SzSz_r(dim, sites.size(), arma::fill::zeros);
+		// arma::Mat<element_type> agp_norm_SzSz_r(dim, sites.size(), arma::fill::zeros);
+		// arma::Mat<element_type> typ_susc_SzSz_r(dim, sites.size(), arma::fill::zeros);
+		// arma::Mat<element_type> diag_mat_elem_SzSz_r(dim, sites.size(), arma::fill::zeros);
 
-		arma::Mat<element_type> agp_norm_kin_r(dim, sites.size(), arma::fill::zeros);
-		arma::Mat<element_type> typ_susc_kin_r(dim, sites.size(), arma::fill::zeros);
-		arma::Mat<element_type> diag_mat_elem_kin_r(dim, sites.size(), arma::fill::zeros);
+		// arma::Mat<element_type> agp_norm_kin_r(dim, sites.size(), arma::fill::zeros);
+		// arma::Mat<element_type> typ_susc_kin_r(dim, sites.size(), arma::fill::zeros);
+		// arma::Mat<element_type> diag_mat_elem_kin_r(dim, sites.size(), arma::fill::zeros);
 		
 		for(int i = 0; i < sites.size(); i++)
 		{
@@ -1117,8 +1131,8 @@ void ui::matrix_elements()
 				return std::make_pair(state, val); 
 				};
 			auto _operator = QOps::genOp(this->L, std::move(kernel_Sz), 1.0);
-			arma::sp_mat op = arma::real(_operator.to_matrix(dim));
-			arma::Mat<element_type> mat_elem = V.t() * op * V;
+			arma::sp_mat op_mat = arma::real(_operator.to_matrix(dim));
+			arma::Mat<element_type> mat_elem = V.t() * op_mat * V;
 			arma::Mat<element_type> _submat_ = mat_elem.submat(idx_min, idx_min, idx_max -1, idx_max - 1);
 			_submat_.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "MAT_ELEM/Sz_i=" + std::to_string(site),   arma::hdf5_opts::append));
 			// std::tie(_agp, _typ_susc, _susc, tmp) = adiabatics::gauge_potential(mat_elem, E, this->L);
@@ -1129,93 +1143,149 @@ void ui::matrix_elements()
 			
     		std::cout << " - - - - - - finished Sz matrix elements for site i = " << sites(i) << "in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
 			
-			start = std::chrono::system_clock::now();
-			// arma::Mat<element_type> mat_elem = V * Sz_ops[i] * V.t();
-			auto kernel_Sx = [Ll, site](u64 state){ 
-				auto [val, num] = operators::sigma_x<cpx>(state, Ll, site ); 
-				return std::make_pair(num, val); 
-				};
-			_operator = QOps::genOp(this->L, std::move(kernel_Sx), 1.0);
-			op = arma::real(_operator.to_matrix(dim));
-			mat_elem = V.t() * op * V;
-			_submat_ = mat_elem.submat(idx_min, idx_min, idx_max -1, idx_max - 1);
-			_submat_.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "MAT_ELEM/Sx_i=" + std::to_string(site),   arma::hdf5_opts::append));
-			// std::tie(_agp, _typ_susc, _susc, tmp) = adiabatics::gauge_potential(mat_elem, E, this->L);
-			// agp_norm_Sx_r(i) = _agp;
-			// typ_susc_Sx_r(i) = _typ_susc;
-			std::tie(_susc, _susc_r) = adiabatics::gauge_potential_save(mat_elem, E);
-			agp_norm_Sx_r.col(i) = _susc;
-			typ_susc_Sx_r.col(i) = _susc_r;
-			diag_mat_elem_Sx_r.col(i) = arma::diagvec(mat_elem);
-			
-    		std::cout << " - - - - - - finished Sx matrix elements for site i = " << sites(i) << "in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
+			arma::Mat<element_type> time_evolution(dim, times.size(), arma::fill::zeros);
+			arma::Col<element_type> Sz_state(dim, arma::fill::zeros);
+			for(int k = 0; k < dim; k++)
 			{
-				start = std::chrono::system_clock::now();
-				auto kernel_SzSz = [Ll, N, site, &neighbor_generator](u64 state){ 
-					int nei = neighbor_generator.uniform_dist<int>(0, N-1);
-					auto [val1, tmp22] = operators::sigma_z<cpx>(state, Ll, site );
-					auto [val2, tmp33] = operators::sigma_z<cpx>(state, Ll, nei );
-					return std::make_pair(state, val1 * val2);
-					};
-				_operator = QOps::genOp(this->L, std::move(kernel_SzSz), 1.0);
-				op = arma::real(_operator.to_matrix(dim));
-				mat_elem = V.t() * op * V;
-				_submat_ = mat_elem.submat(idx_min, idx_min, idx_max -1, idx_max - 1);
-				_submat_.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "MAT_ELEM/SzSz_i=" + std::to_string(site),   arma::hdf5_opts::append));
-				// std::tie(_agp, _typ_susc, _susc, tmp) = adiabatics::gauge_potential(mat_elem, E, this->L);
-				// agp_norm_SzSz_r(i) = _agp;
-				// typ_susc_SzSz_r(i) = _typ_susc;
-				std::tie(_susc, _susc_r) = adiabatics::gauge_potential_save(mat_elem, E);
-				agp_norm_SzSz_r.col(i) = _susc;
-				typ_susc_SzSz_r.col(i) = _susc_r;
-				diag_mat_elem_SzSz_r.col(i) = arma::diagvec(mat_elem); 
-				
-				std::cout << " - - - - - - finished SzSz matrix elements for site i = " << sites(i) << "in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
-				start = std::chrono::system_clock::now();
-				auto kernel_kin = [Ll, N, site, &neighbor_generator](u64 state){ 
-					int nei = site==0? site+1 : neighbor_generator.uniform_dist<int>(0, N-1);
-					// auto [spin1, tmp11] = operators::sigma_z<cpx>(state, Ll, site );
-					// auto [spin2, tmp22] = operators::sigma_z<cpx>(state, Ll, nei );
-					// if(std::real(spin1 * spin2) < 0)
+				Sz_state(k) = op_mat(k,k);
+				arma::Col<element_type> coeff = V.row(k).t();
+			#pragma omp parallel for
+				for(long t_idx = 0; t_idx < times.size(); t_idx++){
+					// quench(t_idx) = std::real( arma::cdot(psi.col(t_idx), op_mat * psi.col(t_idx)) );
+					double time = times(t_idx);
+					arma::cx_vec init_state(dim, arma::fill::zeros);
+					for(long alfa = 0; alfa < dim; alfa++)
 					{
-						auto [val1, num] = operators::sigma_x<cpx>(state, Ll, site );
-						auto [val2, num2] = operators::sigma_x<cpx>(num, Ll, nei );
-						return std::make_pair(num2, val1 * val2); 
-					} 
-					// else 
-					// 	return std::make_pair(state, cpx(0.0));
-					};
-				_operator = QOps::genOp(this->L, std::move(kernel_kin), 1.0);
-				op = arma::real(_operator.to_matrix(dim));
-				mat_elem = V.t() * op * V;
-				_submat_ = mat_elem.submat(idx_min, idx_min, idx_max -1, idx_max - 1);
-				_submat_.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "MAT_ELEM/kin_i=" + std::to_string(site),   arma::hdf5_opts::append));
-				// std::tie(_agp, _typ_susc, _susc, tmp) = adiabatics::gauge_potential(mat_elem, E, this->L);
-				// agp_norm_kin_r(i) = _agp;
-				// typ_susc_kin_r(i) = _typ_susc;
-				std::tie(_susc, _susc_r) = adiabatics::gauge_potential_save(mat_elem, E);
-				agp_norm_kin_r.col(i) = _susc;
-				typ_susc_kin_r.col(i) = _susc_r;
-				diag_mat_elem_kin_r.col(i) = arma::diagvec(mat_elem); 
-				std::cout << " - - - - - - finished kinetic matrix elements for site i = " << sites(i) << "in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
+						auto state = V.col(alfa);
+						// psi.col(t_idx) += std::exp(-1i * time * E(alfa)) * state * state(idx);
+						init_state += std::exp(-1i * time * E(alfa)) * state * coeff(alfa);
+					}
+					time_evolution(k, t_idx) = std::real( arma::cdot(init_state, op_mat * init_state) );
+				}
 			}
+			Sz_state.save(arma::hdf5_name(dir_realis + info + ".hdf5", "j=" + std::to_string(site) + "/Sz_state",   arma::hdf5_opts::append));
+			time_evolution.save(arma::hdf5_name(dir_realis + info + ".hdf5", "j=" + std::to_string(site) + "/time_evolution",   arma::hdf5_opts::append));
+			std::cout << " - - - - - - finished Sz time evolution for site i = " << sites(i) << "in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
+				
+			arma::Mat<element_type> _spectral_fun_eps(omegax.size()-1, energy_density.size(), arma::fill::zeros);
+			arma::Mat<element_type> _spectral_fun_typ_eps(omegax.size()-1, energy_density.size(), arma::fill::zeros);
+			arma::Mat<element_type> _element_count_eps(omegax.size()-1, energy_density.size(), arma::fill::zeros);
+			
+			const double dw_log = std::log10(omegax[1]) - std::log10(omegax[0]);
+        	const double w0_log = std::log10(omegax[0]);
+			const double window_width = 0.05;
+			const double bandwidth = E(E.size() - 1) - E(0);
+		#pragma omp parallel for
+			for(int ii = 0; ii < energy_density.size(); ii++)
+			{
+				const double eps = energy_density(ii);
+				const double energyx = eps * bandwidth + E(0);
+				for(int n = 0; n < E.size() - 1; n++)
+				{
+					for(int m = n+1; m < E.size() - 1; m++){
+						if (abs((E(n) + E(m)) / 2. - energyx) < window_width / 2.){
+							double wnm = E(m) - E(n);
+							const auto idx = int( (std::log10(wnm) - w0_log) / dw_log);
+							if(idx < omegax.size() && idx >= 0){
+								const double _b_ = std::abs(mat_elem(n, m));
+								_spectral_fun_eps(idx, ii) += 2 * _b_ * _b_;
+								_spectral_fun_typ_eps(idx, ii) += 2 * std::log(_b_ * _b_);
+								_element_count_eps(idx, ii) += 2;
+							}
+						}
+					}	
+				}
+			}
+			_spectral_fun_eps.save(arma::hdf5_name(dir_realis + info + ".hdf5", "j=" + std::to_string(site) + "/spectral_fun_eps",   arma::hdf5_opts::append));
+			_spectral_fun_typ_eps.save(arma::hdf5_name(dir_realis + info + ".hdf5", "j=" + std::to_string(site) + "/spectral_fun_typ_eps",   arma::hdf5_opts::append));
+			_element_count_eps.save(arma::hdf5_name(dir_realis + info + ".hdf5", "j=" + std::to_string(site) + "/element_count_eps",   arma::hdf5_opts::append));
+			// start = std::chrono::system_clock::now();
+			// // arma::Mat<element_type> mat_elem = V * Sz_ops[i] * V.t();
+			// auto kernel_Sx = [Ll, site](u64 state){ 
+			// 	auto [val, num] = operators::sigma_x<cpx>(state, Ll, site ); 
+			// 	return std::make_pair(num, val); 
+			// 	};
+			// _operator = QOps::genOp(this->L, std::move(kernel_Sx), 1.0);
+			// op = arma::real(_operator.to_matrix(dim));
+			// mat_elem = V.t() * op * V;
+			// _submat_ = mat_elem.submat(idx_min, idx_min, idx_max -1, idx_max - 1);
+			// _submat_.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "MAT_ELEM/Sx_i=" + std::to_string(site),   arma::hdf5_opts::append));
+			// // std::tie(_agp, _typ_susc, _susc, tmp) = adiabatics::gauge_potential(mat_elem, E, this->L);
+			// // agp_norm_Sx_r(i) = _agp;
+			// // typ_susc_Sx_r(i) = _typ_susc;
+			// std::tie(_susc, _susc_r) = adiabatics::gauge_potential_save(mat_elem, E);
+			// agp_norm_Sx_r.col(i) = _susc;
+			// typ_susc_Sx_r.col(i) = _susc_r;
+			// diag_mat_elem_Sx_r.col(i) = arma::diagvec(mat_elem);
+			
+    		// std::cout << " - - - - - - finished Sx matrix elements for site i = " << sites(i) << "in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
+			// {
+			// 	start = std::chrono::system_clock::now();
+			// 	auto kernel_SzSz = [Ll, N, site, &neighbor_generator](u64 state){ 
+			// 		int nei = neighbor_generator.uniform_dist<int>(0, N-1);
+			// 		auto [val1, tmp22] = operators::sigma_z<cpx>(state, Ll, site );
+			// 		auto [val2, tmp33] = operators::sigma_z<cpx>(state, Ll, nei );
+			// 		return std::make_pair(state, val1 * val2);
+			// 		};
+			// 	_operator = QOps::genOp(this->L, std::move(kernel_SzSz), 1.0);
+			// 	op = arma::real(_operator.to_matrix(dim));
+			// 	mat_elem = V.t() * op * V;
+			// 	_submat_ = mat_elem.submat(idx_min, idx_min, idx_max -1, idx_max - 1);
+			// 	_submat_.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "MAT_ELEM/SzSz_i=" + std::to_string(site),   arma::hdf5_opts::append));
+			// 	// std::tie(_agp, _typ_susc, _susc, tmp) = adiabatics::gauge_potential(mat_elem, E, this->L);
+			// 	// agp_norm_SzSz_r(i) = _agp;
+			// 	// typ_susc_SzSz_r(i) = _typ_susc;
+			// 	std::tie(_susc, _susc_r) = adiabatics::gauge_potential_save(mat_elem, E);
+			// 	agp_norm_SzSz_r.col(i) = _susc;
+			// 	typ_susc_SzSz_r.col(i) = _susc_r;
+			// 	diag_mat_elem_SzSz_r.col(i) = arma::diagvec(mat_elem); 
+				
+			// 	std::cout << " - - - - - - finished SzSz matrix elements for site i = " << sites(i) << "in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
+			// 	start = std::chrono::system_clock::now();
+			// 	auto kernel_kin = [Ll, N, site, &neighbor_generator](u64 state){ 
+			// 		int nei = site==0? site+1 : neighbor_generator.uniform_dist<int>(0, N-1);
+			// 		// auto [spin1, tmp11] = operators::sigma_z<cpx>(state, Ll, site );
+			// 		// auto [spin2, tmp22] = operators::sigma_z<cpx>(state, Ll, nei );
+			// 		// if(std::real(spin1 * spin2) < 0)
+			// 		{
+			// 			auto [val1, num] = operators::sigma_x<cpx>(state, Ll, site );
+			// 			auto [val2, num2] = operators::sigma_x<cpx>(num, Ll, nei );
+			// 			return std::make_pair(num2, val1 * val2); 
+			// 		} 
+			// 		// else 
+			// 		// 	return std::make_pair(state, cpx(0.0));
+			// 		};
+			// 	_operator = QOps::genOp(this->L, std::move(kernel_kin), 1.0);
+			// 	op = arma::real(_operator.to_matrix(dim));
+			// 	mat_elem = V.t() * op * V;
+			// 	_submat_ = mat_elem.submat(idx_min, idx_min, idx_max -1, idx_max - 1);
+			// 	_submat_.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "MAT_ELEM/kin_i=" + std::to_string(site),   arma::hdf5_opts::append));
+			// 	// std::tie(_agp, _typ_susc, _susc, tmp) = adiabatics::gauge_potential(mat_elem, E, this->L);
+			// 	// agp_norm_kin_r(i) = _agp;
+			// 	// typ_susc_kin_r(i) = _typ_susc;
+			// 	std::tie(_susc, _susc_r) = adiabatics::gauge_potential_save(mat_elem, E);
+			// 	agp_norm_kin_r.col(i) = _susc;
+			// 	typ_susc_kin_r.col(i) = _susc_r;
+			// 	diag_mat_elem_kin_r.col(i) = arma::diagvec(mat_elem); 
+			// 	std::cout << " - - - - - - finished kinetic matrix elements for site i = " << sites(i) << "in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
+			// }
 		}
 		// #ifndef MY_MAC
 		{
-			agp_norm_Sz_r.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "SUSC/Sz",   arma::hdf5_opts::append));
-			agp_norm_Sx_r.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "SUSC/Sx",   arma::hdf5_opts::append));
-			agp_norm_SzSz_r.save( arma::hdf5_name(dir_realis + info + ".hdf5", "SUSC/SzSz", arma::hdf5_opts::append));
-			agp_norm_kin_r.save(  arma::hdf5_name(dir_realis + info + ".hdf5", "SUSC/SxSx",  arma::hdf5_opts::append));
+			agp_norm_Sz_r.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "susc",   arma::hdf5_opts::append));
+			// agp_norm_Sx_r.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "SUSC/Sx",   arma::hdf5_opts::append));
+			// agp_norm_SzSz_r.save( arma::hdf5_name(dir_realis + info + ".hdf5", "SUSC/SzSz", arma::hdf5_opts::append));
+			// agp_norm_kin_r.save(  arma::hdf5_name(dir_realis + info + ".hdf5", "SUSC/SxSx",  arma::hdf5_opts::append));
 
-			typ_susc_Sz_r.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "SUSC_R/Sz",   arma::hdf5_opts::append));
-			typ_susc_Sx_r.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "SUSC_R/Sx",   arma::hdf5_opts::append));
-			typ_susc_SzSz_r.save( arma::hdf5_name(dir_realis + info + ".hdf5", "SUSC_R/SzSz", arma::hdf5_opts::append));
-			typ_susc_kin_r.save(  arma::hdf5_name(dir_realis + info + ".hdf5", "SUSC_R/SxSx",  arma::hdf5_opts::append));
+			typ_susc_Sz_r.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "susc_r",   arma::hdf5_opts::append));
+			// typ_susc_Sx_r.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "SUSC_R/Sx",   arma::hdf5_opts::append));
+			// typ_susc_SzSz_r.save( arma::hdf5_name(dir_realis + info + ".hdf5", "SUSC_R/SzSz", arma::hdf5_opts::append));
+			// typ_susc_kin_r.save(  arma::hdf5_name(dir_realis + info + ".hdf5", "SUSC_R/SxSx",  arma::hdf5_opts::append));
 
-			diag_mat_elem_Sz_r.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "DIAG_MAT/Sz",   arma::hdf5_opts::append));
-			diag_mat_elem_Sx_r.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "DIAG_MAT/Sx",   arma::hdf5_opts::append));
-			diag_mat_elem_SzSz_r.save( arma::hdf5_name(dir_realis + info + ".hdf5", "DIAG_MAT/SzSz", arma::hdf5_opts::append));
-			diag_mat_elem_kin_r.save(  arma::hdf5_name(dir_realis + info + ".hdf5", "DIAG_MAT/SxSx",  arma::hdf5_opts::append));
+			diag_mat_elem_Sz_r.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "diag_mat",   arma::hdf5_opts::append));
+			// diag_mat_elem_Sx_r.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "DIAG_MAT/Sx",   arma::hdf5_opts::append));
+			// diag_mat_elem_SzSz_r.save( arma::hdf5_name(dir_realis + info + ".hdf5", "DIAG_MAT/SzSz", arma::hdf5_opts::append));
+			// diag_mat_elem_kin_r.save(  arma::hdf5_name(dir_realis + info + ".hdf5", "DIAG_MAT/SxSx",  arma::hdf5_opts::append));
 		}
 		// #endif
 		
