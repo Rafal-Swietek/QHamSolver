@@ -85,11 +85,11 @@ void QuantumSun::create_hamiltonian()
         this->_disorder = disorder_generator.uniform(dim_loc, this->_hz - this->_w, this->_hz + this->_w);
     else
         this->_disorder = disorder_generator.uniform(this->num_of_spins, this->_hz - this->_w, this->_hz + this->_w);
-    std::cout << "AAAAA: " << this->_disorder.t() << std::endl;
+    // std::cout << "AAAAA: " << this->_disorder.t() << std::endl;
 	
     /* Create random neighbours for coupling hamiltonian */
     this->random_neigh = this->neighbor_generator.uniform(this->num_of_spins, 0, this->grain_size - 1);
-
+    
 	/* Create GOE Matrix */
 	this->H_grain = this->_gamma * this->grain.generate_matrix(dim_erg);
     // if(this->_norm_grain)
@@ -124,7 +124,6 @@ void QuantumSun::create_hamiltonian()
 	    std::cout << "random_neigh: \t\t" << random_neigh.t() << std::endl;
         std::cout << "Grain matrix: \t\t" << H_grain << std::endl;
     )
-
     /* Generate coupling and spin hamiltonian */
     clk::time_point start = std::chrono::system_clock::now();
     for (u64 k = 0; k < this->dim; k++) {
@@ -146,12 +145,20 @@ void QuantumSun::create_hamiltonian()
 			this->set_hamiltonian_elements(k, this->_J * this->_long_range_couplings(pos_in_array) * (val1 * val2), SxSx_k);
 		}
 	}
-    std::cout << " - - - - - - finished Hamiltonian in : " << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
+    // std::cout << " - - - - - - finished Hamiltonian in : " << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
     if constexpr (conf_disorder == 1){
         arma::sp_mat H_loc = arma::kron<arma::sp_mat>(arma::eye<arma::sp_mat>(dim_erg, dim_erg), arma::sp_mat(arma::diagmat(this->_disorder)));
         this->H = this->H + H_loc;
     }
 	this->H = this->H + arma::kron<arma::sp_mat>(arma::sp_mat(this->H_grain), arma::eye<arma::sp_mat>(dim_loc, dim_loc));
+    
+    // this->_disorder.save("disorder_g=" + std::to_string(this->_J) + "_alfa" + std::to_string(this->_J) + "_zeta" + std::to_string(this->_zeta) + "_w" + std::to_string(this->_w) + "_hz" + std::to_string(this->_hz), arma::arma_ascii);
+    // this->random_neigh.save("neighbors_g=" + std::to_string(this->_J) + "_alfa" + std::to_string(this->_J) + "_zeta" + std::to_string(this->_zeta) + "_w" + std::to_string(this->_w) + "_hz" + std::to_string(this->_hz), arma::arma_ascii);
+    // this->_long_range_couplings.save("couplings_g=" + std::to_string(this->_J) + "_alfa" + std::to_string(this->_J) + "_zeta" + std::to_string(this->_zeta) + "_w" + std::to_string(this->_w) + "_hz" + std::to_string(this->_hz), arma::arma_ascii);
+    // this->H_grain.save("grain_g=" + std::to_string(this->_J) + "_alfa" + std::to_string(this->_J) + "_zeta" + std::to_string(this->_zeta) + "_w" + std::to_string(this->_w) + "_hz" + std::to_string(this->_hz), arma::arma_ascii);
+    
+    // arma::mat H_dens = arma::mat(H);
+    // H_dens.save("H_g=" + std::to_string(this->_J) + "_alfa" + std::to_string(this->_J) + "_zeta" + std::to_string(this->_zeta) + "_w" + std::to_string(this->_w) + "_hz" + std::to_string(this->_hz), arma::arma_ascii);
 }
 
 

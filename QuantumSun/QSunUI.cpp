@@ -17,12 +17,13 @@ void ui::make_sim(){
 
 
 	arma::vec alfas = arma::linspace(0.6, 1.5, 26);
-	arma::vec H_trace(alfas.size());
-	arma::vec H_trace2(alfas.size());
-	arma::vec av(alfas.size());
-	arma::vec var(alfas.size());
-	arma::vec av2(alfas.size());
-	arma::vec var2(alfas.size());
+	arma::vec H_trace(alfas.size(), arma::fill::zeros);
+	arma::vec H_trace2(alfas.size(), arma::fill::zeros);
+	arma::vec av(alfas.size(), arma::fill::zeros);
+	arma::vec var(alfas.size(), arma::fill::zeros);
+	arma::vec av2(alfas.size(), arma::fill::zeros);
+	arma::vec var2(alfas.size(), arma::fill::zeros);
+
 	for(int r = 0; r < this->realisations; r++)
 	{
 		for(int iig = 0; iig < alfas.size(); iig++)
@@ -44,9 +45,9 @@ void ui::make_sim(){
 			av2(iig) += arma::mean(gec);
 			var2(iig) += arma::var(gec);
 
-			H = H - meanH;
+			H = H - meanH * arma::eye<arma::sp_mat>(dim, dim);
 			H2 = H*H;
-			gec = arma::zeros(dim);
+			gec = arma::vec(dim, arma::fill::zeros);
 		#pragma omp parallel for
 			for(u64 k = 0; k < dim; k++)
 				gec(k) = 2 * H2(k,k) - H(k,k) * H(k,k); 
@@ -65,14 +66,18 @@ void ui::make_sim(){
 
 	av2 = av2 / H_trace2;
 	var2 = var2 / arma::square(H_trace2);
+	std::string dir = "GEC_data/" + kPSep;
+	createDirs(dir);
+	std::string dir_realis = dir + "realisation=" + std::to_string(this->jobid) + kPSep;
+	createDirs(dir_realis);
+	alfas.save(	  arma::hdf5_name(dir_realis + "GEC_L=" + std::to_string(this->L) + ".hdf5", "alfas"));
+	av.save(	  arma::hdf5_name(dir_realis + "GEC_L=" + std::to_string(this->L) + ".hdf5", "av", arma::hdf5_opts::append));
+	var.save(	  arma::hdf5_name(dir_realis + "GEC_L=" + std::to_string(this->L) + ".hdf5", "var", arma::hdf5_opts::append));
+	av2.save(	  arma::hdf5_name(dir_realis + "GEC_L=" + std::to_string(this->L) + ".hdf5", "av2", arma::hdf5_opts::append));
+	var2.save(	  arma::hdf5_name(dir_realis + "GEC_L=" + std::to_string(this->L) + ".hdf5", "var2", arma::hdf5_opts::append));
+	H_trace.save(	  arma::hdf5_name(dir_realis + "GEC_L=" + std::to_string(this->L) + ".hdf5", "trace_H", arma::hdf5_opts::append));
+	H_trace2.save(	  arma::hdf5_name(dir_realis + "GEC_L=" + std::to_string(this->L) + ".hdf5", "trace_H2", arma::hdf5_opts::append));
 
-	alfas.save(	  arma::hdf5_name("GEC_L=" + std::to_string(this->L) + ".hdf5", "alfas"));
-	av.save(	  arma::hdf5_name("GEC_L=" + std::to_string(this->L) + ".hdf5", "av", arma::hdf5_opts::append));
-	var.save(	  arma::hdf5_name("GEC_L=" + std::to_string(this->L) + ".hdf5", "var", arma::hdf5_opts::append));
-	av2.save(	  arma::hdf5_name("GEC_L=" + std::to_string(this->L) + ".hdf5", "av2", arma::hdf5_opts::append));
-	var2.save(	  arma::hdf5_name("GEC_L=" + std::to_string(this->L) + ".hdf5", "var2", arma::hdf5_opts::append));
-	H_trace.save(	  arma::hdf5_name("GEC_L=" + std::to_string(this->L) + ".hdf5", "trace_H", arma::hdf5_opts::append));
-	H_trace2.save(	  arma::hdf5_name("GEC_L=" + std::to_string(this->L) + ".hdf5", "trace_H2", arma::hdf5_opts::append));
 	std::cout << " - - - - - - FINISHED CALCULATIONS IN : " << tim_s(start) << " seconds - - - - - - " << std::endl; // simulation end
 	return;
 	
