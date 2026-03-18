@@ -150,15 +150,27 @@ void QuantumSun::create_hamiltonian()
         arma::sp_mat H_loc = arma::kron<arma::sp_mat>(arma::eye<arma::sp_mat>(dim_erg, dim_erg), arma::sp_mat(arma::diagmat(this->_disorder)));
         this->H = this->H + H_loc;
     }
-	this->H = this->H + arma::kron<arma::sp_mat>(arma::sp_mat(this->H_grain), arma::eye<arma::sp_mat>(dim_loc, dim_loc));
+	// this->H = this->H + arma::kron<arma::sp_mat>(arma::sp_mat(this->H_grain), arma::eye<arma::sp_mat>(dim_loc, dim_loc));
     
     // this->_disorder.save("disorder_g=" + std::to_string(this->_J) + "_alfa" + std::to_string(this->_J) + "_zeta" + std::to_string(this->_zeta) + "_w" + std::to_string(this->_w) + "_hz" + std::to_string(this->_hz), arma::arma_ascii);
     // this->random_neigh.save("neighbors_g=" + std::to_string(this->_J) + "_alfa" + std::to_string(this->_J) + "_zeta" + std::to_string(this->_zeta) + "_w" + std::to_string(this->_w) + "_hz" + std::to_string(this->_hz), arma::arma_ascii);
     // this->_long_range_couplings.save("couplings_g=" + std::to_string(this->_J) + "_alfa" + std::to_string(this->_J) + "_zeta" + std::to_string(this->_zeta) + "_w" + std::to_string(this->_w) + "_hz" + std::to_string(this->_hz), arma::arma_ascii);
     // this->H_grain.save("grain_g=" + std::to_string(this->_J) + "_alfa" + std::to_string(this->_J) + "_zeta" + std::to_string(this->_zeta) + "_w" + std::to_string(this->_w) + "_hz" + std::to_string(this->_hz), arma::arma_ascii);
     
-    // arma::mat H_dens = arma::mat(H);
-    // H_dens.save("H_g=" + std::to_string(this->_J) + "_alfa" + std::to_string(this->_J) + "_zeta" + std::to_string(this->_zeta) + "_w" + std::to_string(this->_w) + "_hz" + std::to_string(this->_hz), arma::arma_ascii);
+    // arma::mat H_dens = arma::abs(arma::mat(H));
+    // H_dens.save(   arma::hdf5_name("HamiltonianQSM.hdf5", "H"));
+    // // auto reverse = re
+    // arma::mat H_dens2(dim, dim);
+    // for (u64 k = 0; k < this->dim; k++) 
+    // {
+    //     u64 new_k = reverseBits(k, this->system_size);
+	// 	for (u64 m = 0; m < this->dim; m++) 
+    //     {
+    //         u64 new_m = reverseBits(m, this->system_size);
+    //         H_dens2(new_k, new_m) = std::abs(H_dens(k, m));
+    //     }
+	// }
+    // H_dens2.save(   arma::hdf5_name("HamiltonianQSM.hdf5", "PHP", arma::hdf5_opts::append));
 }
 
 
