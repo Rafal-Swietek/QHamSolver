@@ -47,7 +47,7 @@ private:
     virtual void init() override
     {   
         this->_lattice = lattice::hypercubic(this->system_size, this->_boundary_condition, DIM);//lattice_type(this->system_size, !this->_boundary_condition);
-        #if defined(RP) || defined(PLRB)// || defined(SYK) 
+        #if !defined(_USE_QUADRATIC) && (defined(RP) || defined(PLRB))// || defined(SYK) 
             this->dim = ULLPOW(this->system_size);
         #else
             this->dim = this->_lattice.volume;

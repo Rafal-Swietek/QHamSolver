@@ -34,11 +34,13 @@ constexpr int _mat_ensemble = _MAT_ENSEMBLE_;
 
 
 #ifndef MODEL
-    #define MODEL 3
+    #define MODEL 5
 #endif
 
 //------------------- Translate Macro
-
+#ifndef _USE_QUADRATIC // for RP and PLRB models to use the quadratic case
+    #define _USE_QUADRATIC
+#endif
 #if MODEL == 0
     #define ANDERSON
     #define print_model(x)  "Chosen Anderson model in " #x "-dimensions!"
