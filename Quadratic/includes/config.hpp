@@ -38,8 +38,10 @@ constexpr int _mat_ensemble = _MAT_ENSEMBLE_;
 #endif
 
 //------------------- Translate Macro
-#ifndef _USE_QUADRATIC // for RP and PLRB models to use the quadratic case
-    #define _USE_QUADRATIC
+#if defined(MY_MAC)
+    #ifndef _USE_QUADRATIC // for RP and PLRB models to use the quadratic case
+        // #define _USE_QUADRATIC
+    #endif
 #endif
 #if MODEL == 0
     #define ANDERSON
