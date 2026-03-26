@@ -948,8 +948,8 @@ void ui::quench()
 			return std::make_pair(state, val1);
 			};
 		auto _operator = QOps::generic_operator<double>(this->L, std::move(kernel), 1.0);
-		arma::sp_mat op = _operator.to_matrix(dim);
-		arma::Mat<element_type> mat_elem = V.t() * op * V;
+		arma::sp_mat oper = _operator.to_matrix(dim);
+		arma::Mat<element_type> mat_elem = V.t() * oper * V;
 		arma::Col<element_type> diag_mat_elem = arma::diagvec(mat_elem);
 		std::cout << " - - - - - - finished Sz_L matrix elements in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
 

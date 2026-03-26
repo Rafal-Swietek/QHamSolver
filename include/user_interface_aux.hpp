@@ -170,7 +170,7 @@ void user_interface<Hamiltonian>::printAllOptions() const {
 		  << "Ln = " << this->Ln << std::endl
 		  << "thread_num = " << this->thread_number << std::endl
 		  << "site = " << this->site << std::endl
-		  << "operator = " << opName << std::endl
+		  << "operator = " << this->op << std::endl
 		  << "boolean value = " << this->ch << std::endl
 		  << "q_ipr = " << this->q_ipr << std::endl
 		  << "\u03B2 = " << this->beta << std::endl
