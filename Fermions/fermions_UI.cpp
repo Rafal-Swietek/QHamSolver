@@ -304,7 +304,8 @@ void ui::purity()
 	}else{
         this->ptr_to_model->diagonalization();
     }
-    const int size = min(50, int(0.05 * dim));
+    // const int size = min(500, int(0.1 * dim));
+    const int size = this->boundary_conditions == 2? (dim > dim_cut? this->l_steps : dim) : min(20, int(0.02 * dim));
 
     std::cout << " - - - - - - FINISHED DIAGONALIZATION IN : " << tim_s(start) << " seconds - - - - - - " << std::endl; // simulation end
     
@@ -316,8 +317,9 @@ void ui::purity()
         return abs(x - E_av) < abs(y - E_av);
     });
     const long Eav_idx = i - begin(E);
-    const long Emin = Eav_idx - size / 2;
-    printSeparated(std::cout, "\t", 20, true, E_av, Eav_idx, Emin, dim);
+    const long Emin = this->boundary_conditions == 2? 0 : Eav_idx - size / 2;
+    printSeparated(std::cout, "\t", 20, true, arma::trace(this->ptr_to_model->get_hamiltonian()) / double(dim), E_av, Eav_idx, Emin, dim);
+
 
     const auto _hilbert = this->ptr_to_model->get_model_ref().get_hilbert_space();
     const auto U = _hilbert.symmetry_rotation();
@@ -326,6 +328,7 @@ void ui::purity()
     start = std::chrono::system_clock::now();
 
     auto subsystem_sizes = arma::conv_to<arma::Col<int>>::from(arma::linspace(0, this->L - 1, this->L));
+    auto qs = arma::linspace(0.5, 3.0, 26);
     // auto subsystem_sizes = arma::Col<int>( { int(this->L) / 2} );
     std::cout << subsystem_sizes.t() << std::endl;
 
@@ -335,6 +338,9 @@ void ui::purity()
     arma::mat Trace4(size, subsystem_sizes.size()+1, arma::fill::zeros);
     arma::mat Trace6(size, subsystem_sizes.size()+1, arma::fill::zeros);
     arma::vec NonGauss(size, arma::fill::zeros);
+    
+    arma::mat part_ratio(size, qs.size(), arma::fill::zeros);
+    arma::mat info_ent(size, qs.size(), arma::fill::zeros);
 
     // outer_threads = this->thread_number;
     // omp_set_num_threads(1);
@@ -344,7 +350,7 @@ void ui::purity()
         clk::time_point start_n = std::chrono::system_clock::now();
         // int idx = 0;
         // if(dim < dim_cut) idx = Emin;
-        auto eigenstate = this->ptr_to_model->get_eigenState(Emin + n);
+        arma::Col<element_type> eigenstate = this->ptr_to_model->get_eigenState(Emin + n);
         arma::Col<element_type> state = U * eigenstate;
         
         // arma::cx_mat J_m_MB2(this->L, this->L, arma::fill::zeros);
@@ -425,15 +431,38 @@ void ui::purity()
             Trace4(n, iiLA) = std::real( arma::trace(J_m_VA * J_m_VA * J_m_VA * J_m_VA) );
             Trace6(n, iiLA) = std::real( arma::trace(J_m_VA * J_m_VA * J_m_VA * J_m_VA * J_m_VA * J_m_VA) );
         }
+        // std::cout << " - - - - - - Finished corr_mat in state n = " << n << " in: " << tim_s(start_n) << " seconds - - - - - - " << std::endl; // simulation end
+        // start_n = std::chrono::system_clock::now();
+    #pragma omp parallel for
+        for(int iq = 0; iq < qs.size(); iq++)
+        {
+            if(qs(iq) == 1)
+            {
+                double _pr_ = 0;
+                for (int k = 0; k < eigenstate.size(); k++) {
+                    auto c_k = eigenstate(k);
+                    double value = std::abs(std::conj(c_k) * c_k);
+                    _pr_ += (std::abs(value) > 0) ? -value * std::log(value) : 0;
+                }
+                part_ratio(n, iq) = arma::norm(eigenstate);
+                info_ent(n, iq) = _pr_;
+            }
+            else{
+                double _pr_ = statistics::participation_ratio(eigenstate, qs(iq));
+                part_ratio(n, iq) = _pr_;
+                info_ent(n, iq) = std::log(_pr_) / (1 - qs(iq));
+            }
+        }
         std::cout << " - - - - - - Finished state n = " << n << " in: " << tim_s(start_n) << " seconds - - - - - - " << std::endl; // simulation end
     }
-    std::cout << " - - - - - - FINISHED ENTROPY CALCULATION IN : " << tim_s(start) << " seconds - - - - - - " << std::endl; // simulation end
+    std::cout << " - - - - - - FINISHED CORR MAT AND IPR CALCULATION IN : " << tim_s(start) << " seconds - - - - - - " << std::endl; // simulation end
     
     // omp_set_num_threads(this->thread_number);
     // outer_threads = 1;
     
     E.save(arma::hdf5_name(dir + filename + ".hdf5", "energies"));
 	// S.save(arma::hdf5_name(dir + filename + ".hdf5", "entropy", arma::hdf5_opts::append));
+    subsystem_sizes.save(arma::hdf5_name(dir + filename + ".hdf5", "subsystem_sizes", arma::hdf5_opts::append));
     Scorr.save(arma::hdf5_name(dir + filename + ".hdf5", "entropy_corr_mat", arma::hdf5_opts::append));
     Scorr_site.save(arma::hdf5_name(dir + filename + ".hdf5", "entropy_single_site_corr_mat", arma::hdf5_opts::append));
     NonGauss.save(arma::hdf5_name(dir + filename + ".hdf5", "Non-Gaussianity", arma::hdf5_opts::append));
@@ -441,6 +470,10 @@ void ui::purity()
     Trace4.save(arma::hdf5_name(dir + filename + ".hdf5", "Trace4", arma::hdf5_opts::append));
     Trace6.save(arma::hdf5_name(dir + filename + ".hdf5", "Trace6", arma::hdf5_opts::append));
     arma::uvec({dim}).save(arma::hdf5_name(dir + filename + ".hdf5", "D", arma::hdf5_opts::append));
+
+    qs.save(arma::hdf5_name(dir + filename + ".hdf5", "qs", arma::hdf5_opts::append));
+    part_ratio.save(arma::hdf5_name(dir + filename + ".hdf5", "part_ratio", arma::hdf5_opts::append));
+    info_ent.save(arma::hdf5_name(dir + filename + ".hdf5", "info_ent", arma::hdf5_opts::append));
 }
 /// @brief 
 /// @param skip 
