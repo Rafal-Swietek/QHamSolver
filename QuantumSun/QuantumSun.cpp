@@ -150,7 +150,7 @@ void QuantumSun::create_hamiltonian()
         arma::sp_mat H_loc = arma::kron<arma::sp_mat>(arma::eye<arma::sp_mat>(dim_erg, dim_erg), arma::sp_mat(arma::diagmat(this->_disorder)));
         this->H = this->H + H_loc;
     }
-	// this->H = this->H + arma::kron<arma::sp_mat>(arma::sp_mat(this->H_grain), arma::eye<arma::sp_mat>(dim_loc, dim_loc));
+	this->H = this->H + arma::kron<arma::sp_mat>(arma::sp_mat(this->H_grain), arma::eye<arma::sp_mat>(dim_loc, dim_loc));
     
     // this->_disorder.save("disorder_g=" + std::to_string(this->_J) + "_alfa" + std::to_string(this->_J) + "_zeta" + std::to_string(this->_zeta) + "_w" + std::to_string(this->_w) + "_hz" + std::to_string(this->_hz), arma::arma_ascii);
     // this->random_neigh.save("neighbors_g=" + std::to_string(this->_J) + "_alfa" + std::to_string(this->_J) + "_zeta" + std::to_string(this->_zeta) + "_w" + std::to_string(this->_w) + "_hz" + std::to_string(this->_hz), arma::arma_ascii);
