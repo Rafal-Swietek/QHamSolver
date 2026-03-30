@@ -14,65 +14,16 @@ void ui::make_sim(){
 	this->seed = std::random_device{}();
 	this->ptr_to_model = this->create_new_model_pointer();
 	size_t dim = this->ptr_to_model->get_hilbert_size();
-	// return;
-	// int Lx = this->L;
-	// double trace_sum = 0;
-	// double dis_sum = 0;
-
-	// auto disorder_generator = disorder<double>(this->seed);
-	// arma::vec disorder_base = disorder_generator.uniform(this->L, this->h - this->w, this->h + this->w);
-	// for (int i1 = 0; i1 < this->L; i1++)
-	// {
-	// 	dis_sum += disorder_base(i1) * disorder_base(i1) * disorder_base(i1) * disorder_base(i1);
-	// 	for (int i2 = 0; i2 < this->L; i2++)
-	// 	{
-	// 		if(i2 != i1)
-	// 			dis_sum += 3 * disorder_base(i1) * disorder_base(i1) * disorder_base(i2) * disorder_base(i2);
-	// 		for (int i3 = 0; i3 < this->L; i3++)
-	// 		{
-	// 			// for (int i4 = 0; i4 < this->L; i4++)
-	// 			{
-	// 				auto kernel_def = [Lx, i1, i2, i3](u64 state){ 
-	// 					auto [val1, tmp21] = operators::sigma_z<double>(state, Lx, i1 );
-	// 					auto [val2, tmp22] = operators::sigma_z<double>(state, Lx, i2 );
-	// 					auto [val3, tmp23] = operators::sigma_z<double>(state, Lx, i3 );
-	// 					// auto [val4, tmp24] = operators::sigma_z<double>(state, Lx, i4 );
-	// 					return std::make_pair(state, val1*val2*val3);
-	// 				};
-	// 				auto _operator = QOps::generic_operator<double>(this->L, std::move(kernel_def), 1.0);
-	// 				trace_sum += arma::trace(_operator.to_matrix(dim)) / double(dim) * disorder_base(i1) * disorder_base(i2) * disorder_base(i3);
-	// 			}
-	// 		}
-	// 	}
-	// }
-	// printSeparated(std::cout, "\t\t", 20, true, "--------", Lx, "---------", 16 * trace_sum, "--", dis_sum);
-	// return;
-	auto mean_GEC = [this](int L, double alfa)
-	{ 
-		double coupling = this->J * this->J * (1 - std::pow(alfa, 2 * L)) / (1 - alfa*alfa);
-		double dis = L / 4.0 * (this->h*this->h + this->w*this->w / 3.0);
-		double gr = 0;//double(ULLPOW(this->grain_size+1)) / double(ULLPOW(this->grain_size) + 1);
-		return (coupling/8. + dis + gr) / (0 + dis + coupling/16.);
-	};
-	auto var_GEC = [this](int L, double alfa)
-	{ 
-		double coupling = this->J * this->J * (1 - std::pow(alfa, 2 * L)) / (1 - alfa*alfa);
-		double dis = L / 4.0 * (this->h*this->h + this->w*this->w / 3.0);
-		double dis1 = (2*L*L - 3*L) / 16.0 * (this->h*this->h + this->w*this->w / 3.0)*(this->h*this->h + this->w*this->w / 3.0);
-		double dis2 = L / 16.0 * (this->h*this->h*this->h*this->h + this->w*this->w*this->w*this->w / 5.0 + 2*this->h*this->h * this->w*this->w);
-		double mix = 0;//2*L / double(ULLPOW(this->grain_size) + 1) * (this->h*this->h + this->w*this->w / 3.0);
-		double gr = 0;//double(ULLPOW(this->grain_size+3)) / double( (ULLPOW(this->grain_size) + 1)*(ULLPOW(this->grain_size) + 1) );
-		return (gr  + dis1 + dis2 + mix) / ( (0 + dis + coupling/16.)*(0 + dis + coupling/16.) );
-	};
+	
 	arma::vec alfas = arma::linspace(0.6, 1.5, 26);
-	arma::vec H_trace(alfas.size(), arma::fill::zeros);
-	arma::vec H_trace2(alfas.size(), arma::fill::zeros);
-	arma::vec av(alfas.size(), arma::fill::zeros);
-	arma::vec var(alfas.size(), arma::fill::zeros);
-	arma::vec av2(alfas.size(), arma::fill::zeros);
-	arma::vec var2(alfas.size(), arma::fill::zeros);
-	arma::vec av3(alfas.size(), arma::fill::zeros);
-	arma::vec var3(alfas.size(), arma::fill::zeros);
+	arma::mat H_trace(this->realisations, alfas.size(), arma::fill::zeros);
+	arma::mat H_trace2(this->realisations, alfas.size(), arma::fill::zeros);
+	arma::mat av(this->realisations, alfas.size(), arma::fill::zeros);
+	arma::mat var(this->realisations, alfas.size(), arma::fill::zeros);
+	arma::mat av2(this->realisations, alfas.size(), arma::fill::zeros);
+	arma::mat var2(this->realisations, alfas.size(), arma::fill::zeros);
+	arma::mat av3(this->realisations, alfas.size(), arma::fill::zeros);
+	arma::mat var3(this->realisations, alfas.size(), arma::fill::zeros);
 	for(int r = 0; r < this->realisations; r++)
 	{
 		for(int iig = 0; iig < alfas.size(); iig++)
@@ -84,15 +35,15 @@ void ui::make_sim(){
 			arma::sp_mat H2 = H*H;
 			double meanH = arma::trace(H) / double(dim);
 			double varH = arma::trace(H2) / double(dim) - meanH * meanH;
-			H_trace(iig) += meanH;
-			H_trace2(iig) += varH;
+			H_trace(r, iig) = meanH;
+			H_trace2(r, iig) = varH;
 			
 			arma::vec gec(dim, arma::fill::zeros);
 		#pragma omp parallel for
 			for(u64 k = 0; k < dim; k++)
 				gec(k) = 2 * H2(k,k) - H(k,k) * H(k,k);   
-			av2(iig) += arma::mean(gec);
-			var2(iig) += arma::var(gec);
+			av2(r, iig) = arma::mean(gec);
+			var2(r, iig) = arma::var(gec);
 			
 			H = H - meanH * arma::eye<arma::sp_mat>(dim, dim);
 			H2 = H*H;
@@ -101,33 +52,33 @@ void ui::make_sim(){
 		#pragma omp parallel for
 			for(u64 k = 0; k < dim; k++)
 				gec(k) = 2 * H2(k,k) - H(k,k) * H(k,k);   
-			av3(iig) += arma::mean(gec);
-			var3(iig) += arma::var(gec);
+			av3(r, iig) = arma::mean(gec);
+			var3(r, iig) = arma::var(gec);
 
 			gec = arma::vec(dim, arma::fill::zeros);
 		#pragma omp parallel for
 			for(u64 k = 0; k < dim; k++)
 				gec(k) = 2 * H2(k,k) - H(k,k) * H(k,k); 
 			gec = gec / varH;
-			av(iig) += arma::mean(gec);
-			var(iig) += arma::var(gec);
+			av(r, iig) = arma::mean(gec);
+			var(r, iig) = arma::var(gec);
 		}
 		std::cout << " - - - - - - finished realization r=" << r << "\t in :" << tim_s(start) << " seconds - - - - - - " << std::endl; // simulation end
 	}
-	av /= double(this->realisations);
-	av2 /= double(this->realisations);
-	var /= double(this->realisations);
-	var2 /= double(this->realisations);
-	H_trace /= double(this->realisations);
-	H_trace2 /= double(this->realisations);
+	// av /= double(this->realisations);
+	// av2 /= double(this->realisations);
+	// var /= double(this->realisations);
+	// var2 /= double(this->realisations);
+	// H_trace /= double(this->realisations);
+	// H_trace2 /= double(this->realisations);
 
-	av2 = av2 / H_trace2;
-	var2 = var2 / arma::square(H_trace2);
-	for(int iig = 0; iig < alfas.size(); iig++)
-	{
-		printSeparated(std::cout, "\t\t", 20, true, "--", std::abs(av(iig) - mean_GEC(this->L_loc, alfas(iig))), "--", std::abs(av2(iig) - mean_GEC(this->L_loc, alfas(iig))), "--------", std::abs(var(iig) - var_GEC(this->L_loc, alfas(iig))), "--", std::abs(var2(iig) - var_GEC(this->L_loc, alfas(iig))));
-	}
-	std::string dir = "GEC_data_h=" + to_string_prec(this->h) + kPSep;
+	// av2 = av2 / H_trace2;
+	// var2 = var2 / arma::square(H_trace2);
+	// for(int iig = 0; iig < alfas.size(); iig++)
+	// {
+	// 	printSeparated(std::cout, "\t\t", 20, true, "--", std::abs(av(iig) - mean_GEC(this->L_loc, alfas(iig))), "--", std::abs(av2(iig) - mean_GEC(this->L_loc, alfas(iig))), "--------", std::abs(var(iig) - var_GEC(this->L_loc, alfas(iig))), "--", std::abs(var2(iig) - var_GEC(this->L_loc, alfas(iig))));
+	// }
+	std::string dir = "GEC_data2" + kPSep;
 	createDirs(dir);
 	std::string dir_realis = dir + "realisation=" + std::to_string(this->jobid) + kPSep;
 	createDirs(dir_realis);
@@ -136,6 +87,8 @@ void ui::make_sim(){
 	var.save(	  arma::hdf5_name(dir_realis + "GEC_L=" + std::to_string(this->L) + ".hdf5", "var", arma::hdf5_opts::append));
 	av2.save(	  arma::hdf5_name(dir_realis + "GEC_L=" + std::to_string(this->L) + ".hdf5", "av2", arma::hdf5_opts::append));
 	var2.save(	  arma::hdf5_name(dir_realis + "GEC_L=" + std::to_string(this->L) + ".hdf5", "var2", arma::hdf5_opts::append));
+	av3.save(	  arma::hdf5_name(dir_realis + "GEC_L=" + std::to_string(this->L) + ".hdf5", "av3", arma::hdf5_opts::append));
+	var3.save(	  arma::hdf5_name(dir_realis + "GEC_L=" + std::to_string(this->L) + ".hdf5", "var3", arma::hdf5_opts::append));
 	H_trace.save(	  arma::hdf5_name(dir_realis + "GEC_L=" + std::to_string(this->L) + ".hdf5", "trace_H", arma::hdf5_opts::append));
 	H_trace2.save(	  arma::hdf5_name(dir_realis + "GEC_L=" + std::to_string(this->L) + ".hdf5", "trace_H2", arma::hdf5_opts::append));
 
