@@ -14,86 +14,88 @@ void ui::make_sim(){
 	this->seed = std::random_device{}();
 	this->ptr_to_model = this->create_new_model_pointer();
 	size_t dim = this->ptr_to_model->get_hilbert_size();
-	
-	arma::vec alfas = arma::linspace(0.6, 1.5, 26);
-	arma::mat H_trace(this->realisations, alfas.size(), arma::fill::zeros);
-	arma::mat H_trace2(this->realisations, alfas.size(), arma::fill::zeros);
-	arma::mat av(this->realisations, alfas.size(), arma::fill::zeros);
-	arma::mat var(this->realisations, alfas.size(), arma::fill::zeros);
-	arma::mat av2(this->realisations, alfas.size(), arma::fill::zeros);
-	arma::mat var2(this->realisations, alfas.size(), arma::fill::zeros);
-	arma::mat av3(this->realisations, alfas.size(), arma::fill::zeros);
-	arma::mat var3(this->realisations, alfas.size(), arma::fill::zeros);
-	for(int r = 0; r < this->realisations; r++)
-	{
-		for(int iig = 0; iig < alfas.size(); iig++)
-		{
-			this->seed = std::random_device{}();
-			this->alfa = alfas(iig);
-			this->reset_model_pointer();
-			arma::sp_mat H = this->ptr_to_model->get_hamiltonian();
-			arma::sp_mat H2 = H*H;
-			double meanH = arma::trace(H) / double(dim);
-			double varH = arma::trace(H2) / double(dim) - meanH * meanH;
-			H_trace(r, iig) = meanH;
-			H_trace2(r, iig) = varH;
-			
-			arma::vec gec(dim, arma::fill::zeros);
-		#pragma omp parallel for
-			for(u64 k = 0; k < dim; k++)
-				gec(k) = 2 * H2(k,k) - H(k,k) * H(k,k);   
-			av2(r, iig) = arma::mean(gec);
-			var2(r, iig) = arma::var(gec);
-			
-			H = H - meanH * arma::eye<arma::sp_mat>(dim, dim);
-			H2 = H*H;
+	// // hybrydization();
+	// // return;
 
-			gec = arma::vec(dim, arma::fill::zeros);
-		#pragma omp parallel for
-			for(u64 k = 0; k < dim; k++)
-				gec(k) = 2 * H2(k,k) - H(k,k) * H(k,k);   
-			av3(r, iig) = arma::mean(gec);
-			var3(r, iig) = arma::var(gec);
-
-			gec = arma::vec(dim, arma::fill::zeros);
-		#pragma omp parallel for
-			for(u64 k = 0; k < dim; k++)
-				gec(k) = 2 * H2(k,k) - H(k,k) * H(k,k); 
-			gec = gec / varH;
-			av(r, iig) = arma::mean(gec);
-			var(r, iig) = arma::var(gec);
-		}
-		std::cout << " - - - - - - finished realization r=" << r << "\t in :" << tim_s(start) << " seconds - - - - - - " << std::endl; // simulation end
-	}
-	// av /= double(this->realisations);
-	// av2 /= double(this->realisations);
-	// var /= double(this->realisations);
-	// var2 /= double(this->realisations);
-	// H_trace /= double(this->realisations);
-	// H_trace2 /= double(this->realisations);
-
-	// av2 = av2 / H_trace2;
-	// var2 = var2 / arma::square(H_trace2);
-	// for(int iig = 0; iig < alfas.size(); iig++)
+	// arma::vec alfas = arma::linspace(0.6, 1.5, 26);
+	// arma::mat H_trace(this->realisations, alfas.size(), arma::fill::zeros);
+	// arma::mat H_trace2(this->realisations, alfas.size(), arma::fill::zeros);
+	// arma::mat av(this->realisations, alfas.size(), arma::fill::zeros);
+	// arma::mat var(this->realisations, alfas.size(), arma::fill::zeros);
+	// arma::mat av2(this->realisations, alfas.size(), arma::fill::zeros);
+	// arma::mat var2(this->realisations, alfas.size(), arma::fill::zeros);
+	// arma::mat av3(this->realisations, alfas.size(), arma::fill::zeros);
+	// arma::mat var3(this->realisations, alfas.size(), arma::fill::zeros);
+	// for(int r = 0; r < this->realisations; r++)
 	// {
-	// 	printSeparated(std::cout, "\t\t", 20, true, "--", std::abs(av(iig) - mean_GEC(this->L_loc, alfas(iig))), "--", std::abs(av2(iig) - mean_GEC(this->L_loc, alfas(iig))), "--------", std::abs(var(iig) - var_GEC(this->L_loc, alfas(iig))), "--", std::abs(var2(iig) - var_GEC(this->L_loc, alfas(iig))));
-	// }
-	std::string dir = "GEC_data2" + kPSep;
-	createDirs(dir);
-	std::string dir_realis = dir + "realisation=" + std::to_string(this->jobid) + kPSep;
-	createDirs(dir_realis);
-	alfas.save(	  arma::hdf5_name(dir_realis + "GEC_L=" + std::to_string(this->L) + ".hdf5", "alfas"));
-	av.save(	  arma::hdf5_name(dir_realis + "GEC_L=" + std::to_string(this->L) + ".hdf5", "av", arma::hdf5_opts::append));
-	var.save(	  arma::hdf5_name(dir_realis + "GEC_L=" + std::to_string(this->L) + ".hdf5", "var", arma::hdf5_opts::append));
-	av2.save(	  arma::hdf5_name(dir_realis + "GEC_L=" + std::to_string(this->L) + ".hdf5", "av2", arma::hdf5_opts::append));
-	var2.save(	  arma::hdf5_name(dir_realis + "GEC_L=" + std::to_string(this->L) + ".hdf5", "var2", arma::hdf5_opts::append));
-	av3.save(	  arma::hdf5_name(dir_realis + "GEC_L=" + std::to_string(this->L) + ".hdf5", "av3", arma::hdf5_opts::append));
-	var3.save(	  arma::hdf5_name(dir_realis + "GEC_L=" + std::to_string(this->L) + ".hdf5", "var3", arma::hdf5_opts::append));
-	H_trace.save(	  arma::hdf5_name(dir_realis + "GEC_L=" + std::to_string(this->L) + ".hdf5", "trace_H", arma::hdf5_opts::append));
-	H_trace2.save(	  arma::hdf5_name(dir_realis + "GEC_L=" + std::to_string(this->L) + ".hdf5", "trace_H2", arma::hdf5_opts::append));
+	// 	for(int iig = 0; iig < alfas.size(); iig++)
+	// 	{
+	// 		this->seed = std::random_device{}();
+	// 		this->alfa = alfas(iig);
+	// 		this->reset_model_pointer();
+	// 		arma::sp_mat H = this->ptr_to_model->get_hamiltonian();
+	// 		arma::sp_mat H2 = H*H;
+	// 		double meanH = arma::trace(H) / double(dim);
+	// 		double varH = arma::trace(H2) / double(dim) - meanH * meanH;
+	// 		H_trace(r, iig) = meanH;
+	// 		H_trace2(r, iig) = varH;
+			
+	// 		arma::vec gec(dim, arma::fill::zeros);
+	// 	#pragma omp parallel for
+	// 		for(u64 k = 0; k < dim; k++)
+	// 			gec(k) = 2 * H2(k,k) - H(k,k) * H(k,k);   
+	// 		av2(r, iig) = arma::mean(gec);
+	// 		var2(r, iig) = arma::var(gec);
+			
+	// 		H = H - meanH * arma::eye<arma::sp_mat>(dim, dim);
+	// 		H2 = H*H;
 
-	std::cout << " - - - - - - FINISHED CALCULATIONS IN : " << tim_s(start) << " seconds - - - - - - " << std::endl; // simulation end
-	return;
+	// 		gec = arma::vec(dim, arma::fill::zeros);
+	// 	#pragma omp parallel for
+	// 		for(u64 k = 0; k < dim; k++)
+	// 			gec(k) = 2 * H2(k,k) - H(k,k) * H(k,k);   
+	// 		av3(r, iig) = arma::mean(gec);
+	// 		var3(r, iig) = arma::var(gec);
+
+	// 		gec = arma::vec(dim, arma::fill::zeros);
+	// 	#pragma omp parallel for
+	// 		for(u64 k = 0; k < dim; k++)
+	// 			gec(k) = 2 * H2(k,k) - H(k,k) * H(k,k); 
+	// 		gec = gec / varH;
+	// 		av(r, iig) = arma::mean(gec);
+	// 		var(r, iig) = arma::var(gec);
+	// 	}
+	// 	std::cout << " - - - - - - finished realization r=" << r << "\t in :" << tim_s(start) << " seconds - - - - - - " << std::endl; // simulation end
+	// }
+	// // av /= double(this->realisations);
+	// // av2 /= double(this->realisations);
+	// // var /= double(this->realisations);
+	// // var2 /= double(this->realisations);
+	// // H_trace /= double(this->realisations);
+	// // H_trace2 /= double(this->realisations);
+
+	// // av2 = av2 / H_trace2;
+	// // var2 = var2 / arma::square(H_trace2);
+	// // for(int iig = 0; iig < alfas.size(); iig++)
+	// // {
+	// // 	printSeparated(std::cout, "\t\t", 20, true, "--", std::abs(av(iig) - mean_GEC(this->L_loc, alfas(iig))), "--", std::abs(av2(iig) - mean_GEC(this->L_loc, alfas(iig))), "--------", std::abs(var(iig) - var_GEC(this->L_loc, alfas(iig))), "--", std::abs(var2(iig) - var_GEC(this->L_loc, alfas(iig))));
+	// // }
+	// std::string dir = "GEC_data2" + kPSep;
+	// createDirs(dir);
+	// std::string dir_realis = dir + "realisation=" + std::to_string(this->jobid) + kPSep;
+	// createDirs(dir_realis);
+	// alfas.save(	  arma::hdf5_name(dir_realis + "GEC_L=" + std::to_string(this->L) + ".hdf5", "alfas"));
+	// av.save(	  arma::hdf5_name(dir_realis + "GEC_L=" + std::to_string(this->L) + ".hdf5", "av", arma::hdf5_opts::append));
+	// var.save(	  arma::hdf5_name(dir_realis + "GEC_L=" + std::to_string(this->L) + ".hdf5", "var", arma::hdf5_opts::append));
+	// av2.save(	  arma::hdf5_name(dir_realis + "GEC_L=" + std::to_string(this->L) + ".hdf5", "av2", arma::hdf5_opts::append));
+	// var2.save(	  arma::hdf5_name(dir_realis + "GEC_L=" + std::to_string(this->L) + ".hdf5", "var2", arma::hdf5_opts::append));
+	// av3.save(	  arma::hdf5_name(dir_realis + "GEC_L=" + std::to_string(this->L) + ".hdf5", "av3", arma::hdf5_opts::append));
+	// var3.save(	  arma::hdf5_name(dir_realis + "GEC_L=" + std::to_string(this->L) + ".hdf5", "var3", arma::hdf5_opts::append));
+	// H_trace.save(	  arma::hdf5_name(dir_realis + "GEC_L=" + std::to_string(this->L) + ".hdf5", "trace_H", arma::hdf5_opts::append));
+	// H_trace2.save(	  arma::hdf5_name(dir_realis + "GEC_L=" + std::to_string(this->L) + ".hdf5", "trace_H2", arma::hdf5_opts::append));
+
+	// std::cout << " - - - - - - FINISHED CALCULATIONS IN : " << tim_s(start) << " seconds - - - - - - " << std::endl; // simulation end
+	// return;
 	
 	// arma::Mat<element_type> H = this->ptr_to_model->get_dense_hamiltonian();
 	// H.save(   arma::hdf5_name("HamiltonianQSM.hdf5", "H"));
@@ -323,6 +325,192 @@ void ui::make_sim(){
 
 
 // ------------------------------------------------ OVERRIDEN METHODS
+
+void ui::hybrydization(){
+	clk::time_point start = std::chrono::system_clock::now();
+
+	// std::string subdir = "ParticipationRatio" + kPSep;
+	std::string dir = this->saving_dir + "Hybridization" + kPSep;
+	createDirs(dir);
+
+	std::string info = this->set_info();
+	std::string filename = info;
+	size_t dim = this->ptr_to_model->get_hilbert_size();
+
+	int counter = 0;
+
+	const int size = dim;	
+	arma::vec omegax = arma::logspace(int(std::log10(0.1/dim)), int(std::log10( 5 + this->L )), 20 * this->L);
+
+	disorder<double> disorder_generator = disorder<double>(this->seed);
+	disorder<int> neigh_generator = disorder<int>(this->seed);
+	GOE grain_generator(this->seed);
+	for(int realis = 0; realis < this->realisations; realis++)
+	{
+		if(realis > 0)
+			this->ptr_to_model->generate_hamiltonian();
+		
+    	clk::time_point start_loop = std::chrono::system_clock::now();
+		// this->ptr_to_model->diagonalization();
+		const size_t dim_loc = ULLPOW( (this->L_loc) );
+		const size_t dim_erg = ULLPOW( (this->grain_size) );
+
+		arma::mat H = arma::mat(dim, dim, arma::fill::zeros);
+		arma::sp_mat SxSxfull(dim, dim);
+		arma::sp_mat SxSx(dim, dim);
+		auto _disorder = disorder_generator.uniform(this->L_loc, this->h - this->w, this->h + this->w);
+		std::cout << "AAAAA: " << _disorder.t() << std::endl;
+		
+		/* Create random neighbours for coupling hamiltonian */
+		auto random_neigh = neigh_generator.uniform(this->L_loc, 0, this->grain_size - 1);
+
+		/* Create GOE Matrix */
+		arma::mat H_grain = this->gamma * grain_generator.generate_matrix(dim_erg);
+		// H_grain = H_grain - arma::trace(H_grain);
+		// H_grain /= std::sqrt(ULLPOW(this->grain_size) + 1);
+		H_grain /= std::sqrt( arma::trace(H_grain * H_grain) / double(dim_erg) );
+
+		/* Create random couplings */
+		auto _long_range_couplings = arma::vec(this->L_loc, arma::fill::zeros);
+		if(this->alfa > 0){
+			
+			if( std::abs(this->alfa - 1) < 1e-10){
+				_long_range_couplings = arma::vec(this->L_loc, arma::fill::ones);
+			} else {
+				double u_j = 1 + disorder_generator.uniform_dist<double>(-this->zeta, this->zeta);
+				_long_range_couplings(0) = 1.0;
+				for (int j = 1; j < this->L_loc; j++){
+					int pos = j;
+					double u_j = pos + disorder_generator.uniform_dist<double>(-this->zeta, this->zeta);
+					_long_range_couplings(j) = std::pow(this->alfa, u_j);
+				}
+			}
+		}
+		_extra_debug(
+			std::cout << "disorder: \t\t" << _disorder.t() << std::endl;   
+			std::cout << "couplings: \t\t" << _long_range_couplings.t() << std::endl;
+			std::cout << "random_neigh: \t\t" << random_neigh.t() << std::endl;
+			std::cout << "Grain matrix: \t\t" << H_grain << std::endl;
+		)
+
+		/* Generate coupling and spin hamiltonian */
+		clk::time_point start = std::chrono::system_clock::now();
+		for (u64 k = 0; k < dim; k++) {
+			u64 base_state = k;
+			for (int j = 0; j < this->L - this->grain_size; j++)  // sum over spin d.o.f
+			{
+				const int pos_in_array = this->L - 1 - this->grain_size - j;                // array index of localised spin
+				/* disorder on localised spins */
+				auto [val, Sz_k] = operators::sigma_z<double>(base_state, this->L, j);
+				H(k, k) += _disorder(pos_in_array) * (val);
+				// H0(k, k) += _disorder(pos_in_array) * (val);
+			
+				/* coupling of localised spins to GOE grain */
+				int nei = random_neigh(pos_in_array);
+				auto [val1, state_Sx_k] = operators::sigma_x<double>(base_state, this->L, j);
+				auto [val2, state_SxSx_k] = operators::sigma_x<double>(state_Sx_k, this->L, this->L - this->grain_size + nei);
+				double mat_element = this->J * _long_range_couplings(pos_in_array) * (val1 * val2);
+				H(state_SxSx_k, k) += mat_element;
+				
+				SxSxfull(state_SxSx_k, k) += mat_element;
+				if(j == 0)
+					SxSx(state_SxSx_k, k) += mat_element;
+			}
+		}
+		std::cout << " - - - - - - finished Hamiltonian in : " << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
+		// H = H + arma::kron<arma::mat>(arma::mat(H_grain), arma::mat(arma::eye<arma::mat>(dim_loc, dim_loc)));
+		// H0 = H0 + arma::kron<arma::mat>(arma::mat(H_grain), arma::mat(arma::eye<arma::mat>(dim_loc, dim_loc)));
+		H = H + arma::kron<arma::mat>(arma::mat(arma::eye<arma::mat>(dim_loc, dim_loc)), arma::mat(H_grain));
+
+		arma::vec E;
+		arma::mat V;
+		arma::eig_sym(E, V, H);
+		
+		double E_av = arma::mean(E);
+		std::cout << " - - - - - - finished diagonalization in : " << tim_s(start) << " s for realis = " << realis << " - - - - - - " << std::endl; // simulation end
+		start = std::chrono::system_clock::now();
+		
+		auto i = min_element(begin(E), end(E), [=](double x, double y) {
+				return abs(x - E_av) < abs(y - E_av);
+				});
+		u64 E_av_idx = i - E.begin();
+
+		u64 num_of_states = std::min( u64(this->l_steps), u64(0.02*dim) );
+		u64	Emin = E_av_idx - num_of_states / 2;
+		u64	Emax = E_av_idx + num_of_states / 2;
+
+		std::string dir_realis = dir + "realisation=" + std::to_string(realis + this->jobid) + kPSep;
+		createDirs(dir_realis);
+		E.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "energies"));
+		omegax.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "omegax", arma::hdf5_opts::append));
+		std::cout << " - - - - - - finished diagonalization of L-1 sized matrix in : " << tim_s(start) << " s for realis = " << realis << " - - - - - - " << std::endl; // simulation end
+		
+		start = std::chrono::system_clock::now();
+		arma::Mat<element_type> mat_elem = V.t() * SxSx * V;
+		std::cout << " - - - - - - finished SxSx matrix elements in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
+		arma::vec hybdrydization_SxSx(size-1, arma::fill::zeros);
+				
+		for(int k = 0; k < size-1; k++){
+			hybdrydization_SxSx(k) = mat_elem(k+1, k) / (E(k+1) - E(k));
+		}
+		arma::vec _spectral_fun(omegax.size()-1, arma::fill::zeros);
+		arma::vec _spectral_fun_typ(omegax.size()-1, arma::fill::zeros);
+		arma::vec _element_count(omegax.size()-1, arma::fill::zeros);
+		
+		const double bandwidth = E(E.size() - 1) - E(0);	
+		spectrals::preset_omega set_omega(E, 1000, 0);
+		auto [omegas_i, matter] = set_omega.get_matrix_elements(mat_elem);
+
+		for(int k = 0; k < omegax.size() - 1; k++){
+			arma::uvec indices = arma::find(omegas_i >= omegax[k] && omegas_i < omegax[k+1]);
+			_element_count(k) = indices.size();
+			_spectral_fun(k) = arma::accu( matter.rows(indices));
+			_spectral_fun_typ(k) = arma::accu( arma::log(matter.rows(indices)) );
+		}
+		omegas_i.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "omegas_mel", arma::hdf5_opts::append));
+		matter.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "mat_elem", arma::hdf5_opts::append));
+		hybdrydization_SxSx.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "hybrid_SxSx", arma::hdf5_opts::append));
+		_spectral_fun.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "_spectral_fun", arma::hdf5_opts::append));
+		_element_count.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "_element_count", arma::hdf5_opts::append));
+		_spectral_fun_typ.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "_spectral_fun_typ", arma::hdf5_opts::append));
+		
+		std::cout << " - - - - - - finished SxSx matrix elements in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
+		
+		start = std::chrono::system_clock::now();
+		mat_elem = V.t() * SxSxfull * V;
+		std::cout << " - - - - - - finished SxSxfull matrix elements in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
+		
+		arma::vec hybdrydization_SxSxfull(size, arma::fill::zeros);
+		for(int k = 0; k < size-1; k++){
+			hybdrydization_SxSxfull(k) = mat_elem(k+1, k) / (E(k+1) - E(k));
+		}
+
+		arma::vec _spectral_fun_sum(omegax.size()-1, arma::fill::zeros);
+		arma::vec _spectral_fun_typ_sum(omegax.size()-1, arma::fill::zeros);
+		arma::vec _element_count_sum(omegax.size()-1, arma::fill::zeros);
+		
+		auto [omegas_i2, matter2] = set_omega.get_matrix_elements(mat_elem);
+
+		for(int k = 0; k < omegax.size() - 1; k++){
+			arma::uvec indices = arma::find(omegas_i2 >= omegax[k] && omegas_i2 < omegax[k+1]);
+			_element_count_sum(k) = indices.size();
+			_spectral_fun_sum(k) = arma::accu( matter2.rows(indices));
+			_spectral_fun_typ_sum(k) = arma::accu( arma::log(matter2.rows(indices)) );
+		}
+		
+		omegas_i2.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "omegas_mel_sum", arma::hdf5_opts::append));
+		matter2.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "mat_elem_sum", arma::hdf5_opts::append));
+		hybdrydization_SxSxfull.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "hybrid_SxSxfull", arma::hdf5_opts::append));
+		_spectral_fun_sum.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "_spectral_fun_sum", arma::hdf5_opts::append));
+		_element_count_sum.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "_element_count_sum", arma::hdf5_opts::append));
+		_spectral_fun_typ_sum.save(arma::hdf5_name(dir_realis + filename + ".hdf5", "_spectral_fun_typ_sum", arma::hdf5_opts::append));
+		// omegax
+
+		std::cout << " - - - - - - finished SxSx_full matrix elements in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
+		std::cout << " - - - - - - finished realisation realis = " << realis << " in : " << tim_s(start_loop) << " s - - - - - - " << std::endl; // simulation end
+	};
+    std::cout << " - - - - - - FINISHED HYBDRIDIZATION CALCULATION IN : " << tim_s(start) << " seconds - - - - - - " << std::endl; // simulation end
+}
 /// @brief Calculate ground state properties
 void ui::ground_state(){
 	std::string dir = this->saving_dir + "GroundState" + kPSep + "TESTS" + kPSep;
@@ -1023,14 +1211,15 @@ void ui::agp_mu()
 void ui::matrix_elements()
 {
 	// std::string dir = this->saving_dir + "MatrixElements" + kPSep;
-	std::string dir = this->saving_dir + "Spectrals_IDK_what" + kPSep;
+	std::string dir = this->saving_dir + "SpectralsSiteResolved" + kPSep;
 	createDirs(dir);
 	
 	size_t dim = this->ptr_to_model->get_hilbert_size();
 	std::string info = this->set_info();
 
+	// arma::vec sites = arma::linspace(0, this->L-1, this->L);
 	arma::vec sites = arma::linspace(0, this->L-1, this->L);
-	// arma::Col<int> sites = arma::Col<int>({0, this->grain_size, (int)this->L / 2, (int)this->L - 1});
+	// arma::Col<int> sites = arma::Col<int>({(int)this->L - 1});
 
 	// arma::vec agp_norm_Sz(sites.size(), arma::fill::zeros);
 	// arma::vec typ_susc_Sz(sites.size(), arma::fill::zeros);
@@ -1055,10 +1244,10 @@ void ui::matrix_elements()
 	const double wH = std::sqrt(this->L) / (chi * dim);
 	double tH = 1. / wH;
 	double r1 = 0.0, r2 = 0.0;
-	int time_end = (int)std::ceil(std::log10(5 * tH));
+	int time_end = (int)std::ceil(std::log10(50 * tH));
 	time_end = (time_end / std::log10(tH) < 1.5) ? time_end + 2 : time_end;
 
-	arma::vec times = arma::logspace(-2, time_end, 1000);
+	arma::vec times = arma::logspace(-2, time_end, 2000);
 
 
 	int counter = 0;
@@ -1092,7 +1281,19 @@ void ui::matrix_elements()
 		arma::Mat<element_type> agp_norm_Sz_r(dim, sites.size(), arma::fill::zeros);
 		arma::Mat<element_type> typ_susc_Sz_r(dim, sites.size(), arma::fill::zeros);
 		arma::Mat<element_type> diag_mat_elem_Sz_r(dim, sites.size(), arma::fill::zeros);
-
+		
+		arma::sp_mat H = this->ptr_to_model->get_hamiltonian();
+		double meanH = arma::trace(H) / double(dim);
+		H = H - meanH *  arma::eye<arma::sp_mat>(dim, dim);
+		arma::sp_mat H2 = H*H;
+		double varH = arma::trace(H2) / double(dim);// - meanH * meanH;
+		
+		arma::vec gec(dim, arma::fill::zeros);
+	#pragma omp parallel for
+		for(u64 k = 0; k < dim; k++)
+			gec(k) = 2 * H2(k,k) - H(k,k) * H(k,k); 
+		gec = gec / varH;
+		gec.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "gec",   arma::hdf5_opts::append));
 		// arma::Mat<element_type> agp_norm_Sx_r(dim, sites.size(), arma::fill::zeros);
 		// arma::Mat<element_type> typ_susc_Sx_r(dim, sites.size(), arma::fill::zeros);
 		// arma::Mat<element_type> diag_mat_elem_Sx_r(dim, sites.size(), arma::fill::zeros);
@@ -1104,7 +1305,16 @@ void ui::matrix_elements()
 		// arma::Mat<element_type> agp_norm_kin_r(dim, sites.size(), arma::fill::zeros);
 		// arma::Mat<element_type> typ_susc_kin_r(dim, sites.size(), arma::fill::zeros);
 		// arma::Mat<element_type> diag_mat_elem_kin_r(dim, sites.size(), arma::fill::zeros);
-		
+		arma::vec Hdiagonal = arma::diagvec( this->ptr_to_model->get_dense_hamiltonian() );
+
+		double E_av = arma::trace(E) / double(dim);
+		auto i = min_element(begin(Hdiagonal), end(Hdiagonal), [=](double x, double y) {
+			return abs(x - E_av) < abs(y - E_av);
+		});
+		const u64 idx_state = i - begin(Hdiagonal);
+		double quench_E = Hdiagonal(idx_state);
+
+		arma::Col<element_type> coeff = V.row(idx_state).t();
 		for(int i = 0; i < sites.size(); i++)
 		{
 			int site = sites(i);
@@ -1118,9 +1328,12 @@ void ui::matrix_elements()
 				};
 			auto _operator = QOps::genOp(this->L, std::move(kernel_Sz), 1.0);
 			arma::sp_mat op_mat = arma::real(_operator.to_matrix(dim));
+			double HSnorm = arma::trace(op_mat * op_mat) / double(dim);
+			op_mat = op_mat / std::sqrt(HSnorm);
+
 			arma::Mat<element_type> mat_elem = V.t() * op_mat * V;
-			arma::Mat<element_type> _submat_ = mat_elem.submat(idx_min, idx_min, idx_max -1, idx_max - 1);
-			_submat_.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "MAT_ELEM/Sz_i=" + std::to_string(site),   arma::hdf5_opts::append));
+			// arma::Mat<element_type> _submat_ = mat_elem.submat(idx_min, idx_min, idx_max -1, idx_max - 1);
+			// _submat_.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "MAT_ELEM/Sz_i=" + std::to_string(site),   arma::hdf5_opts::append));
 			// std::tie(_agp, _typ_susc, _susc, tmp) = adiabatics::gauge_potential(mat_elem, E, this->L);
 			std::tie(_susc, _susc_r) = adiabatics::gauge_potential_save(mat_elem, E);
 			agp_norm_Sz_r.col(i) = _susc;
@@ -1129,12 +1342,11 @@ void ui::matrix_elements()
 			
     		std::cout << " - - - - - - finished Sz matrix elements for site i = " << sites(i) << "in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
 			
-			arma::Mat<element_type> time_evolution(dim, times.size(), arma::fill::zeros);
-			arma::Col<element_type> Sz_state(dim, arma::fill::zeros);
-			for(int k = 0; k < dim; k++)
+			arma::Col<element_type> time_evolution(times.size(), arma::fill::zeros);
+			// arma::Col<element_type> Sz_state(dim, arma::fill::zeros);
+			// for(int k = 0; k < dim; k++)
 			{
-				Sz_state(k) = op_mat(k,k);
-				arma::Col<element_type> coeff = V.row(k).t();
+				// Sz_state(k) = op_mat(k,k);
 			#pragma omp parallel for
 				for(long t_idx = 0; t_idx < times.size(); t_idx++){
 					// quench(t_idx) = std::real( arma::cdot(psi.col(t_idx), op_mat * psi.col(t_idx)) );
@@ -1146,11 +1358,18 @@ void ui::matrix_elements()
 						// psi.col(t_idx) += std::exp(-1i * time * E(alfa)) * state * state(idx);
 						init_state += std::exp(-1i * time * E(alfa)) * state * coeff(alfa);
 					}
-					time_evolution(k, t_idx) = std::real( arma::cdot(init_state, op_mat * init_state) );
+					time_evolution(t_idx) = std::real( arma::cdot(init_state, op_mat * init_state) );
 				}
 			}
-			Sz_state.save(arma::hdf5_name(dir_realis + info + ".hdf5", "j=" + std::to_string(site) + "/Sz_state",   arma::hdf5_opts::append));
+			arma::vec state_Sz = arma::vec({op_mat(idx_state, idx_state)});
+			state_Sz.save(arma::hdf5_name(dir_realis + info + ".hdf5", "j=" + std::to_string(site) + "/state_Sz",   arma::hdf5_opts::append));
 			time_evolution.save(arma::hdf5_name(dir_realis + info + ".hdf5", "j=" + std::to_string(site) + "/time_evolution",   arma::hdf5_opts::append));
+
+			auto [autocorr, _LTA] = spectrals::autocorrelation_function(mat_elem, E, times);
+			arma::vec LTA = arma::vec( {_LTA} );
+
+			LTA.save(arma::hdf5_name(dir_realis + info + ".hdf5", "j=" + std::to_string(site) + "/LTA",   arma::hdf5_opts::append));
+			autocorr.save(arma::hdf5_name(dir_realis + info + ".hdf5", "j=" + std::to_string(site) + "/autocorrelation",   arma::hdf5_opts::append));
 			std::cout << " - - - - - - finished Sz time evolution for site i = " << sites(i) << "in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
 				
 			arma::Mat<element_type> _spectral_fun_eps(omegax.size()-1, energy_density.size(), arma::fill::zeros);
@@ -1185,6 +1404,27 @@ void ui::matrix_elements()
 			_spectral_fun_eps.save(arma::hdf5_name(dir_realis + info + ".hdf5", "j=" + std::to_string(site) + "/spectral_fun_eps",   arma::hdf5_opts::append));
 			_spectral_fun_typ_eps.save(arma::hdf5_name(dir_realis + info + ".hdf5", "j=" + std::to_string(site) + "/spectral_fun_typ_eps",   arma::hdf5_opts::append));
 			_element_count_eps.save(arma::hdf5_name(dir_realis + info + ".hdf5", "j=" + std::to_string(site) + "/element_count_eps",   arma::hdf5_opts::append));
+			arma::vec _spectral_fun(omegax.size()-1, arma::fill::zeros);
+			arma::vec _spectral_fun_typ(omegax.size()-1, arma::fill::zeros);
+			arma::vec _element_count(omegax.size()-1, arma::fill::zeros);
+			
+			for(int n = 0; n < E.size() - 1; n++){
+				for(int m = n+1; m < E.size() - 1; m++){
+					double wnm = E(m) - E(n);
+					const auto idx = int( (std::log10(wnm) - w0_log) / dw_log);
+					if(idx < omegax.size() && idx >= 0){
+						const double _b_ = std::abs(mat_elem(n, m));
+						_spectral_fun(idx) += 2 * _b_ * _b_;
+						_spectral_fun_typ(idx) += 2 * std::log(_b_ * _b_);
+						_element_count(idx) += 2;
+					}
+				}	
+			}
+			_spectral_fun.save(arma::hdf5_name(dir_realis + info + ".hdf5", "j=" + std::to_string(site) + "/spectral_fun",   arma::hdf5_opts::append));
+			_spectral_fun_typ.save(arma::hdf5_name(dir_realis + info + ".hdf5", "j=" + std::to_string(site) + "/spectral_fun_typ",   arma::hdf5_opts::append));
+			_element_count.save(arma::hdf5_name(dir_realis + info + ".hdf5", "j=" + std::to_string(site) + "/element_count",   arma::hdf5_opts::append));
+			std::cout << " - - - - - - finished spectral function for site i = " << sites(i) << "in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
+
 			// start = std::chrono::system_clock::now();
 			// // arma::Mat<element_type> mat_elem = V * Sz_ops[i] * V.t();
 			// auto kernel_Sx = [Ll, site](u64 state){ 
@@ -1226,7 +1466,7 @@ void ui::matrix_elements()
 			// 	typ_susc_SzSz_r.col(i) = _susc_r;
 			// 	diag_mat_elem_SzSz_r.col(i) = arma::diagvec(mat_elem); 
 				
-			// 	std::cout << " - - - - - - finished SzSz matrix elements for site i = " << sites(i) << "in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
+				// std::cout << " - - - - - - finished SzSz matrix elements for site i = " << sites(i) << "in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
 			// 	start = std::chrono::system_clock::now();
 			// 	auto kernel_kin = [Ll, N, site, &neighbor_generator](u64 state){ 
 			// 		int nei = site==0? site+1 : neighbor_generator.uniform_dist<int>(0, N-1);
