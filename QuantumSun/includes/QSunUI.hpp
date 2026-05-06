@@ -62,6 +62,7 @@ namespace QSunUI{
         void ground_state();
         void geometric_tensor();
         void quench_fourier();
+        void hybrydization();
     };
 }
 
