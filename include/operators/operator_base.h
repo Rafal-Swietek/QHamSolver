@@ -11,7 +11,7 @@
 namespace QOps {
 	//! ------------------------------------------------------------------------------------------------
 	//! generic class for operators (single operator or operator products)
-	template <typename _eigval_ty, typename... _ty>
+	template <typename _eigval_ty, typename state_ty = u64, typename... _ty>
 	class generic_operator;
 
 	//! ------------------------------------------------------------------------------------------------

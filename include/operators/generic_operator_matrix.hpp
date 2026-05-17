@@ -7,11 +7,12 @@ namespace QOps{
     /// @param dim 
     /// @param ...args 
     /// @return 
-    template <typename _eigval_ty, typename... _ty>
+    template <typename _eigval_ty, typename state_ty, typename... _ty>
 	inline 
 	arma::SpMat<_eigval_ty> 
-	generic_operator<_eigval_ty, _ty...>::
-		to_matrix(u64 dim, _ty... args)
+	generic_operator<_eigval_ty, state_ty, _ty...>::
+		to_matrix(u64 dim, 
+			 _ty... args)
 	{
 		arma::SpMat<_eigval_ty> matrix(dim, dim);
         for(u64 k = 0; k < dim; k++){            
@@ -27,17 +28,17 @@ namespace QOps{
 	/// @param hilbert_space1 
 	/// @param hilbert_space2 
 	/// @return 
-	template <typename _eigval_ty, typename... _ty>
+	template <typename _eigval_ty, typename state_ty, typename... _ty>
     template <typename _hilbert>
 	inline 
 	arma::SpMat<_eigval_ty> 
-	generic_operator<_eigval_ty, _ty...>::
+	generic_operator<_eigval_ty, state_ty, _ty...>::
 		to_reduced_matrix(const _hilbert& hilbert_space, _ty... args
 					)
 	{
 		const u64 dim = hilbert_space.get_hilbert_space_size();
 		arma::SpMat<_eigval_ty> matrix(dim, dim);
-		auto set_matrix_elements = [&matrix, &hilbert_space](u64 k, _eigval_ty value, u64 new_idx){
+		auto set_matrix_elements = [&matrix, &hilbert_space](u64 k, _eigval_ty value, state_ty new_idx){
 			u64 idx = hilbert_space.find(new_idx);
 			try {
 				matrix(idx, k) += value;

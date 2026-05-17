@@ -12,17 +12,17 @@ namespace QOps {
 	/// @tparam ..._ty3 variadic template of input operator (rhs)
 	/// @param opFun input kernel function
 	/// @return operator with kernel being product of invocing operator (lhs) and input operator (rhs)
-	template <typename _eigval_ty, typename... _ty> 
+	template <typename _eigval_ty, typename state_ty, typename... _ty> 
 	template <typename... _ty2>
 	inline 
-	auto generic_operator<_eigval_ty, _ty...>::
-		operator*(const generic_operator<_eigval_ty, _ty2...>& _operator)
+	auto generic_operator<_eigval_ty, state_ty, _ty...>::
+		operator*(const generic_operator<_eigval_ty, state_ty, _ty2...>& _operator)
 		const
-		-> generic_operator<_eigval_ty, _ty..., _ty2...>
+		-> generic_operator<_eigval_ty, state_ty, _ty..., _ty2...>
 	{
 		assert_hilbert_space(_operator);
 		auto new_kernel = this->_kernel * _operator._kernel;	// new operator kernel
-		return generic_operator<_eigval_ty, _ty..., _ty2...>
+		return generic_operator<_eigval_ty, state_ty, _ty..., _ty2...>
 			(
 				this->L,
 				std::move(new_kernel),
@@ -37,15 +37,15 @@ namespace QOps {
 	/// @tparam ..._ty3 variadic template of input kernel (rhs)
 	/// @param opFun input kernel function
 	/// @return operator with kernel being product of invocing operator (lhs) and input kernel function (rhs)
-	template <typename _eigval_ty, typename... _ty>
+	template <typename _eigval_ty, typename state_ty, typename... _ty>
 	template <typename... _ty2>
 	inline 
-	auto generic_operator<_eigval_ty, _ty...>::
-		operator*(const std::function<std::pair<u64, _eigval_ty>(u64, _ty2...)>& opFun) 
+	auto generic_operator<_eigval_ty, state_ty, _ty...>::
+		operator*(const std::function<std::pair<state_ty, _eigval_ty>(state_ty, _ty2...)>& opFun) 
 		const
-		-> generic_operator<_eigval_ty, _ty..., _ty2...>
+		-> generic_operator<_eigval_ty, state_ty, _ty..., _ty2...>
 	{
-		return generic_operator<_eigval_ty, _ty..., _ty2...>(
+		return generic_operator<_eigval_ty, state_ty, _ty..., _ty2...>(
 				this->L, std::move(this->_kernel * opFun), this->opVal);
 	}
 
@@ -59,16 +59,16 @@ namespace QOps {
 	/// @tparam ..._ty variadic template of operator (and same for input operator)
 	/// @param opFun input kernel function
 	/// @return operator with kernel being simple product of invocing operator (lhs) and input operator (rhs)
-	template <typename _eigval_ty, typename... _ty>
+	template <typename _eigval_ty, typename state_ty, typename... _ty>
 	inline 
-	auto generic_operator<_eigval_ty, _ty...>::
-		operator%(const generic_operator<_eigval_ty, _ty...>& _operator)
+	auto generic_operator<_eigval_ty, state_ty, _ty...>::
+		operator%(const generic_operator<_eigval_ty, state_ty, _ty...>& _operator)
 		const
-		-> generic_operator<_eigval_ty, _ty...>
+		-> generic_operator<_eigval_ty, state_ty, _ty...>
 	{
 		assert_hilbert_space(_operator);
 		auto new_kernel = this->_kernel % _operator._kernel;	// new operator kernel
-		return generic_operator<_eigval_ty, _ty...>
+		return generic_operator<_eigval_ty, state_ty, _ty...>
 			(
 				this->L,
 				std::move(new_kernel),
@@ -80,10 +80,10 @@ namespace QOps {
 	/// @brief Self - product with no template expansion of operator (invocing) and input operator (after %=)
 	/// @tparam ..._ty variadic template of operator (and same for input operator)
 	/// @param _operator input operator
-	template <typename _eigval_ty, typename... _ty>
+	template <typename _eigval_ty, typename state_ty, typename... _ty>
 	inline 
-	void generic_operator<_eigval_ty, _ty...>::
-		operator%=(const generic_operator<_eigval_ty, _ty...>& _operator)
+	void generic_operator<_eigval_ty, state_ty, _ty...>::
+		operator%=(const generic_operator<_eigval_ty, state_ty, _ty...>& _operator)
 	{
 		assert_hilbert_space(_operator);
 		this->_kernel = this->_kernel % _operator._kernel;
@@ -96,13 +96,13 @@ namespace QOps {
 	/// @tparam ..._ty variadic template of operator (and same for function)
 	/// @param opFun input kernel function
 	/// @return operator with kernel being simple product of invocing operator (lhs) and input kernel (rhs)
-	template <typename _eigval_ty, typename... _ty>
+	template <typename _eigval_ty, typename state_ty, typename... _ty>
 	inline 
-	auto generic_operator<_eigval_ty, _ty...>::
-		operator%(const typename generic_operator<_eigval_ty, _ty...>::kernel_type& opFun)
-		const -> generic_operator<_eigval_ty, _ty...>
+	auto generic_operator<_eigval_ty, state_ty, _ty...>::
+		operator%(const typename generic_operator<_eigval_ty, state_ty, _ty...>::kernel_type& opFun)
+		const -> generic_operator<_eigval_ty, state_ty, _ty...>
 	{
-		return generic_operator<_eigval_ty, _ty...>(
+		return generic_operator<_eigval_ty, state_ty, _ty...>(
 			this->L, std::move(this->_kernel % opFun), this->opVal);
 	}
 

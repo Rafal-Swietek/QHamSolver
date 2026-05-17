@@ -18,8 +18,9 @@ namespace QHS{
 	#endif
 
 	/// @brief 
-	template <QOps::particle _particle_type = QOps::particle::boson>
-	class point_symmetric : public hilbert_space_base{
+	template <QOps::particle _particle_type = QOps::particle::boson, typename state_ty = u64>
+	class point_symmetric : public hilbert_space_base<state_ty>
+	{
 		v_1d<QOps::generic_operator<cpx>> _symmetry_group;
 		v_1d<elem_ty> _normalisation;
 		v_1d<int> _sectors;
@@ -31,13 +32,13 @@ namespace QHS{
 		bool _real_k_sector = 1;	//<! is the k_sector real or complex?, i.e. k = 0, pi
 		
 		void generate_symmetry_group(const v_1d<QOps::generic_operator<cpx>>& sym_gen);
-		auto get_symmetry_normalization(u64 base_idx) const -> elem_ty;
+		auto get_symmetry_normalization(state_ty base_idx) const -> elem_ty;
 
 		/// @brief 
 		virtual void init() override 
 			{ this->create_basis(); }
 		
-		typedef std::pair<u64, elem_ty> return_type;		// return type of operator, resulting state and value
+		typedef std::pair<state_ty, elem_ty> return_type;		// return type of operator, resulting state and value
 	public:
 		point_symmetric() = default;
 		point_symmetric(unsigned int L, const v_1d<QOps::generic_operator<cpx>>& sym_gen, int _BC = 1, int k_sector = 0, int pos_of_parity = -1, int trans_shift = 1);
@@ -45,10 +46,10 @@ namespace QHS{
 		virtual void create_basis() override;
 
 		virtual u64 operator()(u64 idx) const override;
-		virtual u64 find(u64 element) const override;
+		virtual u64 find(const state_ty& element) const override;
 
 		return_type find_SEC_representative(u64 base_idx) const;
-		return_type find_matrix_element(u64 new_state, elem_ty norm) const;
+		return_type find_matrix_element(state_ty new_state, elem_ty norm) const;
 
 		auto get_symmetry_group() const { return this-> _symmetry_group; }
 		auto get_normalisation()  const { return this-> _normalisation; }
@@ -56,7 +57,7 @@ namespace QHS{
 		auto get_sectors() 		  const { return this-> _sectors; }
 
 		arma::SpMat<elem_ty> symmetry_rotation() const;
-		arma::SpMat<elem_ty> symmetry_rotation(const hilbert_space_base& global_hilbert_space) const;
+		arma::SpMat<elem_ty> symmetry_rotation(const hilbert_space_base<state_ty>& global_hilbert_space) const;
 
 		//<!------------------------------------------- Tensor product
 		// auto tensor(const hilbert_space_base& global_hilbert_space)
@@ -64,7 +65,7 @@ namespace QHS{
 		auto
 		tensor(
 			const point_symmetric& point_hilbert_space, 
-			const hilbert_space_base& global_hilbert_space
+			const hilbert_space_base<state_ty>& global_hilbert_space
 			) -> point_symmetric
 			{
 				auto map1 = global_hilbert_space.get_mapping();
@@ -101,7 +102,7 @@ namespace QHS{
 		friend
 		auto
 		tensor(
-			const hilbert_space_base& global_hilbert_space,
+			const hilbert_space_base<state_ty>& global_hilbert_space,
 			const point_symmetric& point_hilbert_space
 			)
 			-> point_symmetric { return tensor(point_hilbert_space, global_hilbert_space); }
@@ -117,9 +118,9 @@ namespace QHS{
 	/// @param _BC boundary condition (0-PBC, 1-OBC, ...) (default = 1)
 	/// @param k_sec quasimomentum symmetyr sector
 	/// @param pos_of_parity position of parity in sym_gen (if not present -> -1, by default -1)
-	template <QOps::particle _particle_type>
+	template <QOps::particle _particle_type, typename state_ty>
 	inline
-	point_symmetric<_particle_type>::point_symmetric(unsigned int L, const v_1d<QOps::generic_operator<cpx>>& sym_gen, int _BC, int k_sec, int pos_of_parity, int trans_shift)
+	point_symmetric<_particle_type, state_ty>::point_symmetric(unsigned int L, const v_1d<QOps::generic_operator<cpx>>& sym_gen, int _BC, int k_sec, int pos_of_parity, int trans_shift)
 	{
 		this->system_size = L;
 		this->_boundary_cond = _BC;
@@ -141,9 +142,9 @@ namespace QHS{
 	//<! ------------------------------------------------------------------------------------------ SYMMETRY GROUP
 	/// @brief Generate symmetry group with all combinations of symmetry generators
 	/// @param sym_gen list of symmetry generators (shall not include translation! )
-	template <QOps::particle _particle_type>
+	template <QOps::particle _particle_type, typename state_ty>
 	inline
-	void point_symmetric<_particle_type>::generate_symmetry_group(const v_1d<QOps::generic_operator<cpx>>& sym_gen_in)
+	void point_symmetric<_particle_type, state_ty>::generate_symmetry_group(const v_1d<QOps::generic_operator<cpx>>& sym_gen_in)
 	{
 		this->_symmetry_group = v_1d<QOps::generic_operator<cpx>>();
 		v_1d<QOps::generic_operator<cpx>> sym_gen = sym_gen_in;
@@ -205,10 +206,10 @@ namespace QHS{
 	/// @brief Find super-equivalent class (SEC) representative for given set of states related by symmetry transformations
 	/// @param base_idx find SEC for given input state
 	/// @return SEC
-	template <QOps::particle _particle_type>
+	template <QOps::particle _particle_type, typename state_ty>
 	inline
-	typename point_symmetric<_particle_type>::return_type
-	point_symmetric<_particle_type>::find_SEC_representative(u64 base_idx) const 
+	typename point_symmetric<_particle_type, state_ty>::return_type
+	point_symmetric<_particle_type, state_ty>::find_SEC_representative(u64 base_idx) const 
 	{
 		u64 SEC = INT64_MAX;
 		cpx return_val = 1.0;
@@ -229,10 +230,10 @@ namespace QHS{
 	/// @brief Calculate normalisation for input state (sum off all symmetry eigenvalues for generators not changing input state)
 	/// @param base_idx input state
 	/// @return normalisation
-	template <QOps::particle _particle_type>
+	template <QOps::particle _particle_type, typename state_ty>
 	inline
 	elem_ty 
-	point_symmetric<_particle_type>::get_symmetry_normalization(u64 base_idx) const 
+	point_symmetric<_particle_type, state_ty>::get_symmetry_normalization(state_ty base_idx) const 
 	{
 		elem_ty normalisation = 0.0;
 		//for (unsigned int L = 0; l < this->_symmetry_group.size(); l++) {
@@ -254,10 +255,10 @@ namespace QHS{
 
 	/// @brief Generate Unitary transformation to full hilbert space from reduced basis
 	/// @return unitary transformation U
-	template <QOps::particle _particle_type>
+	template <QOps::particle _particle_type, typename state_ty>
 	inline
 	arma::SpMat<elem_ty>
-	point_symmetric<_particle_type>::symmetry_rotation() const
+	point_symmetric<_particle_type, state_ty>::symmetry_rotation() const
 	{
 		const u64 dim_tot = BinaryPowers[block_size * this->system_size];
 		arma::SpMat<elem_ty> U(dim_tot, this->dim);
@@ -281,10 +282,10 @@ namespace QHS{
 
 	/// @brief Generate Unitary transformation to full hilbert space from reduced basis
 	/// @return unitary transformation U
-	template <QOps::particle _particle_type>
+	template <QOps::particle _particle_type, typename state_ty>
 	inline
 	arma::SpMat<elem_ty>
-	point_symmetric<_particle_type>::symmetry_rotation(const hilbert_space_base& global_hilbert_space) const
+	point_symmetric<_particle_type, state_ty>::symmetry_rotation(const hilbert_space_base<state_ty>& global_hilbert_space) const
 	{
 		const u64 dim_tot = global_hilbert_space.get_hilbert_space_size();
 		arma::SpMat<elem_ty> U(dim_tot, this->dim);
@@ -311,10 +312,10 @@ namespace QHS{
 	/// @brief Find symmetry generator returning to SEC state
 	/// @param new_state input state
 	/// @return tuple with SEC state and symmetry return value
-	template <QOps::particle _particle_type>
+	template <QOps::particle _particle_type, typename state_ty>
 	inline
-	typename  point_symmetric<_particle_type>::return_type 
-	point_symmetric<_particle_type>::find_matrix_element(u64 new_state, elem_ty norm) const
+	typename  point_symmetric<_particle_type, state_ty>::return_type 
+	point_symmetric<_particle_type, state_ty>::find_matrix_element(state_ty new_state, elem_ty norm) const
 	{
 		if( std::abs( get_symmetry_normalization(new_state) ) < 1e-12 )
 			return std::make_pair(0, 0.0);
@@ -336,16 +337,16 @@ namespace QHS{
 		// input norm, cause can be used between sectors
 		//	return std::make_pair(idx, this->_normalisation[idx] / this->_normalisation[base] * sym_eig);
 		
-		if (idx < dim)	return std::make_pair(idx, this->_normalisation[idx] / norm * sym_eig);
-		else			return std::make_pair(0, 0.0);
+		if (idx < this->dim)	return std::make_pair(idx, this->_normalisation[idx] / norm * sym_eig);
+		else					return std::make_pair(0, 0.0);
 			
 	}
 
 	//<! ------------------------------------------------------------------------------------------ BASIS CONSTRUCTION
 	/// @brief Creates hilbert space basis with given point symmetries
-	template <QOps::particle _particle_type>
+	template <QOps::particle _particle_type, typename state_ty>
 	inline
-	void point_symmetric<_particle_type>::create_basis()
+	void point_symmetric<_particle_type, state_ty>::create_basis()
 	{
 		//<! kernel for multithreaded mapping generation
 		auto mapping_kernel = [this](u64 start, u64 stop, std::vector<u64>& map_threaded, std::vector<elem_ty>& norm_threaded)
@@ -403,10 +404,10 @@ namespace QHS{
 	/// @brief Overloaded operator to access elements in hilbert space
 	/// @param idx Index of element in hilbert space
 	/// @return Element of hilbert space at position 'index'
-	template <QOps::particle _particle_type>
+	template <QOps::particle _particle_type, typename state_ty>
 	inline
 	u64 
-	point_symmetric<_particle_type>::operator()(u64 idx) const
+	point_symmetric<_particle_type, state_ty>::operator()(u64 idx) const
 	{ 
 		_assert_((idx < this->dim), OUT_OF_MAP);
 		return this->mapping[idx]; 
@@ -416,10 +417,10 @@ namespace QHS{
 	/// @brief Find index of element in hilbert space
 	/// @param element element to find its index
 	/// @return index of element 'element'
-	template <QOps::particle _particle_type>
+	template <QOps::particle _particle_type, typename state_ty>
 	inline
 	u64 
-	point_symmetric<_particle_type>::find(u64 element) const
+	point_symmetric<_particle_type, state_ty>::find(const state_ty& element) const
 		{ return binary_search(this->mapping, 0, this->dim - 1, element); }
 
 

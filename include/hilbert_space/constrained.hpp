@@ -11,7 +11,8 @@ namespace QHS{
     typedef std::function<bool(unsigned long long)> _constrained_type;
     
     // template <_constrained_type... constraint_kernels>
-    class constrained_hilbert_space : public hilbert_space_base
+    template <typename state_ty = u64>
+    class constrained_hilbert_space : public hilbert_space_base<state_ty>
     {
         _constrained_type constraints;
         /// @brief Initialize hilbert space with given symmetry sector
@@ -91,7 +92,7 @@ namespace QHS{
         /// @param element element to find its index
         /// @return index of element 'element'
         virtual 
-        u64 find(u64 element) const override
+        u64 find(const u64& element) const override
             { return binary_search(this->mapping, 0, this->dim - 1, element); }
     };
 }

@@ -7,19 +7,19 @@ namespace QOps {
 	// decltype(std::declval<out_ty&>() * std::declval<out_ty2&>())
 	
 	//! generic class for operators (single operator or operator products)
-	template <typename _eigval_ty, typename... _ty>
+	template <typename _eigval_ty, typename state_ty, typename... _ty>
 	class generic_operator{
 
 	protected:
-		typedef std::pair<u64, _eigval_ty> return_ty;							// return type of operator, resulting state and value
+		typedef std::pair<state_ty, _eigval_ty> return_ty;							// return type of operator, resulting state and value
 		// typedef typename _func<return_ty>::template input<_ty...> kernel_type;	// type of callable operator kernel
-		using kernel_type = Kernel<return_ty, _ty...>;
+		using kernel_type = Kernel<return_ty, state_ty, _ty...>;
 
 		static
 		inline
 		const
 		kernel_type unit_kernel = kernel_type(
-			[](u64 num, _ty... args) -> return_ty
+			[](state_ty num, _ty... args) -> return_ty
 		{ return std::make_pair(num, 1.0); });
 
 		kernel_type _kernel = unit_kernel;	// callable encoding change of quantum states and return value
@@ -53,7 +53,7 @@ namespace QOps {
 			: L(_L), _kernel(std::move(new_kernel)), opVal(_opVal)
 		{ init(); };
 
-		explicit generic_operator(int _L, std::function<return_ty(u64, _ty...)>&& new_kernel, _eigval_ty _opVal = 1.0)
+		explicit generic_operator(int _L, std::function<return_ty(state_ty, _ty...)>&& new_kernel, _eigval_ty _opVal = 1.0)
 			: L(_L), _kernel(Kernel{std::move(new_kernel)}), opVal(_opVal)
 		{ init(); };
 
@@ -121,7 +121,7 @@ namespace QOps {
 		/// @param num 
 		/// @param ...args 
 		/// @return 
-		auto operator()(u64 num, _ty... args) const
+		auto operator()(state_ty num, _ty... args) const
 		{
 			auto [state, returnVal] = this->_kernel(num, std::forward<_ty>(args)...);
 			return std::make_pair(state, opVal * returnVal);
@@ -131,7 +131,7 @@ namespace QOps {
 		/// @brief 
 		/// @param args 
 		/// @return 
-		auto operator()(std::tuple<u64, _ty...>&& args) const
+		auto operator()(std::tuple<state_ty, _ty...>&& args) const
 		{
 			auto [state, returnVal] = std::apply(this->_kernel, args);
 			return std::make_pair(state, opVal * returnVal);
@@ -140,45 +140,32 @@ namespace QOps {
 		//! -------------------------------------------------------------------------- ALGEBRA OF GENERIC OPERATORS
 		//! ----------------------------------------------- overloaded multiplication
 		//! -------------------- with other objects
-		friend 
-		auto operator*(_eigval_ty arg, const generic_operator<_eigval_ty, _ty...>& _operator)
-			-> generic_operator<_eigval_ty, _ty...>
-		{ 
-			generic_operator<_eigval_ty, _ty...> new_operator(_operator);
-			new_operator.opVal *= arg; 
-			return std::move(new_operator); 
-		}
-		
-		friend 
-		auto operator*(const generic_operator<_eigval_ty, _ty...>& _operator, _eigval_ty arg)
-			-> generic_operator<_eigval_ty, _ty...>
-		{ return arg * _operator;}
-
+		// scalar multiplication is implemented as free functions outside the class
 		void operator*=(_eigval_ty arg)
 		{ this->opVal *= arg; }
 		
 		//! -------------------- with another class instance
 		template <typename..._ty2>
-		auto operator*(const generic_operator<_eigval_ty, _ty2...>& op)
-			const -> generic_operator<_eigval_ty, _ty..., _ty2...>;
+		auto operator*(const generic_operator<_eigval_ty, state_ty, _ty2...>& op)
+			const -> generic_operator<_eigval_ty, state_ty, _ty..., _ty2...>;
 		
 		template <typename..._ty2>
-		auto operator*=(const generic_operator<_eigval_ty, _ty2...>& op)
+		auto operator*=(const generic_operator<_eigval_ty, state_ty, _ty2...>& op)
 			{_assert_((false), 
 				"Not possible operatotion, since cannot expand variadic template on (*this) at run-time. See operator%= for possible solution!");}
 
 		//! -------------------- with another function/lambda:
 		//! --	 X = generic_operator<...> * fun<...> implementation
 		template <typename..._ty2>
-		auto operator*(const std::function<return_ty(u64, _ty2...)>& opFun)
-			const -> generic_operator<_eigval_ty, _ty..., _ty2...>;
+		auto operator*(const std::function<return_ty(state_ty, _ty2...)>& opFun)
+			const -> generic_operator<_eigval_ty, state_ty, _ty..., _ty2...>;
 
 		//! --	 X = fun<...> * generic_operator<...> implementation
 		template <typename..._ty2>
 		friend 
 		auto operator*(const kernel_type& fun,
-			const generic_operator<_eigval_ty, _ty2...>& _operator)
-			-> generic_operator<_eigval_ty, _ty..., _ty2...>
+			const generic_operator<_eigval_ty, state_ty, _ty2...>& _operator)
+			-> generic_operator<_eigval_ty, state_ty, _ty..., _ty2...>
 		{
 			auto fun_result = fun * _operator._kernel;
 			return generic_operator(_operator.L, std::move(fun_result), _operator.opVal);
@@ -214,25 +201,6 @@ namespace QOps {
 
 		//! --------------------------------------------------- GETTERS OF RETURN VALUES
 
-		/// @brief Calculate operator representative value (i.e. e^(-ik) for transaltion)
-		/// @param op input operator
-		/// @return operator representative value (complex)
-		friend
-		_eigval_ty chi(const generic_operator& op)
-			{ return op.opVal; };
-
-		/// @brief Calculate operator return value after acting on state num
-		/// @param op input operator
-		/// @param num input state to act on
-		/// @param ...args additional arguments for operator (i.e. site acting on)
-		/// @return complex value
-		friend
-		_eigval_ty chi(const generic_operator& op, u64 num, _ty... args)
-		{
-			auto [state, returnVal] = op._kernel(num, std::forward<_ty>(args)...);
-			return op.opVal * returnVal;
-		}
-
 		//! -------------------------------------------------------------------------- ACTING ON QUANTUM STATES
 		template <typename _ty_state>
 		auto multiply(const arma::Col<_ty_state>& state, _ty... args)
@@ -240,8 +208,22 @@ namespace QOps {
 			{
 				arma::Col<_eigval_ty> output_state(state.size(), arma::fill::zeros);
 				for(u64 k = 0; k < state.size(); k++){            
-					auto [idx, val] = this->operator()(k, args...);
-					output_state(idx) += val * state(k);
+					auto [idx, val] = this->operator()( k, args...);
+					output_state( idx ) += val * state(k);
+				}
+
+				return output_state;
+			}
+		template <typename _ty_state, typename _hilbert>
+		auto multiply(const arma::Col<_ty_state>& state, 
+			const _hilbert& _hilbert_space,
+			 _ty... args)
+			const -> arma::Col<_eigval_ty>
+			{
+				arma::Col<_eigval_ty> output_state(state.size(), arma::fill::zeros);
+				for(u64 k = 0; k < state.size(); k++){            
+					auto [idx, val] = this->operator()( _hilbert_space(k), args...);
+					output_state( _hilbert_space.find(idx) ) += val * state(k);
 				}
 
 				return output_state;
@@ -257,9 +239,70 @@ namespace QOps {
 		// template <typename _hilbert1, typename _hilbert2>
 		// arma::sp_cx_mat to_matrix(const _hilbert1& hilbert_space1, const _hilbert2& hilbert_space2, _ty... args);
 	};
+
+	//! ================================================================================================ SCALAR MULTIPLICATION	
+	/// @brief Scalar multiplication (left operand): arg * operator
+	/// @tparam _eigval_ty eigenvalue type (typically complex)
+	/// @tparam state_ty type of quantum state
+	/// @tparam _ty variadic template parameters for operator arguments
+	/// @param arg scalar value to multiply operator by
+	/// @param _operator input operator
+	/// @return new operator with scaled eigenvalue
+	template <typename _eigval_ty, typename state_ty, typename... _ty>
+	inline auto operator*(_eigval_ty arg, const generic_operator<_eigval_ty, state_ty, _ty...>& _operator)
+		-> generic_operator<_eigval_ty, state_ty, _ty...>
+	{
+		auto new_operator = _operator;
+		new_operator.set_operator_value(new_operator.get_operator_value() * arg);
+		return new_operator;
+	}
+
+	/// @brief Scalar multiplication (right operand): operator * arg
+	/// @tparam _eigval_ty eigenvalue type (typically complex)
+	/// @tparam state_ty type of quantum state
+	/// @tparam _ty variadic template parameters for operator arguments
+	/// @param _operator input operator
+	/// @param arg scalar value to multiply operator by
+	/// @return new operator with scaled eigenvalue
+	template <typename _eigval_ty, typename state_ty, typename... _ty>
+	inline auto operator*(const generic_operator<_eigval_ty, state_ty, _ty...>& _operator, _eigval_ty arg)
+		-> generic_operator<_eigval_ty, state_ty, _ty...>
+	{
+		return arg * _operator;
+	}
+
+	//! ================================================================================================ OPERATOR CHARACTERISTIC VALUE
+	
+	/// @brief Calculate operator representative value (eigenvalue coefficient)
+	/// @tparam _eigval_ty eigenvalue type (typically complex)
+	/// @tparam state_ty type of quantum state
+	/// @tparam _ty variadic template parameters for operator arguments
+	/// @param op input operator
+	/// @return operator eigenvalue coefficient (e.g. e^(-ik) for translation operators)
+	template <typename _eigval_ty, typename state_ty, typename... _ty>
+	inline _eigval_ty chi(const generic_operator<_eigval_ty, state_ty, _ty...>& op)
+	{
+		return op.get_operator_value();
+	}
+
+	/// @brief Calculate operator return value after acting on a quantum state
+	/// @tparam _eigval_ty eigenvalue type (typically complex)
+	/// @tparam state_ty type of quantum state
+	/// @tparam _ty variadic template parameters for operator arguments
+	/// @param op input operator
+	/// @param num input quantum state to act on
+	/// @param args additional arguments passed to operator kernel (e.g. lattice site, etc.)
+	/// @return complex value returned by operator acting on the given state
+	template <typename _eigval_ty, typename state_ty, typename... _ty>
+	inline _eigval_ty chi(const generic_operator<_eigval_ty, state_ty, _ty...>& op, state_ty num, _ty... args)
+	{
+		auto [state, returnVal] = op(num, std::forward<_ty>(args)...);
+		return returnVal;
+	}
 }
 
 //TODO: add template for output argument (change algebra of functions etc.)
 //TODO: add template instantiation (or child) for generic_operators with no templates (other than output argument)
+
 #include "generic_operator_algebra.hpp"
 #include "generic_operator_matrix.hpp"

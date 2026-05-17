@@ -6,12 +6,16 @@
 #ifndef _HILBERT_BASE
 #define _HILBERT_BASE
 
+#include <boost/functional/hash.hpp>
+
+
 namespace QHS{
 
     /// @tparam ...constraints 
     //template <typename... constraints>
 
     /// @brief Base class for hilbert space construction
+	template <typename state_ty = u64>
     class hilbert_space_base {
         
         protected:
@@ -21,7 +25,7 @@ namespace QHS{
             using ptr               = u64*;
             using const_ptr         = u64 const*;
 
-            std::vector<u64> mapping;
+            std::vector<state_ty> mapping;
             int system_size;
             u64 dim;
             virtual void init() = 0;
@@ -31,28 +35,28 @@ namespace QHS{
             auto get_mapping() const { return this->mapping; }
             virtual void create_basis() = 0;
             
-            auto set_mapping(std::vector<u64> input_map) 
+            auto set_mapping(std::vector<state_ty> input_map) 
                 { this->mapping = input_map; }
 
-            virtual u64 operator()(u64 idx) const = 0;
-            virtual u64 find(u64 idx)       const = 0;
+            virtual state_ty operator()(u64 idx)    const = 0; // return element in mapping
+            virtual u64 find(const state_ty& idx)   const = 0; // find index of element in mapping (reverse mapping)
 
-            //<! ------------------------------------------ ITERATORS FOR RANGE_BASED LOOPS
-            virtual iterator begin()              { return this->mapping.begin(); }
-            virtual iterator end()                { return this->mapping.end(); }
-            virtual const_iterator cbegin() const { return this->mapping.begin(); }
-            virtual const_iterator cend()   const { return this->mapping.end(); }
-            virtual const_iterator begin()  const { return this->mapping.begin(); }
-            virtual const_iterator end()    const { return this->mapping.end(); }
+            // //<! ------------------------------------------ ITERATORS FOR RANGE_BASED LOOPS
+            // virtual iterator begin()              { return this->mapping.begin(); }
+            // virtual iterator end()                { return this->mapping.end(); }
+            // virtual const_iterator cbegin() const { return this->mapping.begin(); }
+            // virtual const_iterator cend()   const { return this->mapping.end(); }
+            // virtual const_iterator begin()  const { return this->mapping.begin(); }
+            // virtual const_iterator end()    const { return this->mapping.end(); }
 
-            //<! ------------------------------------------ ITERATORS FOR NOT CONTROLLED INSTANCE
-            friend ptr begin(hilbert_space_base& _hilbert_space)  { return _hilbert_space.mapping.data(); }
-            friend ptr end(  hilbert_space_base& _hilbert_space)  { return _hilbert_space.mapping.data() + _hilbert_space.dim; }
+            // //<! ------------------------------------------ ITERATORS FOR NOT CONTROLLED INSTANCE
+            // friend ptr begin(hilbert_space_base& _hilbert_space)  { return _hilbert_space.mapping.data(); }
+            // friend ptr end(  hilbert_space_base& _hilbert_space)  { return _hilbert_space.mapping.data() + _hilbert_space.dim; }
             
-            friend const_ptr cbegin(hilbert_space_base const& _hilbert_space) { return _hilbert_space.mapping.data(); }
-            friend const_ptr cend(  hilbert_space_base const& _hilbert_space) { return _hilbert_space.mapping.data() + _hilbert_space.dim; }
-            friend const_ptr begin( hilbert_space_base const& _hilbert_space) { return _hilbert_space.mapping.data(); }
-            friend const_ptr end(   hilbert_space_base const& _hilbert_space) { return _hilbert_space.mapping.data() + _hilbert_space.dim; }
+            // friend const_ptr cbegin(hilbert_space_base const& _hilbert_space) { return _hilbert_space.mapping.data(); }
+            // friend const_ptr cend(  hilbert_space_base const& _hilbert_space) { return _hilbert_space.mapping.data() + _hilbert_space.dim; }
+            // friend const_ptr begin( hilbert_space_base const& _hilbert_space) { return _hilbert_space.mapping.data(); }
+            // friend const_ptr end(   hilbert_space_base const& _hilbert_space) { return _hilbert_space.mapping.data() + _hilbert_space.dim; }
     };
 
 
@@ -63,7 +67,8 @@ namespace QHS{
 
 
     /// @brief Hilbert space with no symmetries
-    class full_hilbert_space : public hilbert_space_base{
+	template <typename state_ty = u64>
+    class full_hilbert_space : public hilbert_space_base<state_ty>{
         
         //<! Someday might need to add stuff..
         virtual void init() override 
@@ -77,8 +82,8 @@ namespace QHS{
                 this->init();
             }
             
-            virtual u64 operator()(u64 idx) const override { return idx; };
-            virtual u64 find(u64 idx)       const override { return idx; };
+            virtual u64 operator()(u64 idx)     const override { return idx; };
+            virtual u64 find(const u64& idx)    const override { return idx; };
             virtual void create_basis() override 
                 { std::cout << "AIN'T DO NOTHING! Hilbert space is created as full." << std::endl; }
     };

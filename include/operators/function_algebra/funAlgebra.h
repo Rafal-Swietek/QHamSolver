@@ -71,21 +71,21 @@ namespace QOps {
 	}
 };
 
-template <typename ReturnTy, typename... Args>
+template <typename ReturnTy, typename state_ty, typename... Args>
 struct Kernel {
-    std::function<ReturnTy(u64, Args...)> fn;
+    std::function<ReturnTy(state_ty, Args...)> fn;
 
     Kernel() = default;
-    Kernel(std::function<ReturnTy(u64, Args...)> f) : fn(std::move(f)) {}
+    Kernel(std::function<ReturnTy(state_ty, Args...)> f) : fn(std::move(f)) {}
 
-    ReturnTy operator()(u64 n, Args... args) const {
+    ReturnTy operator()(state_ty n, Args... args) const {
         return fn(n, args...);
     }
 
     // Now define the operator% for this custom type
     friend Kernel operator%(const Kernel& f, const Kernel& g) {
         return Kernel{
-            [f, g](u64 n, Args... args) -> ReturnTy {
+            [f, g](state_ty n, Args... args) -> ReturnTy {
                 auto [state, val] = g(n, args...);
                 auto [state_final, ret_final] = f(state, args...);
                 return { state_final, val * ret_final };
@@ -94,9 +94,9 @@ struct Kernel {
     }
 
 	template <typename..._ty>
-	friend Kernel operator*(const Kernel<ReturnTy, Args...>& f, const Kernel<ReturnTy, _ty...>& g) {
+	friend Kernel operator*(const Kernel<ReturnTy, state_ty, Args...>& f, const Kernel<ReturnTy, state_ty, _ty...>& g) {
         return Kernel{
-            [f, g](u64 num,
+            [f, g](state_ty num,
 				Args... args1,
 				_ty... args2) -> ReturnTy
 			{

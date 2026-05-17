@@ -8,8 +8,8 @@ namespace QHS{
     /// @brief Hilbert space creator with U(1) symmetry, either spin or charge
     /// @tparam boolean value: spinless fermions?  (valid if chosen U1 == charge)
     /// @tparam U1_sym choose U(1) symmetry: spin, charge, ...
-    template <U1 U1_sym = U1::spin, bool spinless = true>
-    class U1U1_hilbert_space : public hilbert_space_base
+    template <U1 U1_sym = U1::spin, bool spinless = true, typename state_ty = u64>
+    class U1U1_hilbert_space : public hilbert_space_base<state_ty>
     {
         protected:
 
@@ -154,7 +154,7 @@ namespace QHS{
         /// @param element element to find its index
         /// @return index of element 'element'
         virtual 
-        u64 find(u64 element) const override
+        u64 find(const u64& element) const override
             { return binary_search(this->mapping, 0, this->dim - 1, element); }
     };
 }

@@ -12,7 +12,7 @@ constexpr int _block(int of)
 
 constexpr int config = CONFIG;				// base configuration (i.e. 2->binary, 8->octal code,...)
 constexpr int block_size = _block(config);	// number of spins per site (2->1, 3->2, 4->2, 8->3, ...)
-
+constexpr std::uint8_t UNDEF = (1u << block_size) - 1u;
 
 const v_1d<u64> powers =  []{ 	v_1d<u64> a(64 / block_size);
 								for (int i = 0; i < 64 / block_size; ++i) 
@@ -28,6 +28,10 @@ const v_1d<u64> powers =  []{ 	v_1d<u64> a(64 / block_size);
 #define NOT_ALLOWED_OPERATION	"ERROR OP-4: not permitted operation! See definition"
 #define ONLY_SPIN_HALF_OEPRATOR	"ERROR OP-5: operator only valid for spin-half systems (config == 2) (to be extended)"
 #define NOT_ALLOWED_SYM_SECTOR	"ERROR OP-6: (symmetry) not allowed symmetry sector, check available"
+#define NOT_ALLOWED_SYM_SECTORX	"ERROR OP-7: (symmetry) not allowed translation in X shift: shift < Lx"
+#define NOT_ALLOWED_SYM_SECTORY	"ERROR OP-8: (symmetry) not allowed translation in Y shift: shift < Ly"
+#define INPUT_STATE_MISMATCH	"ERROR OP-9: input state does not match lattice dimensions of symmetry generator"
+
 //! --------------------------------- HELPER FUNCTIONS
 //! --- compare hilbert spaces
 #define CHOOSE_MACRO(_1,_2,NAME,...) NAME
