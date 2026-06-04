@@ -35,10 +35,13 @@ namespace lanczos{
 	{
 		this->use_full_convergence = false;
 		this->diagonalization(_state);
-		arma::cx_vec state_in_krylov = this->conv_to_krylov_space(_state);
-		arma::cx_vec evolved_state(state_in_krylov.size(), arma::fill::zeros);
+		// arma::cx_vec state_in_krylov = this->conv_to_krylov_space(_state);
+		// std::cout << "State in Krylov:" << std::endl;
+		// std::cout << state_in_krylov.t() << std::endl;
+		arma::cx_vec evolved_state(this->lanczos_steps, arma::fill::zeros);
 		for(int l = 0; l < this->lanczos_steps; l++){
-			cpx overlap = dot_prod(this->eigenvectors.col(l), state_in_krylov);
+			// cpx overlap = dot_prod(this->eigenvectors.col(l), state_in_krylov);
+			cpx overlap = this->eigenvectors.col(l)(0);
 			evolved_state += std::exp(-1i * this->eigenvalues(l) * dt) * overlap * arma::normalise(this->eigenvectors.col(l));
 		}
 		_state = arma::normalise(this->conv_to_hilbert_space(evolved_state));

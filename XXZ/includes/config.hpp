@@ -29,7 +29,7 @@
 
     //<! Macro to control if perturbation is exponentially small or regular
     #ifndef USE_EXP_COUPLING
-        #define USE_EXP_COUPLING
+        // #define USE_EXP_COUPLING
     #endif
 
 #endif

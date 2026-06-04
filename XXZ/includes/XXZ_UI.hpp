@@ -82,6 +82,7 @@ namespace XXZ_UI{
         void compare_hamiltonian();
         void check_symmetry_generators();
         void spectrals();
+        void ErgodicNonDiffusive();
 
         template <
 			typename callable, 
@@ -102,19 +103,39 @@ namespace XXZ_UI{
         // #else
 		// 	for (int ks = 1; ks < this->L/2.0; ks++) {
         // #endif
-        for (int ks = 0; ks <= this->L / 2.; ks++) {
-                // if(k_real_sec(ks)) continue;
-				v_1d<int> psec = k_real_sec(ks)? v_1d<int>({-1, 1}) : v_1d<int>({1});
-                // std::cout << ks << "\t\t" << psec << std::endl;
-                for(auto& ps : psec){
-                    for(auto& zxs : zxsec){
-                            //<! create local lambda for multithreading enivorontment
-							auto dummy_lambda = [&lambda](int k, int p, int zx, auto... args){
-								lambda(k, p, zx, args...);
-							};
-							dummy_lambda(ks, ps, zxs, args...);
+
+            for(auto& zxs : zxsec){
+                // for (int ks = 0; ks <= this->L / 2.; ks++) {
+                for (int ks = 0; ks < this->L; ks++) {
+                    // if(k_real_sec(ks)) continue;
+                    v_1d<int> psec = k_real_sec(ks)? v_1d<int>({-1, 1}) : v_1d<int>({1});
+                    // std::cout << ks << "\t\t" << psec << std::endl;
+                    for(auto& ps : psec){
+                        //<! create local lambda for multithreading enivorontment
+                        auto dummy_lambda = [&lambda](int k, int p, int zx, auto... args){
+                            lambda(k, p, zx, args...);
+                        };
+                        dummy_lambda(ks, ps, zxs, args...);
                     }
                 }
+                // v_1d<int> psec = v_1d<int>({-1, 1});
+                // const int L_half = this->L / 2;
+                // v_1d<int> ksec = v_1d<int>({0, L_half});
+                // for (int ks : ksec) {
+                //     for(auto& ps : psec){
+                //         auto dummy_lambda = [&lambda](int k, int p, int zx, auto... args){
+                //             lambda(k, p, zx, args...);
+                //         };
+                //         dummy_lambda(ks, ps, zxs, args...);
+                //     }
+                // }
+                // for (int ks = 1; ks < this->L; ks++) {
+                //     if(k_real_sec(ks)) continue;
+                //     auto dummy_lambda = [&lambda](int k, int p, int zx, auto... args){
+                //         lambda(k, p, zx, args...);
+                //     };
+                //     dummy_lambda(ks, 1, zxs, args...);
+                // }
             }
 		}
         
