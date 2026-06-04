@@ -1413,21 +1413,34 @@ void ui::ErgodicNonDiffusive(){
                 }
             }
 
+            // Precompute overlap of initial state with eigenstates
+            arma::vec coeffs(dim);
+            for(int n = 0; n < E.size(); n++)
+                coeffs(n) = arma::cdot(initial_state, this->ptr_to_model->get_eigenState(n));
+
+
+            // Precompute α = M^T · β  (single O(D²) operation outside time loop)
+            arma::vec alpha = mat_elem * coeffs;
+
+            arma::vec _dynamical_structure_factor(omegax.size()-1, arma::fill::zeros);
             arma::vec _spectral_fun_all(omegax.size()-1, arma::fill::zeros);
             arma::vec _element_count_all(omegax.size()-1, arma::fill::zeros);
             const double dw_log = std::log10(omegax[1]) - std::log10(omegax[0]);
             const double w0_log = std::log10(omegax[0]);
 
-            arma::vec coeffs(dim);
             {
                 for(int n = 0; n < E.size(); n++){
-                    coeffs(n) = arma::cdot(initial_state, this->ptr_to_model->get_eigenState(n));
-                    for(int m = n+1; m < E.size(); m++){
+                    for(int m = n+1; m < E.size(); m++)
+                    {
                         double wnm = E(m) - E(n);
                         const auto idx = int( (std::log10(wnm) - w0_log) / dw_log);
                         if(idx < omegax.size() && idx >= 0){
-                            _spectral_fun_all(idx) += 2 * std::abs(mat_elem(n, m) * mat_elem(m, n));
+                            _spectral_fun_all(idx) += 2*std::abs(mat_elem(n, m) * mat_elem(m, n));
                             _element_count_all(idx) += 2;
+
+                            double A_nm = coeffs(m) * mat_elem(m,n) * alpha(n);
+                            double B_nm = coeffs(n) * mat_elem(n,m) * alpha(m);
+                            _dynamical_structure_factor(idx) += A_nm + B_nm;
                         }
                     }	
                 }
@@ -1438,13 +1451,14 @@ void ui::ErgodicNonDiffusive(){
 
             arma::vec autocorr_inf(times.size(), arma::fill::zeros);
             arma::vec autocorr_psi(times.size(), arma::fill::zeros);
+            arma::vec lohschmidt(times.size(), arma::fill::zeros);
+
             double DE = 0;
             double DE_psi = 0;
+            double ipr = 0.0;
             // arma::vec quench(times.size(), arma::fill::zeros);
             if(dim < dim_max){
                 start = std::chrono::system_clock::now();
-                // Precompute α = M^T · β  (single O(D²) operation outside time loop)
-                arma::vec alpha = mat_elem * coeffs;
 
                 // Precompute diagonal and off-diagonal prefactors
                 // to avoid redundant multiplications inside time loop
@@ -1456,6 +1470,7 @@ void ui::ErgodicNonDiffusive(){
                 for(int n = 0; n < Ns; n++){
                     diag_inf += mat_elem(n,n) * mat_elem(n,n);
                     diag_psi += coeffs(n) * mat_elem(n,n) * alpha(n);
+                    ipr += std::abs(coeffs(n)*coeffs(n)) * std::abs(coeffs(n)*coeffs(n));
                 }
                 DE = diag_inf / double(dim);
                 DE_psi = diag_psi;
@@ -1463,6 +1478,7 @@ void ui::ErgodicNonDiffusive(){
                 // Store as flat arrays for cache efficiency
                 int n_pairs = Ns * (Ns - 1) / 2;
                 arma::vec omega_nm(n_pairs);
+                arma::vec coeff_nm(n_pairs);   // |α_m * α_n|^2
                 arma::vec A_nm(n_pairs);   // β_m * M_{mn} * α_n
                 arma::vec B_nm(n_pairs);   // β_n * M_{nm} * α_m
                 arma::vec inf_nm(n_pairs); // M_{nm} * M_{mn}  for infinite T
@@ -1474,6 +1490,7 @@ void ui::ErgodicNonDiffusive(){
                         A_nm(idx)     = coeffs(m) * mat_elem(m,n) * alpha(n);
                         B_nm(idx)     = coeffs(n) * mat_elem(n,m) * alpha(m);
                         inf_nm(idx)   = mat_elem(n,m) * mat_elem(m,n);
+                        coeff_nm(idx) = std::abs(coeffs(n)*coeffs(n)) * std::abs(coeffs(m)*coeffs(m));
                         idx++;
                     }
                 }
@@ -1483,6 +1500,7 @@ void ui::ErgodicNonDiffusive(){
 
                     double val_inf = diag_inf;
                     double val_psi = diag_psi;
+                    double val_loh = ipr;
 
                     for(int p = 0; p < n_pairs; p++){
                         double cos_t = std::cos(omega_nm(p) * times(t_idx));
@@ -1493,10 +1511,13 @@ void ui::ErgodicNonDiffusive(){
                         // Initial state: (A + B) * cos(ω t)
                         // [sin terms cancel when taking real part]
                         val_psi += (A_nm(p) + B_nm(p)) * cos_t;
+
+                        val_loh += 2 * coeff_nm(p) * cos_t;
                     }
 
                     autocorr_inf(t_idx) = val_inf / double(dim);
                     autocorr_psi(t_idx) = val_psi;
+                    lohschmidt(t_idx)   = val_loh;
                 }
                 autocorr_psi /= Sq_state;
                 
@@ -1520,20 +1541,23 @@ void ui::ErgodicNonDiffusive(){
             omp_set_num_threads(this->thread_number);
             
             
-            _integrated_spectral_fun.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "q=" + std::to_string(q) + "/integrated_spectral_fun",   arma::hdf5_opts::append));
-            _spectral_fun.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "q=" + std::to_string(q) + "/spectral_fun",   arma::hdf5_opts::append));
-            _spectral_fun_typ.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "q=" + std::to_string(q) + "/log(_spectral_fun_typ)",   arma::hdf5_opts::append));
-            _element_count.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "q=" + std::to_string(q) + "/element_count",   arma::hdf5_opts::append));
-            _spectral_fun_all.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "q=" + std::to_string(q) + "/spectral_fun_all",   arma::hdf5_opts::append));
-            _element_count_all.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "q=" + std::to_string(q) + "/element_count_all",   arma::hdf5_opts::append));
+            _integrated_spectral_fun.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "q=" + std::to_string(q) + "/integrated_spectral_fun", arma::hdf5_opts::append));
+            _spectral_fun.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "q=" + std::to_string(q) + "/spectral_fun", arma::hdf5_opts::append));
+            _spectral_fun_typ.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "q=" + std::to_string(q) + "/log(_spectral_fun_typ)", arma::hdf5_opts::append));
+            _element_count.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "q=" + std::to_string(q) + "/element_count", arma::hdf5_opts::append));
+            _spectral_fun_all.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "q=" + std::to_string(q) + "/spectral_fun_all", arma::hdf5_opts::append));
+            _element_count_all.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "q=" + std::to_string(q) + "/element_count_all", arma::hdf5_opts::append));
+            _dynamical_structure_factor.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "q=" + std::to_string(q) + "/dynamical_structure_factor", arma::hdf5_opts::append));
 
             _susc.save(	 arma::hdf5_name(dir_realis + info + ".hdf5", "q=" + std::to_string(q) + "/susc",     arma::hdf5_opts::append));
             _susc_r.save(arma::hdf5_name(dir_realis + info + ".hdf5", "q=" + std::to_string(q) + "/susc_reg", arma::hdf5_opts::append));
 
+            lohschmidt.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "q=" + std::to_string(q) + "/lohschmidt",   arma::hdf5_opts::append));
             autocorr_inf.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "q=" + std::to_string(q) + "/autocorrelation",   arma::hdf5_opts::append));
             autocorr_psi.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "q=" + std::to_string(q) + "/quench_psi_q",   arma::hdf5_opts::append));
             arma::vec( {DE} ).save(   arma::hdf5_name(dir_realis + info + ".hdf5", "q=" + std::to_string(q) + "/DE",   arma::hdf5_opts::append));
             arma::vec( {DE_psi} ).save(   arma::hdf5_name(dir_realis + info + ".hdf5", "q=" + std::to_string(q) + "/DE_psi",   arma::hdf5_opts::append));
+            arma::vec( {ipr} ).save(   arma::hdf5_name(dir_realis + info + ".hdf5", "q=" + std::to_string(q) + "/ipr",   arma::hdf5_opts::append));
 
         }
 		std::cout << " - - - - - - finished realisation realis = " << realis << " in : " << tim_s(start_re) << " s - - - - - - " << std::endl; // simulation end
