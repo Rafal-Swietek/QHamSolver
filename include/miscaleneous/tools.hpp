@@ -175,6 +175,17 @@ std::vector<std::size_t> sort_permutation(
 		});
 	return p;
 }
+template <has_access_operator container, callable_type F> 
+inline 
+std::vector<std::size_t> sort_permutation2(
+	const container& vec,
+	F&& compare
+) {
+	std::vector<std::size_t> p(vec.size());
+	std::iota(p.begin(), p.end(), 0);
+	std::sort(p.begin(), p.end(), compare);
+	return p;
+}
 
 /// @brief Applies permutation on a given vector
 /// @tparam container template for any container class with access operator[]

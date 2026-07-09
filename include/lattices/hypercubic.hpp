@@ -23,7 +23,7 @@ namespace lattice
             this->volume = (u64)std::pow(this->_L, this->_dim);
             this->boundary_condition = !_bound_cond; // Change boolean, in main part PBC=0, but here PBC=1
             // _debug_start 
-            std::cout << "Created lattice of linear size L = " << this->_L << " in dimensions d = " << this->_dim << " with BC = " << this->boundary_condition << std::endl;
+            // std::cout << "Created lattice of linear size L = " << this->_L << " in dimensions d = " << this->_dim << " with BC = " << this->boundary_condition << std::endl;
         }
         //TODO: constructor to take vector of Lx, Ly, Lz, ... and dim = vector.size(), so both in one code
         //TODO: below all this->_L substitude with this->_dimensions[d] or similar

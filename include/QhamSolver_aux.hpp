@@ -28,6 +28,7 @@ namespace QHS{
             auto get_mapping()		                 const { return this->H.get_mapping(); }		        // constant reference to the mapping
             auto& get_eigenvectors()                 const { return this->eigenvectors; }			    // get the const reference to the eigenvectors
             auto get_eigenState(u64 idx)             const { return this->eigenvectors.col(idx); }	    // get the eigenvector at index idx
+            auto get_eigenStateRow(u64 idx)          const { return this->eigenvectors.row(idx); }	    // get the overlaps of state at idx with all eigenvectors
             
             auto get_eigenStateCoeff(u64 idx, u64 k) const { return this->eigenvectors.col(idx)(k); }	    // get the coefficient of eigenstate idx at position k
             
