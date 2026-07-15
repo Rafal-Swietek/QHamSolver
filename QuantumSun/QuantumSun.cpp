@@ -135,14 +135,16 @@ void QuantumSun::create_hamiltonian()
 			/* disorder on localised spins */
             if constexpr (conf_disorder == 0){
                 auto [val, Sz_k] = operators::sigma_z<double>(base_state, this->system_size, j);
-			    this->set_hamiltonian_elements(k, this->_disorder(pos_in_array) * (val), Sz_k);
+			    // this->set_hamiltonian_elements(k, this->_disorder(pos_in_array) * (val), Sz_k);
+                H(Sz_k, k) += this->_disorder(pos_in_array) * (val);
             }
 
 			/* coupling of localised spins to GOE grain */
 			int nei = random_neigh(pos_in_array);
 		    auto [val1, Sx_k] = operators::sigma_x<double>(base_state, this->system_size, j);
 		    auto [val2, SxSx_k] = operators::sigma_x<double>(Sx_k, this->system_size, nei);
-			this->set_hamiltonian_elements(k, this->_J * this->_long_range_couplings(pos_in_array) * (val1 * val2), SxSx_k);
+			// this->set_hamiltonian_elements(k, this->_J * this->_long_range_couplings(pos_in_array) * (val1 * val2), SxSx_k);
+            H(SxSx_k, k) += this->_J * this->_long_range_couplings(pos_in_array) * (val1 * val2);
 		}
 	}
     // std::cout << " - - - - - - finished Hamiltonian in : " << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
