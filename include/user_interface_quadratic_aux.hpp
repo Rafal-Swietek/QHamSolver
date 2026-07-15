@@ -414,7 +414,7 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
 		start = std::chrono::system_clock::now();
 		
 		// #pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
-			for(int ii = 0; ii < Gammas.size()-1; ii++) // SKIP V^2 for now.
+			for(int ii = 0; ii < Gammas.size()-4; ii++) // SKIP V^2 for now.
 			{
 				int gamma_a = Gammas(ii);
 				int counter_states = 0;
@@ -505,8 +505,10 @@ void user_interface_quadratic<Hamiltonian>::eigenstate_entanglement_degenerate()
 					start_G = std::chrono::system_clock::now();
 
 					arma::cx_mat J_m_MB(this->V, this->V, arma::fill::zeros);
-					for(u64& state : _hilbert_space)
+					// for(u64& state : _hilbert_space)
+					for(u64 k = 0; k < _hilbert_space.get_hilbert_space_size(); k++)
 					{
+						u64 state = _hilbert_space(k);
 						for(int i = 0; i < this->V; i++)
 						{
 							auto [_spin, _] = operators::sigma_z<double>(state, this->V, i);
