@@ -18,11 +18,11 @@
 #endif
 /// @brief Model for EBT, Anderson model
 class Quadratic : 
-    public QHS::hamiltonian_base<elem_ty, QHS::full_hilbert_space>
+    public QHS::hamiltonian_base<elem_ty, QHS::full_hilbert_space<u64>>
 {
     //<! ----------------------------------------------------- INHERIT TYPEDEFs FROM BASE
-    typedef typename QHS::hamiltonian_base<elem_ty, QHS::full_hilbert_space>::matrix        matrix;
-    typedef typename QHS::hamiltonian_base<elem_ty, QHS::full_hilbert_space>::sparse_matrix sparse_matrix;
+    typedef typename QHS::hamiltonian_base<elem_ty, QHS::full_hilbert_space<u64>>::matrix        matrix;
+    typedef typename QHS::hamiltonian_base<elem_ty, QHS::full_hilbert_space<u64>>::sparse_matrix sparse_matrix;
 
     //<! ----------------------------------------------------- MODEL PARAMETERS
 private:

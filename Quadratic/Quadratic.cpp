@@ -113,7 +113,8 @@ void Quadratic::create_hamiltonian()
         #ifdef _UNIFORM_DIAG
             arma::mat H0 = arma::diagmat( this->disorder_generator.uniform(this->dim, -2, 2) );
         #else
-            arma::mat H0 = arma::diagmat( this->disorder_generator.gaussian(this->dim, 0, 1) );
+            // arma::mat H0 = arma::diagmat( arma::sort(this->disorder_generator.gaussian(this->dim, 0, 1) ) );
+            arma::mat H0 = arma::diagmat( (this->disorder_generator.gaussian(this->dim, 0, 1) ) );
         #endif
         this->H = H0 + this->random_matrix.generate_matrix(this->dim) / std::pow(this->dim, this->_g / 2.0);
         // arma::mat H0 = arma::diagmat( arma::vec(this->dim, arma::fill::randn) );
