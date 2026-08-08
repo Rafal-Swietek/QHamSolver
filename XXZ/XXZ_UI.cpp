@@ -193,7 +193,7 @@ void ui::make_sim(){
         
         std::string dir = this->saving_dir + "GEC_data_Testing_moms/" + kPSep;
         createDirs(dir);
-        std::string info = "_L=" + std::to_string(this->L) + "_w=" + to_string_prec(this->w);
+        std::string info = "_L=" + std::to_string(this->L) + "_w=" + to_string_prec(this->w) + "_id=" + std::to_string(this->jobid);
         gec.save(	  arma::hdf5_name(dir + info + ".hdf5", "GEC"));
         gec_H2ii.save(	  arma::hdf5_name(dir + info + ".hdf5", "GEC_H2ii", arma::hdf5_opts::append));
         gec_Hii2.save(	  arma::hdf5_name(dir + info + ".hdf5", "GEC_Hii2", arma::hdf5_opts::append));
