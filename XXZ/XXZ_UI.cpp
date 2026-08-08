@@ -47,24 +47,24 @@ void ui::make_sim(){
     arma::vec wx_vals = arma::linspace(0, 5, 51);
     // for(auto wx : wx_vals){
     //     this->w = wx;
-        arma::mat H2ii(this->realisations, dim, arma::fill::zeros);
-        arma::mat autocorr_earlytime_Sz(this->realisations, dim, arma::fill::zeros);
-        arma::mat autocorr_earlytime_n(this->realisations, dim, arma::fill::zeros);
-        arma::mat cross_term_Sz(this->realisations, dim, arma::fill::zeros);
-        arma::mat cross_term_n(this->realisations, dim, arma::fill::zeros);
+        arma::mat H2ii(this->realisations, 3, arma::fill::zeros);
+        arma::mat autocorr_earlytime_Sz(this->realisations, 3, arma::fill::zeros);
+        arma::mat autocorr_earlytime_n(this->realisations, 3, arma::fill::zeros);
+        // arma::vec cross_term_Sz(this->realisations, 3, arma::fill::zeros);
+        // arma::vec cross_term_n(this->realisations, 3, arma::fill::zeros);
 
-        arma::mat rescaled_H2ii(this->realisations, dim, arma::fill::zeros);
-        arma::mat rescaled_autocorr_earlytime_Sz(this->realisations, dim, arma::fill::zeros);
-        arma::mat rescaled_autocorr_earlytime_n(this->realisations, dim, arma::fill::zeros);
-        arma::mat rescaled_cross_term_Sz(this->realisations, dim, arma::fill::zeros);
-        arma::mat rescaled_cross_term_n(this->realisations, dim, arma::fill::zeros);
+        arma::mat rescaled_H2ii(this->realisations, 3, arma::fill::zeros);
+        arma::mat rescaled_autocorr_earlytime_Sz(this->realisations, 3, arma::fill::zeros);
+        arma::mat rescaled_autocorr_earlytime_n(this->realisations, 3, arma::fill::zeros);
+        // arma::vec rescaled_cross_term_Sz(this->realisations, 3, arma::fill::zeros);
+        // arma::vec rescaled_cross_term_n(this->realisations, 3, arma::fill::zeros);
 
-        arma::mat gec(this->realisations, dim, arma::fill::zeros);
-        arma::mat gec_H2ii(this->realisations, dim, arma::fill::zeros);
-        arma::mat gec_Hii2(this->realisations, dim, arma::fill::zeros);
-        arma::mat rescaled_gec(this->realisations, dim, arma::fill::zeros);
-        arma::mat rescaled_gec_H2ii(this->realisations, dim, arma::fill::zeros);
-        arma::mat rescaled_gec_Hii2(this->realisations, dim, arma::fill::zeros);
+        arma::mat gec(this->realisations, 3, arma::fill::zeros);
+        arma::mat gec_H2ii(this->realisations, 3, arma::fill::zeros);
+        arma::mat gec_Hii2(this->realisations, 3, arma::fill::zeros);
+        arma::mat rescaled_gec(this->realisations, 3, arma::fill::zeros);
+        arma::mat rescaled_gec_H2ii(this->realisations, 3, arma::fill::zeros);
+        arma::mat rescaled_gec_Hii2(this->realisations, 3, arma::fill::zeros);
     #pragma omp parallel for num_threads(outer_threads)
         for(int r = 0; r < this->realisations; r++)
         {
@@ -82,18 +82,43 @@ void ui::make_sim(){
                 
             // #pragma omp parallel for
                 for(u64 k = 0; k < dim; k++){
-                    H2ii(r, k) = H2(k,k);
-                    cross_term_Sz(r, k) = 0;
-                    cross_term_n(r, k) = 0;
+                    H2ii(r, 0) += H2(k,k) / double(dim);
+                    H2ii(r, 1) += H2(k,k) * H2(k,k) / double(dim);
+                    if(H2(k,k) > 0) H2ii(r, 2) += std::log(H2(k,k)) / double(dim);
+                    double cross_term_Sz = 0;
+                    double cross_term_n = 0;
                     for(u64 m = 0; m < dim; m++){
-                        cross_term_Sz(r, k) += op_mat_Szell(k,k) * op_mat_Szell(m,m) * H(k,m) * H(m, k);
-                        cross_term_n(r, k) += op_mat_nell(k,k) * op_mat_nell(m,m) * H(k,m) * H(m, k);
+                        cross_term_Sz += op_mat_Szell(k,k) * op_mat_Szell(m,m) * H(k,m) * H(m, k);
+                        cross_term_n += op_mat_nell(k,k) * op_mat_nell(m,m) * H(k,m) * H(m, k);
                     }
-                    autocorr_earlytime_Sz(r, k) = op_mat_Szell(k,k) * op_mat_Szell(k,k) * H2(k,k) - cross_term_Sz(r, k);
-                    autocorr_earlytime_n(r, k) = op_mat_nell(k,k) * op_mat_nell(k,k) * H2(k,k) - cross_term_n(r, k);
-                    gec(r, k) = (2 * H2(k,k) - H(k,k) * H(k,k) ) / varH;
-                    gec_H2ii(r, k) = H2(k,k) / varH;
-                    gec_Hii2(r, k) = H(k,k) * H(k,k) / varH;
+                    double tau_Sz = op_mat_Szell(k,k) * op_mat_Szell(k,k) * H2(k,k) - cross_term_Sz;
+                    autocorr_earlytime_Sz(r, 0) += tau_Sz / double(dim);
+                    autocorr_earlytime_Sz(r, 1) += tau_Sz * tau_Sz / double(dim);
+                    if(tau_Sz > 0) autocorr_earlytime_Sz(r, 2) += std::log( tau_Sz ) / double(dim);
+                    
+                    // autocorr_earlytime_n(r, k) = op_mat_nell(k,k) * op_mat_nell(k,k) * H2(k,k) - cross_term_n;
+                    double tau_n = op_mat_nell(k,k) * op_mat_nell(k,k) * H2(k,k) - cross_term_n;
+                    autocorr_earlytime_n(r, 0) += tau_n / double(dim);
+                    autocorr_earlytime_n(r, 1) += tau_n * tau_n / double(dim);
+                    if(tau_n > 0) autocorr_earlytime_n(r, 2) += std::log( tau_n ) / double(dim);
+
+                    double _gec1 = (2 * H2(k,k) - H(k,k) * H(k,k) ) / varH;
+                    gec(r, 0) += _gec1 / double(dim);
+                    gec(r, 1) += _gec1 * _gec1 / double(dim);
+                    if(_gec1 > 0) gec(r, 2) += std::log(_gec1) / double(dim);
+
+                    _gec1 = H2(k,k) / varH;
+                    gec_H2ii(r, 0) += _gec1 / double(dim);
+                    gec_H2ii(r, 1) += _gec1 * _gec1 / double(dim);
+                    if(_gec1 > 0) gec_H2ii(r, 2) += std::log(_gec1) / double(dim);
+
+                    _gec1 = H(k,k) * H(k,k) / varH;
+                    gec_Hii2(r, 0) += _gec1 / double(dim);
+                    gec_Hii2(r, 1) += _gec1 * _gec1 / double(dim);
+                    if(_gec1 > 0) gec_Hii2(r, 2) += std::log(_gec1) / double(dim);
+                    // gec(r, k) = (2 * H2(k,k) - H(k,k) * H(k,k) ) / varH;
+                    // gec_H2ii(r, k) = H2(k,k) / varH;
+                    // gec_Hii2(r, k) = H(k,k) * H(k,k) / varH;
                 }
 
                 varH = arma::trace(H2) / double(dim) - meanH * meanH;
@@ -102,19 +127,55 @@ void ui::make_sim(){
 
             // #pragma omp parallel for
                 for(u64 k = 0; k < dim; k++){
-                    rescaled_H2ii(r, k) = H2(k,k);
-                    rescaled_cross_term_Sz(r, k) = 0;
-                    rescaled_cross_term_n(r, k) = 0;
-                    for(u64 m = 0; m < dim; m++){
-                        rescaled_cross_term_Sz(r, k) += op_mat_Szell(k,k) * op_mat_Szell(m,m) * H(k,m) * H(m, k);
-                        rescaled_cross_term_n(r, k) += op_mat_nell(k,k) * op_mat_nell(m,m) * H(k,m) * H(m, k);
-                    }
-                    rescaled_autocorr_earlytime_Sz(r, k) = op_mat_Szell(k,k) * op_mat_Szell(k,k) * H2(k,k) - rescaled_cross_term_Sz(r, k);
-                    rescaled_autocorr_earlytime_n(r, k) = op_mat_nell(k,k) * op_mat_nell(k,k) * H2(k,k) - rescaled_cross_term_n(r, k);
+                    // rescaled_H2ii(r, k) = H2(k,k);
+                    // rescaled_cross_term_Sz(r, k) = 0;
+                    // rescaled_cross_term_n(r, k) = 0;
+                    // for(u64 m = 0; m < dim; m++){
+                    //     rescaled_cross_term_Sz(r, k) += op_mat_Szell(k,k) * op_mat_Szell(m,m) * H(k,m) * H(m, k);
+                    //     rescaled_cross_term_n(r, k) += op_mat_nell(k,k) * op_mat_nell(m,m) * H(k,m) * H(m, k);
+                    // }
+                    // rescaled_autocorr_earlytime_Sz(r, k) = op_mat_Szell(k,k) * op_mat_Szell(k,k) * H2(k,k) - rescaled_cross_term_Sz(r, k);
+                    // rescaled_autocorr_earlytime_n(r, k) = op_mat_nell(k,k) * op_mat_nell(k,k) * H2(k,k) - rescaled_cross_term_n(r, k);
 
-                    rescaled_gec(r, k) = (2 * H2(k,k) - H(k,k) * H(k,k) );
-                    rescaled_gec_H2ii(r, k) = H2(k,k);
-                    rescaled_gec_Hii2(r, k) = H(k,k) * H(k,k);
+                    // rescaled_gec(r, k) = (2 * H2(k,k) - H(k,k) * H(k,k) );
+                    // rescaled_gec_H2ii(r, k) = H2(k,k);
+                    // rescaled_gec_Hii2(r, k) = H(k,k) * H(k,k);
+
+                    rescaled_H2ii(r, 0) += H2(k,k) / double(dim);
+                    rescaled_H2ii(r, 1) += H2(k,k) * H2(k,k) / double(dim);
+                    if(H2(k,k) > 0) rescaled_H2ii(r, 2) += std::log(H2(k,k)) / double(dim);
+                    
+                    double cross_term_Sz = 0;
+                    double cross_term_n = 0;
+                    for(u64 m = 0; m < dim; m++){
+                        cross_term_Sz += op_mat_Szell(k,k) * op_mat_Szell(m,m) * H(k,m) * H(m, k);
+                        cross_term_n += op_mat_nell(k,k) * op_mat_nell(m,m) * H(k,m) * H(m, k);
+                    }
+                    double tau_Sz = op_mat_Szell(k,k) * op_mat_Szell(k,k) * H2(k,k) - cross_term_Sz;
+                    rescaled_autocorr_earlytime_Sz(r, 0) += tau_Sz / double(dim);
+                    rescaled_autocorr_earlytime_Sz(r, 1) += tau_Sz * tau_Sz / double(dim);
+                    if(tau_Sz > 0) rescaled_autocorr_earlytime_Sz(r, 2) += std::log( tau_Sz ) / double(dim);
+                    
+                    // autocorr_earlytime_n(r, k) = op_mat_nell(k,k) * op_mat_nell(k,k) * H2(k,k) - cross_term_n;
+                    double tau_n = op_mat_nell(k,k) * op_mat_nell(k,k) * H2(k,k) - cross_term_n;
+                    rescaled_autocorr_earlytime_n(r, 0) += tau_n / double(dim);
+                    rescaled_autocorr_earlytime_n(r, 1) += tau_n * tau_n / double(dim);
+                    if(tau_n > 0) rescaled_autocorr_earlytime_n(r, 2) += std::log( tau_n ) / double(dim);
+
+                    double _gec1 = (2 * H2(k,k) - H(k,k) * H(k,k) );
+                    rescaled_gec(r, 0) += _gec1 / double(dim);
+                    rescaled_gec(r, 1) += _gec1 * _gec1 / double(dim);
+                    if(_gec1 > 0) rescaled_gec(r, 2) += std::log(_gec1) / double(dim);
+
+                    _gec1 = H2(k,k);
+                    rescaled_gec_H2ii(r, 0) += _gec1 / double(dim);
+                    rescaled_gec_H2ii(r, 1) += _gec1 * _gec1 / double(dim);
+                    if(_gec1 > 0) rescaled_gec_H2ii(r, 2) += std::log(_gec1) / double(dim);
+
+                    _gec1 = H(k,k) * H(k,k);
+                    rescaled_gec_Hii2(r, 0) += _gec1 / double(dim);
+                    rescaled_gec_Hii2(r, 1) += _gec1 * _gec1 / double(dim);
+                    if(_gec1 > 0) rescaled_gec_Hii2(r, 2) += std::log(_gec1) / double(dim);
                 }
             }
         #pragma omp critical
@@ -130,7 +191,7 @@ void ui::make_sim(){
         // av2 = av2 / H_trace2;
         // var2 = var2 / arma::square(H_trace2);
         
-        std::string dir = this->saving_dir + "GEC_data_Testing/" + kPSep;
+        std::string dir = this->saving_dir + "GEC_data_Testing_moms/" + kPSep;
         createDirs(dir);
         std::string info = "_L=" + std::to_string(this->L) + "_w=" + to_string_prec(this->w);
         gec.save(	  arma::hdf5_name(dir + info + ".hdf5", "GEC"));
@@ -142,15 +203,15 @@ void ui::make_sim(){
 
         H2ii.save(	  arma::hdf5_name(dir + info + ".hdf5", "H2ii", arma::hdf5_opts::append));
         autocorr_earlytime_Sz.save(	  arma::hdf5_name(dir + info + ".hdf5", "autocorr_earlytime_Sz", arma::hdf5_opts::append));
-        cross_term_Sz.save(	  arma::hdf5_name(dir + info + ".hdf5", "cross_term_Sz", arma::hdf5_opts::append));
+        // cross_term_Sz.save(	  arma::hdf5_name(dir + info + ".hdf5", "cross_term_Sz", arma::hdf5_opts::append));
         autocorr_earlytime_n.save(	  arma::hdf5_name(dir + info + ".hdf5", "autocorr_earlytime_n", arma::hdf5_opts::append));
-        cross_term_n.save(	  arma::hdf5_name(dir + info + ".hdf5", "cross_term_n", arma::hdf5_opts::append));
+        // cross_term_n.save(	  arma::hdf5_name(dir + info + ".hdf5", "cross_term_n", arma::hdf5_opts::append));
         
         rescaled_H2ii.save(	  arma::hdf5_name(dir + info + ".hdf5", "rescaled_H2ii", arma::hdf5_opts::append));
         rescaled_autocorr_earlytime_Sz.save(	  arma::hdf5_name(dir + info + ".hdf5", "rescaled_autocorr_earlytime_Sz", arma::hdf5_opts::append));
-        rescaled_cross_term_Sz.save(	  arma::hdf5_name(dir + info + ".hdf5", "rescaled_cross_term_Sz", arma::hdf5_opts::append));
+        // rescaled_cross_term_Sz.save(	  arma::hdf5_name(dir + info + ".hdf5", "rescaled_cross_term_Sz", arma::hdf5_opts::append));
         rescaled_autocorr_earlytime_n.save(	  arma::hdf5_name(dir + info + ".hdf5", "rescaled_autocorr_earlytime_n", arma::hdf5_opts::append));
-        rescaled_cross_term_n.save(	  arma::hdf5_name(dir + info + ".hdf5", "rescaled_cross_term_n", arma::hdf5_opts::append));
+        // rescaled_cross_term_n.save(	  arma::hdf5_name(dir + info + ".hdf5", "rescaled_cross_term_n", arma::hdf5_opts::append));
 
     // }
 	return;
