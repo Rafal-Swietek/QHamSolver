@@ -23,7 +23,8 @@ void ui::make_sim(){
 
 	this->ptr_to_model = this->create_new_model_pointer();
     size_t dim = this->ptr_to_model->get_hilbert_size();
-	
+	auto _hilbert = this->ptr_to_model->get_model_ref().get_hilbert_space();
+
 	int Ll = this->L;
 	auto kernel = [Ll](u64 state) -> std::pair<u64, double>
 	{ 
@@ -31,7 +32,7 @@ void ui::make_sim(){
 		return std::make_pair(state_z, val1);
 	};
 	auto _operator = QOps::generic_operator<double>(this->L, std::move(kernel), 1.0);
-	auto op_mat_Szell = _operator.to_matrix(dim);
+	auto op_mat_Szell = _operator.to_reduced_matrix(_hilbert);
 	// std::cout << op_mat_Szell << std::endl;
 
 	auto kernel1 = [Ll](u64 state) -> std::pair<u64, double>
@@ -40,113 +41,118 @@ void ui::make_sim(){
 		return std::make_pair(state_z, (0.5 + val1));
 	};
 	auto _operator2 = QOps::generic_operator<double>(this->L, std::move(kernel1), 1.0);
-	auto op_mat_nell = _operator2.to_matrix(dim);
+	auto op_mat_nell = _operator2.to_reduced_matrix(_hilbert);
 	// std::cout << op_mat_nell << std::endl;
 
-	arma::mat H2ii(this->realisations, dim, arma::fill::zeros);
-	arma::mat autocorr_earlytime_Sz(this->realisations, dim, arma::fill::zeros);
-	arma::mat autocorr_earlytime_n(this->realisations, dim, arma::fill::zeros);
-	arma::mat cross_term_Sz(this->realisations, dim, arma::fill::zeros);
-	arma::mat cross_term_n(this->realisations, dim, arma::fill::zeros);
+    arma::vec wx_vals = arma::linspace(0, 5, 51);
+    // for(auto wx : wx_vals){
+    //     this->w = wx;
+        arma::mat H2ii(this->realisations, dim, arma::fill::zeros);
+        arma::mat autocorr_earlytime_Sz(this->realisations, dim, arma::fill::zeros);
+        arma::mat autocorr_earlytime_n(this->realisations, dim, arma::fill::zeros);
+        arma::mat cross_term_Sz(this->realisations, dim, arma::fill::zeros);
+        arma::mat cross_term_n(this->realisations, dim, arma::fill::zeros);
 
-	arma::mat rescaled_H2ii(this->realisations, dim, arma::fill::zeros);
-	arma::mat rescaled_autocorr_earlytime_Sz(this->realisations, dim, arma::fill::zeros);
-	arma::mat rescaled_autocorr_earlytime_n(this->realisations, dim, arma::fill::zeros);
-	arma::mat rescaled_cross_term_Sz(this->realisations, dim, arma::fill::zeros);
-	arma::mat rescaled_cross_term_n(this->realisations, dim, arma::fill::zeros);
+        arma::mat rescaled_H2ii(this->realisations, dim, arma::fill::zeros);
+        arma::mat rescaled_autocorr_earlytime_Sz(this->realisations, dim, arma::fill::zeros);
+        arma::mat rescaled_autocorr_earlytime_n(this->realisations, dim, arma::fill::zeros);
+        arma::mat rescaled_cross_term_Sz(this->realisations, dim, arma::fill::zeros);
+        arma::mat rescaled_cross_term_n(this->realisations, dim, arma::fill::zeros);
 
-	arma::mat gec(this->realisations, dim, arma::fill::zeros);
-	arma::mat gec_H2ii(this->realisations, dim, arma::fill::zeros);
-	arma::mat gec_Hii2(this->realisations, dim, arma::fill::zeros);
-	arma::mat rescaled_gec(this->realisations, dim, arma::fill::zeros);
-	arma::mat rescaled_gec_H2ii(this->realisations, dim, arma::fill::zeros);
-	arma::mat rescaled_gec_Hii2(this->realisations, dim, arma::fill::zeros);
-#pragma omp parallel for num_threads(outer_threads)
-	for(int r = 0; r < this->realisations; r++)
-	{
-		// start = std::chrono::system_clock::now();
-		clk::time_point start0 = std::chrono::system_clock::now();
-		{
-			this->seed = std::random_device{}();
-			// this->reset_model_pointer();
-			auto point = std::make_unique<QHS::QHamSolver<XXZ>>(this->boundary_conditions, this->L, this->J1, this->J2, this->delta1, this->delta2, this->hz, this->syms.Sz, this->add_parity_breaking, this->w, this->seed);
-			
-            arma::sp_mat H = point->get_hamiltonian();
-			arma::sp_mat H2 = H*H;
-			double meanH = arma::trace(H) / double(dim);
-			double varH = arma::trace(H2) / double(dim) - meanH * meanH;
-			
-		// #pragma omp parallel for
-			for(u64 k = 0; k < dim; k++){
-				H2ii(r, k) = H2(k,k);
-				cross_term_Sz(r, k) = 0;
-				cross_term_n(r, k) = 0;
-				for(u64 m = 0; m < dim; m++){
-					cross_term_Sz(r, k) += op_mat_Szell(k,k) * op_mat_Szell(m,m) * H(k,m) * H(m, k);
-					cross_term_n(r, k) += op_mat_nell(k,k) * op_mat_nell(m,m) * H(k,m) * H(m, k);
-				}
-				autocorr_earlytime_Sz(r, k) = op_mat_Szell(k,k) * op_mat_Szell(k,k) * H2(k,k) - cross_term_Sz(r, k);
-				autocorr_earlytime_n(r, k) = op_mat_nell(k,k) * op_mat_nell(k,k) * H2(k,k) - cross_term_n(r, k);
-				gec(r, k) = (2 * H2(k,k) - H(k,k) * H(k,k) ) / varH;
-				gec_H2ii(r, k) = H2(k,k) / varH;
-				gec_Hii2(r, k) = H(k,k) * H(k,k) / varH;
-			}
+        arma::mat gec(this->realisations, dim, arma::fill::zeros);
+        arma::mat gec_H2ii(this->realisations, dim, arma::fill::zeros);
+        arma::mat gec_Hii2(this->realisations, dim, arma::fill::zeros);
+        arma::mat rescaled_gec(this->realisations, dim, arma::fill::zeros);
+        arma::mat rescaled_gec_H2ii(this->realisations, dim, arma::fill::zeros);
+        arma::mat rescaled_gec_Hii2(this->realisations, dim, arma::fill::zeros);
+    #pragma omp parallel for num_threads(outer_threads)
+        for(int r = 0; r < this->realisations; r++)
+        {
+            // start = std::chrono::system_clock::now();
+            clk::time_point start0 = std::chrono::system_clock::now();
+            {
+                this->seed = std::random_device{}();
+                // this->reset_model_pointer();
+                auto point = std::make_unique<QHS::QHamSolver<XXZ>>(this->boundary_conditions, this->L, this->J1, this->J2, this->delta1, this->delta2, this->hz, this->syms.Sz, this->add_parity_breaking, this->w, this->seed);
+                
+                arma::sp_mat H = point->get_hamiltonian();
+                arma::sp_mat H2 = H*H;
+                double meanH = arma::trace(H) / double(dim);
+                double varH = arma::trace(H2) / double(dim) - meanH * meanH;
+                
+            // #pragma omp parallel for
+                for(u64 k = 0; k < dim; k++){
+                    H2ii(r, k) = H2(k,k);
+                    cross_term_Sz(r, k) = 0;
+                    cross_term_n(r, k) = 0;
+                    for(u64 m = 0; m < dim; m++){
+                        cross_term_Sz(r, k) += op_mat_Szell(k,k) * op_mat_Szell(m,m) * H(k,m) * H(m, k);
+                        cross_term_n(r, k) += op_mat_nell(k,k) * op_mat_nell(m,m) * H(k,m) * H(m, k);
+                    }
+                    autocorr_earlytime_Sz(r, k) = op_mat_Szell(k,k) * op_mat_Szell(k,k) * H2(k,k) - cross_term_Sz(r, k);
+                    autocorr_earlytime_n(r, k) = op_mat_nell(k,k) * op_mat_nell(k,k) * H2(k,k) - cross_term_n(r, k);
+                    gec(r, k) = (2 * H2(k,k) - H(k,k) * H(k,k) ) / varH;
+                    gec_H2ii(r, k) = H2(k,k) / varH;
+                    gec_Hii2(r, k) = H(k,k) * H(k,k) / varH;
+                }
 
-			varH = arma::trace(H2) / double(dim) - meanH * meanH;
-			H = (H - meanH * arma::eye<arma::sp_mat>(dim, dim)) / std::sqrt(varH);
-			H2 = H*H;
+                varH = arma::trace(H2) / double(dim) - meanH * meanH;
+                H = (H - meanH * arma::eye<arma::sp_mat>(dim, dim)) / std::sqrt(varH);
+                H2 = H*H;
 
-		// #pragma omp parallel for
-			for(u64 k = 0; k < dim; k++){
-				rescaled_H2ii(r, k) = H2(k,k);
-				rescaled_cross_term_Sz(r, k) = 0;
-				rescaled_cross_term_n(r, k) = 0;
-				for(u64 m = 0; m < dim; m++){
-					rescaled_cross_term_Sz(r, k) += op_mat_Szell(k,k) * op_mat_Szell(m,m) * H(k,m) * H(m, k);
-					rescaled_cross_term_n(r, k) += op_mat_nell(k,k) * op_mat_nell(m,m) * H(k,m) * H(m, k);
-				}
-				rescaled_autocorr_earlytime_Sz(r, k) = op_mat_Szell(k,k) * op_mat_Szell(k,k) * H2(k,k) - rescaled_cross_term_Sz(r, k);
-				rescaled_autocorr_earlytime_n(r, k) = op_mat_nell(k,k) * op_mat_nell(k,k) * H2(k,k) - rescaled_cross_term_n(r, k);
+            // #pragma omp parallel for
+                for(u64 k = 0; k < dim; k++){
+                    rescaled_H2ii(r, k) = H2(k,k);
+                    rescaled_cross_term_Sz(r, k) = 0;
+                    rescaled_cross_term_n(r, k) = 0;
+                    for(u64 m = 0; m < dim; m++){
+                        rescaled_cross_term_Sz(r, k) += op_mat_Szell(k,k) * op_mat_Szell(m,m) * H(k,m) * H(m, k);
+                        rescaled_cross_term_n(r, k) += op_mat_nell(k,k) * op_mat_nell(m,m) * H(k,m) * H(m, k);
+                    }
+                    rescaled_autocorr_earlytime_Sz(r, k) = op_mat_Szell(k,k) * op_mat_Szell(k,k) * H2(k,k) - rescaled_cross_term_Sz(r, k);
+                    rescaled_autocorr_earlytime_n(r, k) = op_mat_nell(k,k) * op_mat_nell(k,k) * H2(k,k) - rescaled_cross_term_n(r, k);
 
-				rescaled_gec(r, k) = (2 * H2(k,k) - H(k,k) * H(k,k) );
-				rescaled_gec_H2ii(r, k) = H2(k,k);
-				rescaled_gec_Hii2(r, k) = H(k,k) * H(k,k);
-			}
-		}
-	#pragma omp critical
-		std::cout << " - - - - - - finished realization r=" << r << "\t in :" << tim_s(start0) << " seconds - - - - - - " << std::endl; // simulation end
-	}
-	// av /= double(this->realisations);
-	// av2 /= double(this->realisations);
-	// var /= double(this->realisations);
-	// var2 /= double(this->realisations);
-	// H_trace /= double(this->realisations);
-	// H_trace2 /= double(this->realisations);
+                    rescaled_gec(r, k) = (2 * H2(k,k) - H(k,k) * H(k,k) );
+                    rescaled_gec_H2ii(r, k) = H2(k,k);
+                    rescaled_gec_Hii2(r, k) = H(k,k) * H(k,k);
+                }
+            }
+        #pragma omp critical
+            std::cout << " - - - - - - finished realization r=" << r << "\t in :" << tim_s(start0) << " seconds - - - - - - " << std::endl; // simulation end
+        }
+        // av /= double(this->realisations);
+        // av2 /= double(this->realisations);
+        // var /= double(this->realisations);
+        // var2 /= double(this->realisations);
+        // H_trace /= double(this->realisations);
+        // H_trace2 /= double(this->realisations);
 
-	// av2 = av2 / H_trace2;
-	// var2 = var2 / arma::square(H_trace2);
-	
-	std::string dir = "GEC_data_Testing/" + kPSep;
-	createDirs(dir);
-	std::string info = "_L=" + std::to_string(this->L) + "_w=" + to_string_prec(this->w);
-	gec.save(	  arma::hdf5_name(dir + info + ".hdf5", "GEC"));
-	gec_H2ii.save(	  arma::hdf5_name(dir + info + ".hdf5", "GEC_H2ii", arma::hdf5_opts::append));
-	gec_Hii2.save(	  arma::hdf5_name(dir + info + ".hdf5", "GEC_Hii2", arma::hdf5_opts::append));
-	rescaled_gec.save(	  arma::hdf5_name(dir + info + ".hdf5", "rescaled_GEC", arma::hdf5_opts::append));
-	rescaled_gec_H2ii.save(	  arma::hdf5_name(dir + info + ".hdf5", "rescaled_GEC_H2ii", arma::hdf5_opts::append));
-	rescaled_gec_Hii2.save(	  arma::hdf5_name(dir + info + ".hdf5", "rescaled_GEC_Hii2", arma::hdf5_opts::append));
+        // av2 = av2 / H_trace2;
+        // var2 = var2 / arma::square(H_trace2);
+        
+        std::string dir = this->saving_dir + "GEC_data_Testing/" + kPSep;
+        createDirs(dir);
+        std::string info = "_L=" + std::to_string(this->L) + "_w=" + to_string_prec(this->w);
+        gec.save(	  arma::hdf5_name(dir + info + ".hdf5", "GEC"));
+        gec_H2ii.save(	  arma::hdf5_name(dir + info + ".hdf5", "GEC_H2ii", arma::hdf5_opts::append));
+        gec_Hii2.save(	  arma::hdf5_name(dir + info + ".hdf5", "GEC_Hii2", arma::hdf5_opts::append));
+        rescaled_gec.save(	  arma::hdf5_name(dir + info + ".hdf5", "rescaled_GEC", arma::hdf5_opts::append));
+        rescaled_gec_H2ii.save(	  arma::hdf5_name(dir + info + ".hdf5", "rescaled_GEC_H2ii", arma::hdf5_opts::append));
+        rescaled_gec_Hii2.save(	  arma::hdf5_name(dir + info + ".hdf5", "rescaled_GEC_Hii2", arma::hdf5_opts::append));
 
-	H2ii.save(	  arma::hdf5_name(dir + info + ".hdf5", "H2ii", arma::hdf5_opts::append));
-	autocorr_earlytime_Sz.save(	  arma::hdf5_name(dir + info + ".hdf5", "autocorr_earlytime_Sz", arma::hdf5_opts::append));
-	cross_term_Sz.save(	  arma::hdf5_name(dir + info + ".hdf5", "cross_term_Sz", arma::hdf5_opts::append));
-	autocorr_earlytime_n.save(	  arma::hdf5_name(dir + info + ".hdf5", "autocorr_earlytime_n", arma::hdf5_opts::append));
-	cross_term_n.save(	  arma::hdf5_name(dir + info + ".hdf5", "cross_term_n", arma::hdf5_opts::append));
-	
-	rescaled_H2ii.save(	  arma::hdf5_name(dir + info + ".hdf5", "rescaled_H2ii", arma::hdf5_opts::append));
-	rescaled_autocorr_earlytime_Sz.save(	  arma::hdf5_name(dir + info + ".hdf5", "rescaled_autocorr_earlytime_Sz", arma::hdf5_opts::append));
-	rescaled_cross_term_Sz.save(	  arma::hdf5_name(dir + info + ".hdf5", "rescaled_cross_term_Sz", arma::hdf5_opts::append));
-	rescaled_autocorr_earlytime_n.save(	  arma::hdf5_name(dir + info + ".hdf5", "rescaled_autocorr_earlytime_n", arma::hdf5_opts::append));
-	rescaled_cross_term_n.save(	  arma::hdf5_name(dir + info + ".hdf5", "rescaled_cross_term_n", arma::hdf5_opts::append));
+        H2ii.save(	  arma::hdf5_name(dir + info + ".hdf5", "H2ii", arma::hdf5_opts::append));
+        autocorr_earlytime_Sz.save(	  arma::hdf5_name(dir + info + ".hdf5", "autocorr_earlytime_Sz", arma::hdf5_opts::append));
+        cross_term_Sz.save(	  arma::hdf5_name(dir + info + ".hdf5", "cross_term_Sz", arma::hdf5_opts::append));
+        autocorr_earlytime_n.save(	  arma::hdf5_name(dir + info + ".hdf5", "autocorr_earlytime_n", arma::hdf5_opts::append));
+        cross_term_n.save(	  arma::hdf5_name(dir + info + ".hdf5", "cross_term_n", arma::hdf5_opts::append));
+        
+        rescaled_H2ii.save(	  arma::hdf5_name(dir + info + ".hdf5", "rescaled_H2ii", arma::hdf5_opts::append));
+        rescaled_autocorr_earlytime_Sz.save(	  arma::hdf5_name(dir + info + ".hdf5", "rescaled_autocorr_earlytime_Sz", arma::hdf5_opts::append));
+        rescaled_cross_term_Sz.save(	  arma::hdf5_name(dir + info + ".hdf5", "rescaled_cross_term_Sz", arma::hdf5_opts::append));
+        rescaled_autocorr_earlytime_n.save(	  arma::hdf5_name(dir + info + ".hdf5", "rescaled_autocorr_earlytime_n", arma::hdf5_opts::append));
+        rescaled_cross_term_n.save(	  arma::hdf5_name(dir + info + ".hdf5", "rescaled_cross_term_n", arma::hdf5_opts::append));
+
+    // }
 	return;
     // std::string name = "Jupyter_Python/test_file";
     // arma::vec E;
