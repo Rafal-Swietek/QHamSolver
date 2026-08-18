@@ -1,6 +1,6 @@
 #include "includes/XXZ_UI.hpp"
 
-int outer_threads = 10;
+int outer_threads = 1;
 int num_of_threads = 1;
 
 
@@ -1182,7 +1182,7 @@ void ui::long_time_prediction(){
             unperturbed(k) += s_i * h_ell(j) + this->delta1 * s_i * s_j;
 		}
 	}
-#pragma omp parallel for num_threads(outer_threads)
+    
     for(int r = 0; r < this->realisations; r++)
     {
         // start = std::chrono::system_clock::now();
