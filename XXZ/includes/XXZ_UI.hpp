@@ -141,6 +141,8 @@ namespace XXZ_UI{
         
 
         void fractality_in_clean_basis();
+        void long_time_prediction();
+        void gec_moments_calculation();
         
         // ----------------------------------- OVERRIDEN METHODS
         // arma::SpMat<ui::element_type> create_supercharge(bool dagger = false);
