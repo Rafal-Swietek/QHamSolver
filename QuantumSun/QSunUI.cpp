@@ -1,6 +1,6 @@
 #include "includes/QSunUI.hpp"
 
-int outer_threads = 10;
+int outer_threads = 8;
 int num_of_threads = 1;
 
 bool normalize_grain = 1;
@@ -120,7 +120,7 @@ void ui::make_sim(){
 	// av2 = av2 / H_trace2;
 	// var2 = var2 / arma::square(H_trace2);
 	
-	std::string dir = "GEC_data_Testing/" + kPSep;
+	std::string dir = this->saving_dir + "GEC_data_Testing/" + kPSep;
 	createDirs(dir);
 	std::string info = "_L=" + std::to_string(this->L) + "_alfa=" + to_string_prec(this->alfa);
 	gec.save(	  arma::hdf5_name(dir + info + ".hdf5", "GEC"));
