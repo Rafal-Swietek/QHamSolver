@@ -47,6 +47,9 @@ void ui::make_sim(){
 	case 5:
 		purity();
 		break;
+	case 6:
+		gaussian_rank();
+		break;
 	default:
 		#define generate_scaling_array(name) arma::linspace(this->name, this->name + this->name##s * (this->name##n - 1), this->name##n)
         #define for_loop(param, var) for (auto& param : generate_scaling_array(var))
@@ -132,7 +135,7 @@ void ui::eigenstate_entanglement()
         emtpy_vec.save(arma::hdf5_name(dir + filename + ".hdf5", "nope"));
         return;
     }
-    const size_t dim_cut = 7e0;
+    const size_t dim_cut = 7e4;
     if(dim < 5000)
         this->l_steps = u64(dim / 10.0);
     if(dim > dim_cut){
@@ -283,7 +286,7 @@ void ui::purity()
 {
     clk::time_point start = std::chrono::system_clock::now();
 	
-	std::string dir = this->saving_dir + "Purity" + kPSep;
+	std::string dir = this->saving_dir + "Purity22" + kPSep;
 	createDirs(dir);
 	
 	std::string info = this->set_info();
@@ -297,7 +300,9 @@ void ui::purity()
         return;
     }
     const size_t dim_cut = 7e4;
-
+    if(dim < 5000)
+        this->l_steps = u64(dim / 10.0);
+        
     if(dim > dim_cut){
         double error = this->ptr_to_model->diag_sparse(this->l_steps, this->l_bundle, this->tol, this->seed);
         _assert_(error < 1e-10, "POLFED FAILED: Maximal Error = ");
@@ -324,6 +329,16 @@ void ui::purity()
     const auto _hilbert = this->ptr_to_model->get_model_ref().get_hilbert_space();
     const auto U = _hilbert.symmetry_rotation();
     
+    std::vector<QOps::generic_operator<element_type>> occupations;
+    for(int j = 0; j < this->L; j++){
+        auto kernel = [this, j](u64 state){ 
+            auto [val1, tmp22] = operators::sigma_z<element_type>(state, this->L, j);
+            return std::make_pair(state, val1 + 0.5);
+            };
+        occupations.push_back( QOps::generic_operator<element_type>(this->L, std::move(kernel), 1.0) );
+    }
+    // arma::sp_mat op = arma::real(_operator.to_matrix(dim));
+    
     std::cout << " - - - - - - FINISHED CREATING SYMMETRY TRANSFORMATION IN : " << tim_s(start) << " seconds - - - - - - " << std::endl; // simulation end
     start = std::chrono::system_clock::now();
 
@@ -338,6 +353,8 @@ void ui::purity()
     arma::mat Trace4(size, subsystem_sizes.size()+1, arma::fill::zeros);
     arma::mat Trace6(size, subsystem_sizes.size()+1, arma::fill::zeros);
     arma::vec NonGauss(size, arma::fill::zeros);
+
+    arma::mat AveOccupation(size, this->L, arma::fill::zeros);
     
     arma::mat part_ratio(size, qs.size(), arma::fill::zeros);
     arma::mat info_ent(size, qs.size(), arma::fill::zeros);
@@ -378,6 +395,10 @@ void ui::purity()
         //         }		
         //     }	
         // }
+        for(int i = 0; i < this->L; i++){
+            arma::Col<element_type> new_state = occupations[i].multiply(state);
+            AveOccupation(n, i) = std::abs( arma::cdot(state, new_state) );
+        }
 
         arma::cx_mat J_m_MB(this->L, this->L, arma::fill::zeros);
         for(u64 base_state = 0; base_state < ULLPOW(this->L); base_state++)
@@ -474,7 +495,226 @@ void ui::purity()
     qs.save(arma::hdf5_name(dir + filename + ".hdf5", "qs", arma::hdf5_opts::append));
     part_ratio.save(arma::hdf5_name(dir + filename + ".hdf5", "part_ratio", arma::hdf5_opts::append));
     info_ent.save(arma::hdf5_name(dir + filename + ".hdf5", "info_ent", arma::hdf5_opts::append));
+
+    AveOccupation.save(arma::hdf5_name(dir + filename + ".hdf5", "AveOccupation", arma::hdf5_opts::append));
 }
+
+
+void ui::gaussian_rank()
+{
+    clk::time_point start = std::chrono::system_clock::now();
+	
+	std::string dir = this->saving_dir + "GaussianRank" + kPSep;
+	createDirs(dir);
+	
+	std::string info = this->set_info();
+	std::string filename = info;// + "_subsize=" + std::to_string(LA);
+    
+	size_t dim = this->ptr_to_model->get_hilbert_size();
+	
+    arma::vec emtpy_vec(1);
+    if(dim == 0){
+        emtpy_vec.save(arma::hdf5_name(dir + filename + ".hdf5", "nope"));
+        return;
+    }
+    const size_t dim_cut = 7e4;
+    if(dim < 5000)
+        this->l_steps = u64(dim / 10.0);
+        
+    if(dim > dim_cut){
+        double error = this->ptr_to_model->diag_sparse(this->l_steps, this->l_bundle, this->tol, this->seed);
+        _assert_(error < 1e-10, "POLFED FAILED: Maximal Error = ");
+	}else{
+        this->ptr_to_model->diagonalization();
+    }
+    // const int size = min(500, int(0.1 * dim));
+    // const int size = this->boundary_conditions == 2? (dim > dim_cut? this->l_steps : dim) : min(20, int(0.02 * dim));
+    const int size = min(500, int(0.1 * dim));
+
+    std::cout << " - - - - - - FINISHED DIAGONALIZATION IN : " << tim_s(start) << " seconds - - - - - - " << std::endl; // simulation end
+    
+    start = std::chrono::system_clock::now();
+    const arma::vec E = this->ptr_to_model->get_eigenvalues();
+    double E_av = arma::mean(E);
+
+    auto i = min_element(begin(E), end(E), [=](double x, double y) {
+        return abs(x - E_av) < abs(y - E_av);
+    });
+    const long Eav_idx = i - begin(E);
+    // const long Emin = this->boundary_conditions == 2? 0 : Eav_idx - size / 2;
+    const long Emin = Eav_idx - size / 2;
+    printSeparated(std::cout, "\t", 20, true, arma::trace(this->ptr_to_model->get_hamiltonian()) / double(dim), E_av, Eav_idx, Emin, dim);
+
+
+    const auto _hilbert = this->ptr_to_model->get_model_ref().get_hilbert_space();
+    const auto U = _hilbert.symmetry_rotation();
+    
+    auto _hilbert_spaceU1 = QHS::U1_hilbert_space<QHS::U1::charge, true>(this->L, this->syms.N);
+	size_t dimU1 = _hilbert_spaceU1.get_hilbert_space_size();
+    std::cout << dim << "\t\t" << dimU1 << std::endl;
+    std::cout << " - - - - - - FINISHED CREATING SYMMETRY TRANSFORMATION IN : " << tim_s(start) << " seconds - - - - - - " << std::endl; // simulation end
+    start = std::chrono::system_clock::now();
+
+    auto subsystem_sizes = arma::conv_to<arma::Col<int>>::from(arma::linspace(0, this->L - 1, this->L));
+    auto qs = arma::linspace(0.5, 3.0, 26);
+    // auto subsystem_sizes = arma::Col<int>( { int(this->L) / 2} );
+    std::cout << subsystem_sizes.t() << std::endl;
+
+    arma::mat part_ratio(size, qs.size(), arma::fill::zeros);
+    arma::mat info_ent(size, qs.size(), arma::fill::zeros);
+    
+    arma::mat Purity(size, subsystem_sizes.size()+1, arma::fill::zeros);
+    arma::vec NonGauss(size, arma::fill::zeros);
+    arma::vec Ecut(size, arma::fill::zeros);
+
+    arma::vec slater_entropy(size, arma::fill::zeros);
+    arma::vec slater_ipr(size, arma::fill::zeros);
+
+    const int M_max = dim;
+    arma::vec Ms_vals = arma::linspace(1, M_max, M_max);
+    arma::mat truncation_error(size, Ms_vals.size(), arma::fill::zeros);
+
+    std::vector<boost::dynamic_bitset<>> mb_states = QHS::single_particle::mb_config_all(this->L, this->syms.N);
+    // outer_threads = this->thread_number;
+    // omp_set_num_threads(1);
+
+// #pragma omp parallel for num_threads(outer_threads) schedule(dynamic)
+    for(int n = 0; n < size; n++){
+        clk::time_point start_n = std::chrono::system_clock::now();
+        // int idx = 0;
+        // if(dim < dim_cut) idx = Emin;
+        arma::Col<element_type> eigenstate = this->ptr_to_model->get_eigenState(Emin + n);
+        arma::Col<element_type> state = U * eigenstate;
+        Ecut(n) = E(Emin + n);
+        state = arma::normalise(state);
+
+        arma::cx_mat J_m_MB(this->L, this->L, arma::fill::zeros);
+        for(u64 base_state = 0; base_state < ULLPOW(this->L); base_state++)
+        {
+        // #pragma omp parallel for
+            for(int i = 0; i < this->L; i++)
+            {
+                auto [_spin, _] = operators::sigma_z<double>(base_state, this->L, i);
+                if( _spin > 0){
+                    J_m_MB(i, i) += std::conj(state(base_state)) * state(base_state);
+                }
+                for(int j = i+1; j < this->L; j++)
+                {
+                    auto [val1, cm] = operators::fermions::spinless::anihilate<double>(base_state, this->L, j);
+                    auto [val2, cpcm] = operators::fermions::spinless::create<double>(cm, this->L, i);
+                    if(std::abs(val1 * val2) > 0)
+                    {
+                        auto _val_ = std::conj(state(cpcm)) * state(base_state) * val1 * val2;
+                        J_m_MB(i, j) += _val_;
+                        J_m_MB(j, i) += std::conj(_val_);
+                    }
+                }		
+            }	
+        }
+        std::cout << arma::trace(J_m_MB) << "\t\t" << arma::norm(J_m_MB - J_m_MB * J_m_MB, "fro") << std::endl;
+        // std::cout << arma::abs(J_m_MB) << std::endl;
+        // std::cout << arma::abs(J_m_MB2) << std::endl << std::endl;
+
+        arma::vec lambda;
+        arma::cx_mat orbitals;
+        arma::eig_sym(lambda, orbitals, J_m_MB);
+        // std::cout << "natural occupations = " << lambda.t() << std::endl;
+
+        J_m_MB = 2.0 * J_m_MB - arma::eye(this->L, this->L);
+        auto lambdas = arma::eig_sym(J_m_MB);
+        NonGauss(n) = QHS::single_particle::entanglement::vonNeumann(lambdas);
+        Purity(n, subsystem_sizes.size()) = std::real( arma::trace(J_m_MB * J_m_MB) );
+    // #pragma omp parallel for
+        for(int iiLA = 0; iiLA < subsystem_sizes.size(); iiLA++){
+            int LA = subsystem_sizes[iiLA];
+
+            arma::uvec row_idx = arma::regspace<arma::uvec>(0, LA-1);
+            arma::uvec col_idx = arma::regspace<arma::uvec>(0, LA-1);
+            arma::cx_mat J_m_VA = J_m_MB.submat(row_idx, col_idx);
+            Purity(n, iiLA) = std::real( arma::trace(J_m_VA * J_m_VA) );
+        }
+        
+    #pragma omp parallel for
+        for(int iq = 0; iq < qs.size(); iq++)
+        {
+            if(qs(iq) == 1)
+            {
+                double _pr_ = 0;
+                for (int k = 0; k < eigenstate.size(); k++) {
+                    auto c_k = eigenstate(k);
+                    double value = std::abs(std::conj(c_k) * c_k);
+                    _pr_ += (std::abs(value) > 0) ? -value * std::log(value) : 0;
+                }
+                part_ratio(n, iq) = arma::norm(eigenstate);
+                info_ent(n, iq) = _pr_;
+            }
+            else{
+                double _pr_ = statistics::participation_ratio(eigenstate, qs(iq));
+                part_ratio(n, iq) = _pr_;
+                info_ent(n, iq) = std::log(_pr_) / (1 - qs(iq));
+            }
+        }
+
+        
+        // QHS::single_particle::slater::ManyBodyState<element_type> SlaterConverter(orbitals, _hilbert);
+        outer_threads = this->thread_number;
+        omp_set_num_threads(1);
+
+        arma::vec overlaps(dimU1, arma::fill::zeros);
+        for(int I = 0; I < dimU1; I++)
+        {
+            // std::cout << mb_states[I] << std::endl;
+            arma::Col<cpx> fullstate(ULLPOW(this->L), arma::fill::zeros);
+            QHS::single_particle::slater::ManyBodyState<cpx, false>  SlaterConverter(orbitals, _hilbert_spaceU1);
+            
+            // Fill state with appropriate values ---------------------------------------------------
+            SlaterConverter.convert(fullstate, mb_states[I]);
+            // --------------------------------------------------------------------------------------
+            fullstate = arma::normalise(fullstate);
+
+            double over_rmp = std::norm( dot_prod(state, fullstate) );
+            overlaps(I) = over_rmp;
+
+            slater_ipr(n) += over_rmp * over_rmp;
+            if( over_rmp > 1e-14) slater_entropy(n) -= over_rmp * std::log(over_rmp);
+        }
+        std::cout << arma::sum(overlaps) << std::endl;
+        overlaps = arma::sort(overlaps, "descend");
+        omp_set_num_threads(this->thread_number);
+        outer_threads = 1;
+
+        for(int iM = 0; iM < Ms_vals.size(); iM++){
+            int M = Ms_vals(iM);
+            truncation_error(n, iM) = 1 - arma::sum(overlaps.rows(0, M-1));
+        }
+
+        std::cout << " - - - - - - Finished state n = " << n << " in: " << tim_s(start_n) << " seconds - - - - - - " << std::endl; // simulation end
+    }
+    std::cout << " - - - - - - FINISHED CORR MAT AND IPR CALCULATION IN : " << tim_s(start) << " seconds - - - - - - " << std::endl; // simulation end
+    
+    // omp_set_num_threads(this->thread_number);
+    // outer_threads = 1;
+    
+    E.save(arma::hdf5_name(dir + filename + ".hdf5", "energies"));
+	// S.save(arma::hdf5_name(dir + filename + ".hdf5", "entropy", arma::hdf5_opts::append));
+    subsystem_sizes.save(arma::hdf5_name(dir + filename + ".hdf5", "subsystem_sizes", arma::hdf5_opts::append));
+    arma::uvec({dim}).save(arma::hdf5_name(dir + filename + ".hdf5", "D", arma::hdf5_opts::append));
+
+    qs.save(arma::hdf5_name(dir + filename + ".hdf5", "qs", arma::hdf5_opts::append));
+    part_ratio.save(arma::hdf5_name(dir + filename + ".hdf5", "part_ratio", arma::hdf5_opts::append));
+    info_ent.save(arma::hdf5_name(dir + filename + ".hdf5", "info_ent", arma::hdf5_opts::append));
+
+    truncation_error.save(arma::hdf5_name(dir + filename + ".hdf5", "truncation_error", arma::hdf5_opts::append));
+    slater_entropy.save(arma::hdf5_name(dir + filename + ".hdf5", "slater_entropy", arma::hdf5_opts::append));
+    slater_ipr.save(arma::hdf5_name(dir + filename + ".hdf5", "slater_ipr", arma::hdf5_opts::append));
+    Ms_vals.save(arma::hdf5_name(dir + filename + ".hdf5", "Ms_vals", arma::hdf5_opts::append));
+    
+    subsystem_sizes.save(arma::hdf5_name(dir + filename + ".hdf5", "subsystem_sizes", arma::hdf5_opts::append));
+    NonGauss.save(arma::hdf5_name(dir + filename + ".hdf5", "Non-Gaussianity", arma::hdf5_opts::append));
+    Purity.save(arma::hdf5_name(dir + filename + ".hdf5", "Purity", arma::hdf5_opts::append));
+    Ecut.save(arma::hdf5_name(dir + filename + ".hdf5", "Ecut", arma::hdf5_opts::append));
+}
+
 /// @brief 
 /// @param skip 
 /// @param sep 
@@ -489,8 +729,10 @@ std::string ui::set_info(std::vector<std::string> skip, std::string sep) const
             ",V2=" + to_string_prec(this->V2);
         
         if(this->boundary_conditions == 0)      name += ",k=" + std::to_string(this->syms.k_sym);
-        if(this->k_real_sec(this->syms.k_sym))  name += ",p=" + std::to_string(this->syms.p_sym);
-        if(this->use_flip_X())                  name += ",zx=" + std::to_string(this->syms.zx_sym);
+        if(this->boundary_conditions < 2 
+                && this->k_real_sec(this->syms.k_sym))  name += ",p=" + std::to_string(this->syms.p_sym);
+        if(this->boundary_conditions < 2 
+                && this->use_flip_X())                  name += ",zx=" + std::to_string(this->syms.zx_sym);
         
         
 
