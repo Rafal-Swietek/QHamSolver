@@ -9,6 +9,8 @@
 #include "fermions.hpp"
 #include "../../include/single_particle/correlators.hpp"
 #include "../../include/single_particle/entanglement.hpp"
+#include "../../include/single_particle/many_body_configurations.hpp"
+#include "../../include/single_particle/many_body_state.hpp"
 
 
 // ----------------------------------------------------------------------------- UI QUANTUM SUN -----------------------------------------------------------------------------
@@ -126,6 +128,7 @@ namespace Fermions_UI{
 
         virtual void eigenstate_entanglement() override;
         void purity();
+        void gaussian_rank();
     };
 }
 
