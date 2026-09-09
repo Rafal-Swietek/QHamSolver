@@ -529,7 +529,7 @@ void ui::gaussian_rank()
     }
     // const int size = min(500, int(0.1 * dim));
     // const int size = this->boundary_conditions == 2? (dim > dim_cut? this->l_steps : dim) : min(20, int(0.02 * dim));
-    const int size = min(100, int(0.05 * dim));
+    const int size = min(50, int(0.05 * dim));
 
     std::cout << " - - - - - - FINISHED DIAGONALIZATION IN : " << tim_s(start) << " seconds - - - - - - " << std::endl; // simulation end
     
