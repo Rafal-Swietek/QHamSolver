@@ -86,14 +86,16 @@ void QuantumSunU1::create_hamiltonian()
 	/* Create GOE Matrix */
     bool normalized = false;
     const size_t dim_erg = ULLPOW( (this->grain_size) );
-    arma::sp_mat H_grain(dim_erg, dim_erg);
+    this->H_grain = arma::sp_mat(dim_erg, dim_erg);
     
     if(normalized){
         _assert_(false, "Not implemented normalized U(1) grain.. :'("); 
     } else
     {
-        arma::mat H_grain_full = this->_gamma * this->grain.generate_matrix(dim_erg);
-        H_grain_full = 0.3 * H_grain_full / std::sqrt(2);
+        arma::mat H_grain_full = this->grain.generate_matrix(dim_erg);
+        // H_grain_full = 0.3 * H_grain_full / std::sqrt(2);
+        // H_grain_full = H_grain_full / std::sqrt(arma::trace(H_grain_full * H_grain_full) / dim_erg);
+        // std::cout << "Full GOE grain:\n" << H_grain_full << std::endl << arma::trace(H_grain_full * H_grain_full) / dim_erg << std::endl;
         _extra_debug( std::cout << "Full GOE grain:\n" << H_grain_full << std::endl << arma::trace(H_grain_full * H_grain_full) / dim_erg << std::endl; )
 
         for(int M = 0; M <= this->grain_size; M++)
@@ -105,11 +107,12 @@ void QuantumSunU1::create_hamiltonian()
                 for(int j = 0; j < _grain_hilbert_space.get_hilbert_space_size(); j++)
                 {
                     u64 state2 = _grain_hilbert_space(j);
-                    H_grain(state1, state2) = H_grain_full(state1, state2);
+                    this->H_grain(state1, state2) = H_grain_full(state1, state2);
                 }
             }
         }
-        _extra_debug( std::cout << "U1 block-symmetric GOE grain:\n" << arma::mat(H_grain) << std::endl << arma::trace(H_grain * H_grain) / dim_erg << std::endl; )
+        this->H_grain = this->H_grain / std::sqrt(arma::trace(this->H_grain * this->H_grain) / dim_erg);
+        _extra_debug( std::cout << "U1 block-symmetric GOE grain:\n" << arma::mat(this->H_grain) << std::endl << arma::trace(this->H_grain * this->H_grain) / dim_erg << std::endl; )
     }
 
     /* Create random couplings */
@@ -156,7 +159,7 @@ void QuantumSunU1::create_hamiltonian()
         // cout << "----------------\nbase: "; for(int j = 0; j < this->system_size; j++) std::cout << int(0.5 + std::real(std::get<0>( Z(base_state, this->system_size, j) )) ); std::cout << std::endl;
         for(int idx = 0; idx < dim_erg; idx++)
         {
-            double value = H_grain.col(grain_state)(idx);
+            double value = this->H_grain.col(grain_state)(idx);
             if( std::abs(value) > 1e-15)
             {
                 auto row = ULLPOW(this->num_of_spins) * idx + spins_state;
