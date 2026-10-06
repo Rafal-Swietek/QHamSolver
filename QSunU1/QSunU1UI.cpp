@@ -106,14 +106,18 @@ arma::Col<ui::element_type> ui::cast_state(const arma::Col<ui::element_type>& st
 void ui::matrix_elements()
 {
 	// std::string dir = this->saving_dir + "MatrixElements" + kPSep;
-	std::string dir = this->saving_dir + "SpectralsSiteResolved" + kPSep;
+	std::string dir = this->saving_dir + "SpectralsSiteResolved_E=0" + kPSep;
 	// std::string dir = this->saving_dir + "Spectrals_IDK_what" + kPSep;
 
 	createDirs(dir);
 	
 	size_t dim = this->ptr_to_model->get_hilbert_size();
 	std::string info = this->set_info();
+	std::size_t dim_cut = 1e5;
 
+	const u64 size = std::min({ (u64)500, dim/10});
+	this->l_steps = size;
+	
 	// arma::vec sites = arma::linspace(0, this->L-1, this->L);
 	arma::vec sites = arma::linspace(0, this->L-1, this->L);
 	// arma::Col<int> sites = arma::Col<int>({(int)this->L - 1});
@@ -157,8 +161,16 @@ void ui::matrix_elements()
 			this->ptr_to_model->generate_hamiltonian();
 		
 		clk::time_point start = std::chrono::system_clock::now();
-    	this->ptr_to_model->diagonalization();
-
+    	// this->ptr_to_model->diagonalization();
+		if(dim > dim_cut)
+		{
+			double error = this->ptr_to_model->diag_sparse(this->l_steps, this->l_bundle, this->tol, this->seed);	
+			if( error > 1e-10 ) { std::cout << "POLFED FAILED: Maximal Error = " << error << std::endl; }
+			dim = this->l_steps;
+		}
+		else{
+			this->ptr_to_model->diagonalization();
+		}
 		arma::vec dis_array = this->ptr_to_model->get_model_ref().get_disorder();
 		
 		std::cout << " - - - - - - finished diagonalization in : " << tim_s(start) << " s for realis = " << realis << " - - - - - - " << std::endl; // simulation end
@@ -167,10 +179,14 @@ void ui::matrix_elements()
 		const arma::vec E = this->ptr_to_model->get_eigenvalues();
 		const auto& V = this->ptr_to_model->get_eigenvectors();
 		
-		u64 num = (u64)std::min(0.1 * dim, 500.0);
+		// u64 num = (u64)std::min(0.1 * dim, 500.0);
 		auto Eav_idx = this->ptr_to_model->E_av_idx;
-		const u64 idx_min = Eav_idx - (u64)num / 2.0;
-		const u64 idx_max = Eav_idx + (u64)num / 2.0;
+		u64 idx_min = Eav_idx - (u64)size / 2.0;
+		u64 idx_max = Eav_idx + (u64)size / 2.0;
+		if(dim > dim_cut){
+			idx_min = 0;
+			idx_max = size;
+		}
 
 		std::string dir_realis = dir + "realisation=" + std::to_string(this->jobid + realis) + kPSep;
 		createDirs(dir_realis);
@@ -181,61 +197,7 @@ void ui::matrix_elements()
 		arma::Mat<element_type> agp_norm_Sz_r(dim, sites.size(), arma::fill::zeros);
 		arma::Mat<element_type> typ_susc_Sz_r(dim, sites.size(), arma::fill::zeros);
 		arma::Mat<element_type> diag_mat_elem_Sz_r(dim, sites.size(), arma::fill::zeros);
-		
-		arma::Mat<element_type> agp_norm_Sx_r(dim, sites.size(), arma::fill::zeros);
-		arma::Mat<element_type> typ_susc_Sx_r(dim, sites.size(), arma::fill::zeros);
-		arma::Mat<element_type> diag_mat_elem_Sx_r(dim, sites.size(), arma::fill::zeros);
-		
-		arma::vec Hdiagonal = arma::diagvec( this->ptr_to_model->get_dense_hamiltonian() );
 
-		double E_av = arma::trace(E) / double(dim);
-		auto i = min_element(begin(Hdiagonal), end(Hdiagonal), [=](double x, double y) {
-			return abs(x - E_av) < abs(y - E_av);
-		});
-		const u64 idx_state = i - begin(Hdiagonal);
-		double quench_E = Hdiagonal(idx_state);
-
-		arma::Col<element_type> coeff = V.row(idx_state).t();
-
-        double E_min_pred = -2. * this->L;
-        double E_max_pred =  2. * this->L;
-        double _eta = 0.04;
-
-        arma::vec energies = arma::linspace(E_min_pred - 5 * _eta, E_max_pred + 5 * _eta, 3000);
-        arma::vec DOS(energies.size(), arma::fill::zeros);
-        arma::vec LDOS(energies.size(), arma::fill::zeros);
-        arma::vec GAP_RATIO(energies.size(), arma::fill::zeros);
-		double norm_inv = 1. / std::sqrt(constants<double>::two_pi * _eta*_eta);
-
-	#pragma omp for schedule(dynamic)
-        for(long e_idx = 0; e_idx < energies.size(); e_idx++){
-            // doubl
-            // ldos(e_idx) += arma::sum(arma::square(coeff.t()) % _eta / ( arma::square(Esym))
-            for(long alfa = 0; alfa < E.size(); alfa++){
-                double om = E(alfa) - energies(e_idx);
-                double gauss = std::exp( - om * om / (2.*_eta * _eta) ) * norm_inv;
-                DOS(e_idx) += gauss;
-                LDOS(e_idx) += gauss * std::norm(coeff(alfa));
-            }
-            double E_lower = energies(e_idx) - 2 * _eta;
-            double E_upper = energies(e_idx) + 2 * _eta;
-            arma::uvec idx = arma::find(E > E_lower && E < E_upper);
-            if(idx.size() > 1){
-                u64 idx_start = idx.front();
-                u64 idx_stop  = idx.back();
-                arma::vec gaps = arma::diff(E.rows(idx_start, idx_stop));
-                int counter = 0;
-                for(long id = 0; id < gaps.size()-1; id++){
-                    GAP_RATIO(e_idx) += std::min(gaps(id), gaps(id+1)) / std::max(gaps(id), gaps(id+1));
-                    counter++;
-                }
-                GAP_RATIO(e_idx) /= double(counter);
-            }
-        }
-        coeff.save(arma::hdf5_name(dir_realis + info + ".hdf5", "coeff", arma::hdf5_opts::append));
-        DOS.save(arma::hdf5_name(dir_realis + info + ".hdf5", "dos", arma::hdf5_opts::append));
-        LDOS.save(arma::hdf5_name(dir_realis + info + ".hdf5", "LDOS", arma::hdf5_opts::append));
-        GAP_RATIO.save(arma::hdf5_name(dir_realis + info + ".hdf5", "GAP_RATIO", arma::hdf5_opts::append));
 		for(int i = 0; i < sites.size(); i++)
 		{
 			int site = sites(i);
@@ -249,15 +211,16 @@ void ui::matrix_elements()
 			};
 			auto _operator = QOps::generic_operator<double>(this->L, std::move(kernel_Sz), 1.0);
 			arma::sp_mat op_mat = _operator.to_reduced_matrix(_hilbert_space);
-			double HSnorm = arma::trace(op_mat * op_mat) / double(dim);
+			double HSnorm = arma::trace(op_mat * op_mat) / double( _hilbert_space.get_hilbert_space_size() );
 			op_mat = op_mat / std::sqrt(HSnorm);
 
 			arma::Mat<element_type> mat_elem = V.t() * op_mat * V;
-			double variance_ratio = calculate_ratio_variance(mat_elem);
-			arma::vec( {variance_ratio} ).save(   arma::hdf5_name(dir_realis + info + ".hdf5", "j=" + std::to_string(site) + "/variance_ratio_full",   arma::hdf5_opts::append));
-			arma::Mat<element_type> _submat_ = mat_elem.submat(idx_min, idx_min, idx_max -1, idx_max - 1);
-			variance_ratio = calculate_ratio_variance(_submat_);
-			arma::vec( {variance_ratio} ).save(   arma::hdf5_name(dir_realis + info + ".hdf5", "j=" + std::to_string(site) + "/variance_ratio_submat",   arma::hdf5_opts::append));
+			arma::Mat<element_type> _submat_;
+			if(dim < dim_cut){
+				_submat_ = mat_elem.submat(idx_min, idx_min, idx_max -1, idx_max - 1);
+			} else {
+				_submat_ = mat_elem;
+			}
 			
 			// _submat_.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "MAT_ELEM/Sz_i=" + std::to_string(site),   arma::hdf5_opts::append));
 			// std::tie(_agp, _typ_susc, _susc, tmp) = adiabatics::gauge_potential(mat_elem, E, this->L);
@@ -370,12 +333,21 @@ void ui::matrix_elements()
 		}
 		// #ifndef MY_MAC
 
-		arma::mat occupations(this->L, dim, arma::fill::zeros);
-		for(int n = 0; n < dim; n++)
+		arma::mat occupations(this->L, size, arma::fill::zeros);
+		arma::mat occupations_fermions(this->L, size, arma::fill::zeros);
+		arma::mat center_of_liom(this->L, size, arma::fill::zeros);
+		arma::mat spread_of_liom(this->L, size, arma::fill::zeros);
+		arma::mat center_of_liom_fermions(this->L, size, arma::fill::zeros);
+		arma::mat spread_of_liom_fermions(this->L, size, arma::fill::zeros);
+
+		arma::vec IPR_obdm(size, arma::fill::zeros);
+		arma::vec IPR_obdm_fermions(size, arma::fill::zeros);
+		for(int n = 0; n < size; n++)
 		{
-			auto state = this->ptr_to_model->get_eigenState(n);
+			auto state = this->ptr_to_model->get_eigenState(idx_min + n);
 			arma::mat rho(this->L, this->L, arma::fill::zeros);
-			for(u64 k_idx = 0; k_idx < dim; k_idx++)
+			arma::mat rho_fermions(this->L, this->L, arma::fill::zeros);
+			for(u64 k_idx = 0; k_idx < _hilbert_space.get_hilbert_space_size(); k_idx++)
 			{
 				u64 base_state = _hilbert_space(k_idx);
 				for(int i = 0; i < this->L; i++)
@@ -383,30 +355,107 @@ void ui::matrix_elements()
 					auto [_spin, _] = operators::sigma_z<double>(base_state, this->L, i);
 					if( _spin > 0){
 						rho(i, i) += (state(k_idx)) * state(k_idx);
+						rho_fermions(i, i) += (state(k_idx)) * state(k_idx);
 					}
 					for(int j = i+1; j < this->L; j++)
 					{
-						auto [_spin2, _] = operators::sigma_z<double>(base_state, this->L, i);
+						auto [_spin2, _] = operators::sigma_z<double>(base_state, this->L, j);
+						// printSeparated(std::cout, "\t", 16, true, n, k_idx, i, j, _spin * _spin2, boost::dynamic_bitset<>(this->L, base_state));
 						if(_spin * _spin2 < 0){
-							auto [val1, cm] = operators::sigma_minus<double>(base_state, this->L, j);
-							auto [val2, cpcm] = operators::sigma_plus<double>(cm, this->L, i);
-							if(std::abs(val1 * val2) > 0)
 							{
-								auto idx = _hilbert_space.find(cpcm);
-								auto _val_ = (state(idx)) * state(k_idx) * val1 * val2;
-								rho(i, j) += _val_;
-								rho(j, i) += _val_;
+								auto [val1, cm] = operators::sigma_minus<double>(base_state, this->L, j);
+								auto [val2, cpcm] = operators::sigma_plus<double>(cm, this->L, i);
+								if(std::abs(val1 * val2) > 0)
+								{
+									auto idx = _hilbert_space.find(cpcm);
+									auto _val_ = (state(idx)) * state(k_idx) * val1 * val2;
+									rho(i, j) += _val_;
+									rho(j, i) += _val_;
+								}
+							}
+							{
+								auto [val1, cm] = operators::fermions::spinless::anihilate<double>(base_state, this->L, j);
+								auto [val2, cpcm] = operators::fermions::spinless::create<double>(cm, this->L, i);
+								if(std::abs(val1 * val2) > 0)
+								{
+									auto idx = _hilbert_space.find(cpcm);
+									auto _val_ = (state(idx)) * state(k_idx) * val1 * val2;
+									rho_fermions(i, j) += _val_;
+									rho_fermions(j, i) += _val_;
+								}
 							}
 						}
 					}
 				}	
 			}
-			arma::vec occ = arma::eig_sym(rho);
+			arma::vec occ;
+			arma::mat LIOMS;
+			arma::eig_sym(occ, LIOMS, rho);
 			occupations.col(n) = occ;
-			printSeparated(std::cout, "\t", 20, true, n, arma::sum(occ));
+			for(int alfa = 0; alfa < occ.size(); alfa++){
+				auto orbital = arma::square(LIOMS.col(alfa));
+				IPR_obdm(n) += occ(alfa) * arma::dot(orbital, orbital);
+				arma::vec ell = arma::regspace<arma::vec>(1, L);
+				center_of_liom(alfa, n) = arma::dot(ell, orbital);
+				spread_of_liom(alfa, n) = arma::dot(arma::square(ell), orbital) - center_of_liom(alfa, n) * center_of_liom(alfa, n);
+			}
+			IPR_obdm(n) = IPR_obdm(n) * 2. / double(this->L);
+
+			if(realis + this->jobid < 5){
+				occ.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "STATES/n=" + std::to_string(n) + "/occ",   arma::hdf5_opts::append));
+				LIOMS.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "STATES/n=" + std::to_string(n) + "/LIOMS",   arma::hdf5_opts::append));
+				rho.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "STATES/n=" + std::to_string(n) + "/rho",   arma::hdf5_opts::append));
+				
+				arma::mat rho2 = rho.submat(0, 0, this->grain_size-1, this->grain_size-1);
+				arma::eig_sym(occ, LIOMS, rho2);
+				occ.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "STATES/n=" + std::to_string(n) + "/occ_grain",   arma::hdf5_opts::append));
+				LIOMS.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "STATES/n=" + std::to_string(n) + "/LIOMS_grain",   arma::hdf5_opts::append));
+				
+				rho2 = rho.submat(this->grain_size, this->grain_size, this->L-1, this->L-1);
+				arma::eig_sym(occ, LIOMS, rho2);
+				occ.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "STATES/n=" + std::to_string(n) + "/occ_spins",   arma::hdf5_opts::append));
+				LIOMS.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "STATES/n=" + std::to_string(n) + "/LIOMS_spins",   arma::hdf5_opts::append));
+			}
+
+			arma::eig_sym(occ, LIOMS, rho_fermions);
+			occupations_fermions.col(n) = occ;
+			// printSeparated(std::cout, "\t", 20, true, n, arma::sum(occ));
+			for(int alfa = 0; alfa < occ.size(); alfa++){
+				auto orbital = arma::square(LIOMS.col(alfa));
+				IPR_obdm_fermions(n) += occ(alfa) * arma::dot(orbital, orbital);
+				arma::vec ell = arma::regspace<arma::vec>(1, L);
+				center_of_liom_fermions(alfa, n) = arma::dot(ell, orbital);
+				spread_of_liom_fermions(alfa, n) = arma::dot(arma::square(ell), orbital) - center_of_liom_fermions(alfa, n) * center_of_liom_fermions(alfa, n);
+			}
+			IPR_obdm_fermions(n) = IPR_obdm_fermions(n) * 2. / double(this->L);
+
+			if(realis + this->jobid < 5){
+				occ.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "STATES_fermionic/n=" + std::to_string(n) + "/occ",   arma::hdf5_opts::append));
+				LIOMS.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "STATES_fermionic/n=" + std::to_string(n) + "/LIOMS",   arma::hdf5_opts::append));
+				rho.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "STATES_fermionic/n=" + std::to_string(n) + "/rho",   arma::hdf5_opts::append));
+				
+				arma::mat rho2 = rho.submat(0, 0, this->grain_size-1, this->grain_size-1);
+				arma::eig_sym(occ, LIOMS, rho2);
+				occ.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "STATES_fermionic/n=" + std::to_string(n) + "/occ_grain",   arma::hdf5_opts::append));
+				LIOMS.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "STATES_fermionic/n=" + std::to_string(n) + "/LIOMS_grain",   arma::hdf5_opts::append));
+				
+				rho2 = rho.submat(this->grain_size, this->grain_size, this->L-1, this->L-1);
+				arma::eig_sym(occ, LIOMS, rho2);
+				occ.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "STATES_fermionic/n=" + std::to_string(n) + "/occ_spins",   arma::hdf5_opts::append));
+				LIOMS.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "STATES_fermionic/n=" + std::to_string(n) + "/LIOMS_spins",   arma::hdf5_opts::append));
+			}
+		}
+		if(realis + this->jobid < 5){
+			center_of_liom.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "center_of_liom",   arma::hdf5_opts::append));
+			spread_of_liom.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "spread_of_liom",   arma::hdf5_opts::append));
+			center_of_liom_fermions.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "center_of_liom_fermions",   arma::hdf5_opts::append));
+			spread_of_liom_fermions.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "spread_of_liom_fermions",   arma::hdf5_opts::append));
 		}
 		{
+			IPR_obdm.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "IPR_obdm",   arma::hdf5_opts::append));
+			IPR_obdm_fermions.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "IPR_obdm_fermions",   arma::hdf5_opts::append));
 			occupations.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "occupations",   arma::hdf5_opts::append));
+			occupations_fermions.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "occupations_fermions",   arma::hdf5_opts::append));
 			agp_norm_Sz_r.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "susc",   arma::hdf5_opts::append));
 			// agp_norm_Sx_r.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "SUSC/Sx",   arma::hdf5_opts::append));
 
@@ -415,6 +464,15 @@ void ui::matrix_elements()
 
 			diag_mat_elem_Sz_r.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "diag_mat",   arma::hdf5_opts::append));
 			// diag_mat_elem_Sx_r.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "DIAG_MAT/Sx",   arma::hdf5_opts::append));
+
+			// Patrycja's algorithm
+			arma::mat R = diag_mat_elem_Sz_r.t() * diag_mat_elem_Sz_r / double(diag_mat_elem_Sz_r.n_rows);
+			arma::vec sigma;
+			arma::mat LIOMS;
+			arma::eig_sym(sigma, LIOMS, R);
+			sigma.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "LIOMS/stifness",   arma::hdf5_opts::append));
+			LIOMS.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "LIOMS/LIOMS",   arma::hdf5_opts::append));
+			R.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "LIOMS/R",   arma::hdf5_opts::append));
 		}
 		// #endif
 		
