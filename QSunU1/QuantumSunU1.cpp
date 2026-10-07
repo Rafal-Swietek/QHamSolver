@@ -118,8 +118,10 @@ void QuantumSunU1::create_hamiltonian()
     arma::mat full_H_grain = arma::kron<arma::mat>(arma::mat(this->H_grain), arma::eye<arma::mat>(dim_loc, dim_loc));
     arma::uvec indices = arma::conv_to<arma::uvec>::from(this->_hilbert_space.get_mapping());
     full_H_grain = full_H_grain.submat(indices, indices);
-    full_H_grain = full_H_grain / ( arma::trace(full_H_grain * full_H_grain) / ULLPOW(this->system_size) );
-    _extra_debug( std::cout << "Normalization:\t" << arma::trace(full_H_grain * full_H_grain) / ULLPOW(this->system_size) << std::endl; )
+    full_H_grain = full_H_grain / std::sqrt( arma::trace(full_H_grain * full_H_grain) / dim );
+    _extra_debug( 
+        std::cout << "Normalization:\t" << arma::trace(full_H_grain * full_H_grain) / dim << std::endl; 
+    )
 
     /* Create random couplings */
     this->_long_range_couplings = arma::vec(this->num_of_spins, arma::fill::zeros);

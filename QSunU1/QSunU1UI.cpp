@@ -165,7 +165,7 @@ void ui::matrix_elements()
 		if(dim > dim_cut)
 		{
 			double error = this->ptr_to_model->diag_sparse(this->l_steps, this->l_bundle, this->tol, this->seed);	
-			if( error > 1e-10 ) { std::cout << "POLFED FAILED: Maximal Error = " << error << std::endl; }
+			if( error > 1e-12 ) { std::cout << "POLFED FAILED: Maximal Error = " << error << std::endl; }
 			dim = this->l_steps;
 		}
 		else{
@@ -213,16 +213,11 @@ void ui::matrix_elements()
 			arma::sp_mat op_mat = _operator.to_reduced_matrix(_hilbert_space);
 			double HSnorm = arma::trace(op_mat * op_mat) / double( _hilbert_space.get_hilbert_space_size() );
 			op_mat = op_mat / std::sqrt(HSnorm);
+			
+			std::cout << "operator norm = " << arma::trace(op_mat * op_mat) / double( _hilbert_space.get_hilbert_space_size() ) << std::endl;
 
 			arma::Mat<element_type> mat_elem = V.t() * op_mat * V;
-			arma::Mat<element_type> _submat_;
-			if(dim < dim_cut){
-				_submat_ = mat_elem.submat(idx_min, idx_min, idx_max -1, idx_max - 1);
-			} else {
-				_submat_ = mat_elem;
-			}
-			
-			// _submat_.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "MAT_ELEM/Sz_i=" + std::to_string(site),   arma::hdf5_opts::append));
+
 			// std::tie(_agp, _typ_susc, _susc, tmp) = adiabatics::gauge_potential(mat_elem, E, this->L);
 			std::tie(_susc, _susc_r) = adiabatics::gauge_potential_save(mat_elem, E);
 			agp_norm_Sz_r.col(i) = _susc;
@@ -465,14 +460,20 @@ void ui::matrix_elements()
 			diag_mat_elem_Sz_r.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "diag_mat",   arma::hdf5_opts::append));
 			// diag_mat_elem_Sx_r.save(   arma::hdf5_name(dir_realis + info + ".hdf5", "DIAG_MAT/Sx",   arma::hdf5_opts::append));
 
-			// Patrycja's algorithm
-			arma::mat R = diag_mat_elem_Sz_r.t() * diag_mat_elem_Sz_r / double(diag_mat_elem_Sz_r.n_rows);
-			arma::vec sigma;
-			arma::mat LIOMS;
-			arma::eig_sym(sigma, LIOMS, R);
-			sigma.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "LIOMS/stifness",   arma::hdf5_opts::append));
-			LIOMS.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "LIOMS/LIOMS",   arma::hdf5_opts::append));
-			R.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "LIOMS/R",   arma::hdf5_opts::append));
+			// // Patrycja's algorithm
+			// arma::mat R = diag_mat_elem_Sz_r.t() * diag_mat_elem_Sz_r / double(diag_mat_elem_Sz_r.n_rows);
+			// arma::vec sigma;
+			// arma::mat LIOMS;
+			// arma::eig_sym(sigma, LIOMS, R);
+			// sigma.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "LIOMS/stifness",   arma::hdf5_opts::append));
+			// LIOMS.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "LIOMS/LIOMS",   arma::hdf5_opts::append));
+			// R.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "LIOMS/R",   arma::hdf5_opts::append));
+			// arma::vec normos(sigma.size());
+			// for(int n = 0; n < sigma.size(); n++){
+			// 	auto state = LIOMS.col(n);
+			// 	normos(n) = arma::norm(state);
+			// }
+			// normos.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "LIOMS/norms",   arma::hdf5_opts::append));
 		}
 		// #endif
 		
