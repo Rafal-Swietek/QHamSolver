@@ -86,6 +86,7 @@ void QuantumSunU1::create_hamiltonian()
 	/* Create GOE Matrix */
     bool normalized = false;
     const size_t dim_erg = ULLPOW( (this->grain_size) );
+    const size_t dim_loc = ULLPOW( (this->num_of_spins) );
     this->H_grain = arma::sp_mat(dim_erg, dim_erg);
     
     if(normalized){
@@ -111,9 +112,14 @@ void QuantumSunU1::create_hamiltonian()
                 }
             }
         }
-        this->H_grain = this->H_grain / std::sqrt(arma::trace(this->H_grain * this->H_grain) / dim_erg);
+        // this->H_grain = this->H_grain / std::sqrt(arma::trace(this->H_grain * this->H_grain) / dim_erg);
         _extra_debug( std::cout << "U1 block-symmetric GOE grain:\n" << arma::mat(this->H_grain) << std::endl << arma::trace(this->H_grain * this->H_grain) / dim_erg << std::endl; )
     }
+    arma::mat full_H_grain = arma::kron<arma::mat>(arma::mat(this->H_grain), arma::eye<arma::mat>(dim_loc, dim_loc));
+    arma::uvec indices = arma::conv_to<arma::uvec>::from(this->_hilbert_space.get_mapping());
+    full_H_grain = full_H_grain.submat(indices, indices);
+    full_H_grain = full_H_grain / ( arma::trace(full_H_grain * full_H_grain) / ULLPOW(this->system_size) );
+    _extra_debug( std::cout << "Normalization:\t" << arma::trace(full_H_grain * full_H_grain) / ULLPOW(this->system_size) << std::endl; )
 
     /* Create random couplings */
     this->_long_range_couplings = arma::vec(this->num_of_spins, arma::fill::zeros);
@@ -149,23 +155,28 @@ void QuantumSunU1::create_hamiltonian()
         std::cout << "Mask grain:\t" << mask_grain << "\t"; for(int j = 0; j < this->system_size; j++) std::cout << int(0.5 + std::real(std::get<0>( Z(mask_grain, this->system_size, j) )) ); std::cout << std::endl;
         std::cout << "Mask spins:\t" << mask_spins << "\t"; for(int j = 0; j < this->system_size; j++) std::cout << int(0.5 + std::real(std::get<0>( Z(mask_spins, this->system_size, j) )) ); std::cout << std::endl;
     )
+    
     // auto check_spin = QOps::__builtins::get_digit(this->system_size);
+    // arma::mat full_H_grain_U1(dim, dim, arma::fill::zeros);
     for (u64 k = 0; k < this->dim; k++) 
     {
 		u64 base_state = this->_hilbert_space(k);
-        /* U(1) grain */
-        const u64 grain_state = (base_state & mask_grain) / ULLPOW(this->num_of_spins);
-        const u64 spins_state = base_state & mask_spins;
-        // cout << "----------------\nbase: "; for(int j = 0; j < this->system_size; j++) std::cout << int(0.5 + std::real(std::get<0>( Z(base_state, this->system_size, j) )) ); std::cout << std::endl;
-        for(int idx = 0; idx < dim_erg; idx++)
-        {
-            double value = this->H_grain.col(grain_state)(idx);
-            if( std::abs(value) > 1e-15)
-            {
-                auto row = ULLPOW(this->num_of_spins) * idx + spins_state;
-                this->set_hamiltonian_elements(k, value, row);
-            }
-        }
+        // /* U(1) grain */
+        // const u64 grain_state = (base_state & mask_grain) / ULLPOW(this->num_of_spins);
+        // const u64 spins_state = base_state & mask_spins;
+        // // cout << "----------------\nbase: "; for(int j = 0; j < this->system_size; j++) std::cout << int(0.5 + std::real(std::get<0>( Z(base_state, this->system_size, j) )) ); std::cout << std::endl;
+        // for(int idx = 0; idx < dim_erg; idx++)
+        // {
+        //     double value = this->H_grain.col(grain_state)(idx);
+        //     if( std::abs(value) > 1e-15)
+        //     {
+        //         auto row = ULLPOW(this->num_of_spins) * idx + spins_state;
+        //         this->set_hamiltonian_elements(k, value, row);
+                
+        //         u64 idx = this->_hilbert_space.find(row);
+        //         full_H_grain_U1(idx, k) += value;
+        //     }
+        // }
         /* localised spins and interaction */
 		for (int j = this->grain_size; j < this->system_size; j++)  // sum over spin d.o.f
         {
@@ -187,8 +198,9 @@ void QuantumSunU1::create_hamiltonian()
             }
 		}
 	}
-    // std::cout << arma::mat(this->H) << std::endl;
-	// this->H = this->H + arma::kron(H_grain, arma::eye(dim_loc, dim_loc));
+    // std::cout << full_H_grain << std::endl;
+    // std::cout << arma::abs(full_H_grain - full_H_grain_U1) << std::endl;
+	this->H = this->H + this->_gamma * full_H_grain;
 }
 
 
