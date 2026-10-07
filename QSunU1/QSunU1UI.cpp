@@ -337,9 +337,20 @@ void ui::matrix_elements()
 
 		arma::vec IPR_obdm(size, arma::fill::zeros);
 		arma::vec IPR_obdm_fermions(size, arma::fill::zeros);
+
+		arma::Mat<int> fock_states(this->L, size, arma::fill::zeros);
 		for(int n = 0; n < size; n++)
 		{
 			auto state = this->ptr_to_model->get_eigenState(idx_min + n);
+			u64 index_max = arma::abs(state).index_max();
+			arma::Col<int> fock_state(this->L);
+			for(int i = 0; i < this->L; i++)
+			{
+				auto [_spin, _] = operators::sigma_z<double>(_hilbert_space(index_max), this->L, i);
+				fock_state(i) = int(_spin + 0.5);
+			}
+			fock_states.col(n) = fock_state;
+
 			arma::mat rho(this->L, this->L, arma::fill::zeros);
 			arma::mat rho_fermions(this->L, this->L, arma::fill::zeros);
 			for(u64 k_idx = 0; k_idx < _hilbert_space.get_hilbert_space_size(); k_idx++)
@@ -447,6 +458,8 @@ void ui::matrix_elements()
 			spread_of_liom_fermions.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "spread_of_liom_fermions",   arma::hdf5_opts::append));
 		}
 		{
+			fock_states.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "fock_states",   arma::hdf5_opts::append));
+
 			IPR_obdm.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "IPR_obdm",   arma::hdf5_opts::append));
 			IPR_obdm_fermions.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "IPR_obdm_fermions",   arma::hdf5_opts::append));
 			occupations.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "occupations",   arma::hdf5_opts::append));
