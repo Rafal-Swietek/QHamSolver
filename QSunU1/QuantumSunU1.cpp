@@ -87,7 +87,7 @@ void QuantumSunU1::create_hamiltonian()
     bool normalized = false;
     const size_t dim_erg = ULLPOW( (this->grain_size) );
     const size_t dim_loc = ULLPOW( (this->num_of_spins) );
-    this->H_grain = arma::sp_mat(dim_erg, dim_erg);
+    this->H_grain = sparse_matrix(dim_erg, dim_erg);
     
     if(normalized){
         _assert_(false, "Not implemented normalized U(1) grain.. :'("); 
@@ -115,13 +115,6 @@ void QuantumSunU1::create_hamiltonian()
         // this->H_grain = this->H_grain / std::sqrt(arma::trace(this->H_grain * this->H_grain) / dim_erg);
         _extra_debug( std::cout << "U1 block-symmetric GOE grain:\n" << arma::mat(this->H_grain) << std::endl << arma::trace(this->H_grain * this->H_grain) / dim_erg << std::endl; )
     }
-    arma::mat full_H_grain = arma::kron<arma::mat>(arma::mat(this->H_grain), arma::eye<arma::mat>(dim_loc, dim_loc));
-    arma::uvec indices = arma::conv_to<arma::uvec>::from(this->_hilbert_space.get_mapping());
-    full_H_grain = full_H_grain.submat(indices, indices);
-    full_H_grain = full_H_grain / std::sqrt( arma::trace(full_H_grain * full_H_grain) / dim );
-    _extra_debug( 
-        std::cout << "Normalization:\t" << arma::trace(full_H_grain * full_H_grain) / dim << std::endl; 
-    )
 
     /* Create random couplings */
     this->_long_range_couplings = arma::vec(this->num_of_spins, arma::fill::zeros);
@@ -159,26 +152,24 @@ void QuantumSunU1::create_hamiltonian()
     )
     
     // auto check_spin = QOps::__builtins::get_digit(this->system_size);
-    // arma::mat full_H_grain_U1(dim, dim, arma::fill::zeros);
+    sparse_matrix full_H_grain_U1(dim, dim);
     for (u64 k = 0; k < this->dim; k++) 
     {
 		u64 base_state = this->_hilbert_space(k);
         // /* U(1) grain */
-        // const u64 grain_state = (base_state & mask_grain) / ULLPOW(this->num_of_spins);
-        // const u64 spins_state = base_state & mask_spins;
-        // // cout << "----------------\nbase: "; for(int j = 0; j < this->system_size; j++) std::cout << int(0.5 + std::real(std::get<0>( Z(base_state, this->system_size, j) )) ); std::cout << std::endl;
-        // for(int idx = 0; idx < dim_erg; idx++)
-        // {
-        //     double value = this->H_grain.col(grain_state)(idx);
-        //     if( std::abs(value) > 1e-15)
-        //     {
-        //         auto row = ULLPOW(this->num_of_spins) * idx + spins_state;
-        //         this->set_hamiltonian_elements(k, value, row);
-                
-        //         u64 idx = this->_hilbert_space.find(row);
-        //         full_H_grain_U1(idx, k) += value;
-        //     }
-        // }
+        const u64 grain_state = (base_state & mask_grain) / ULLPOW(this->num_of_spins);
+        const u64 spins_state = base_state & mask_spins;
+        // cout << "----------------\nbase: "; for(int j = 0; j < this->system_size; j++) std::cout << int(0.5 + std::real(std::get<0>( Z(base_state, this->system_size, j) )) ); std::cout << std::endl;
+        for(int grain_idx = 0; grain_idx < dim_erg; grain_idx++)
+        {
+            double value = this->H_grain.col(grain_state)(grain_idx);
+            if( std::abs(value) > 1e-15)
+            {
+                auto row = ULLPOW(this->num_of_spins) * grain_idx + spins_state;
+                u64 row_in_Hilbert = this->_hilbert_space.find(row);
+                full_H_grain_U1(row_in_Hilbert, k) += value;
+            }
+        }
         /* localised spins and interaction */
 		for (int j = this->grain_size; j < this->system_size; j++)  // sum over spin d.o.f
         {
@@ -200,9 +191,13 @@ void QuantumSunU1::create_hamiltonian()
             }
 		}
 	}
-    // std::cout << full_H_grain << std::endl;
-    // std::cout << arma::abs(full_H_grain - full_H_grain_U1) << std::endl;
-	this->H = this->H + this->_gamma * full_H_grain;
+    const double norm = arma::norm(full_H_grain_U1, "fro") / std::sqrt(dim);
+
+    full_H_grain_U1 /= norm;
+    _extra_debug( 
+        std::cout << "Normalization:\t" << arma::trace(full_H_grain_U1 * full_H_grain_U1) / dim << std::endl; 
+    )
+	this->H = this->H + this->_gamma * full_H_grain_U1;
 }
 
 
