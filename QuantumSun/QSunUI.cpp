@@ -2807,7 +2807,7 @@ void ui::geometric_tensor(){
 		#endif
 
 		auto [mean_lvl_spacing, count, susc_mean_E, susc_typ_E, susc_typ_r_E] = adiabatics::gauge_potential_finite_energy(mat_elements[0], E, energy_density);
-		auto [_, _, susc_mean_E2, susc_typ_E2, susc_typ_r_E2] = adiabatics::gauge_potential_finite_energy(mat_elements[1], E, energy_density);
+		auto [temp_fucka, another_temp_fucka, susc_mean_E2, susc_typ_E2, susc_typ_r_E2] = adiabatics::gauge_potential_finite_energy(mat_elements[1], E, energy_density);
 
 		std::cout << " - - - - - - finished AGP in time:" << tim_s(start) << " s - - - - - - " << std::endl; // simulation end
 		
