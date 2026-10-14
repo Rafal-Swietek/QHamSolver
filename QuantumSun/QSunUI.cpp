@@ -1,6 +1,6 @@
 #include "includes/QSunUI.hpp"
 
-int outer_threads = 10;
+int outer_threads = 1;
 int num_of_threads = 1;
 
 bool normalize_grain = 1;
