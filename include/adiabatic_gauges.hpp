@@ -157,6 +157,89 @@ namespace adiabatics{
 	template <typename _ty>
 	inline
 	auto 
+	gauge_potential_finite_energy(
+    	const arma::Mat<_ty>& mat_elem,
+    	const arma::vec& eigenvalues,
+		const arma::vec& energy_density
+    ) -> std::tuple<arma::vec, arma::vec, arma::vec, arma::vec, arma::vec> 
+	{
+        const size_t N = eigenvalues.size();
+		
+		arma::vec count(energy_density.size(), arma::fill::zeros);
+		arma::vec susc_mean_E(energy_density.size(), arma::fill::zeros);
+		arma::vec susc_typ_E(energy_density.size(), arma::fill::zeros);
+		arma::vec susc_typ_r_E(energy_density.size(), arma::fill::zeros);
+
+		arma::vec mean_lvl_spacing(energy_density.size(), arma::fill::zeros);
+
+		const double bandwidth = eigenvalues(N-1) - eigenvalues(0);
+		const double E0 = eigenvalues(0);
+		for(int e = 0; e < energy_density.size()-1; e++)
+		{
+			double E_lower = energy_density(e) * bandwidth + E0 - 0.05;
+			double E_upper = energy_density(e) * bandwidth + E0 + 0.05;
+			
+			double lambda = 0;
+			double number = 0;
+			for (long int i = 1; i < N; i++)
+			{
+				if(eigenvalues(i) >= E_lower && eigenvalues(i) < E_upper)
+				{
+					lambda += eigenvalues(i) - eigenvalues(i-1);
+					number++;
+				}
+			}
+			lambda = lambda / double(number);
+			mean_lvl_spacing(e) = lambda;
+
+			int counter_e = 0;
+			for (long int i = 0; i < N; i++)
+			{
+				const double Ei = eigenvalues(i);
+				if(Ei >= E_lower && Ei < E_upper)
+				{
+					double agp_r_tmp = 0;
+					double agp_tmp = 0;
+				#pragma omp parallel for reduction(+ : agp_tmp, agp_r_tmp)
+					for (long int j = 0; j < i; j++)
+					{
+						const double Ej = eigenvalues(j);
+
+						const double nominator = 2 * std::abs(mat_elem(i, j) * std::conj(mat_elem(i, j)));
+						const double omega_ij = Ej - Ei;
+						const double denominator = omega_ij * omega_ij + lambda * lambda;
+
+						const double _reg = omega_ij * omega_ij * nominator / (denominator * denominator);
+						const double _std = nominator / (omega_ij * omega_ij);
+
+						agp_r_tmp += _reg;
+						agp_tmp += _std;
+
+					}
+					counter_e += 1;
+					susc_mean_E(e) += agp_r_tmp;
+					susc_typ_E(e) += std::log(agp_tmp);
+					susc_typ_r_E(e) += std::log(agp_r_tmp);
+				}
+			}
+			count(e) = counter_e;
+			susc_mean_E(e) = susc_mean_E(e) / counter_e;
+			susc_typ_E(e) = susc_typ_E(e) / counter_e;
+			susc_typ_r_E(e) = susc_typ_r_E(e) / counter_e;
+		}
+        return std::make_tuple(mean_lvl_spacing, count, susc_mean_E, susc_typ_E, susc_typ_r_E);
+    }
+
+	/// @brief Calculate Adiabatic Gauge Potential at finite temperature
+	/// @tparam _ty 
+	/// @param mat_elem 
+	/// @param eigenvalues 
+	/// @param betas
+	/// @param L 
+	/// @return 
+	template <typename _ty>
+	inline
+	auto 
 	gauge_potential_finite_T(
     	const arma::Mat<_ty>& mat_elem,
     	const arma::vec& eigenvalues,
