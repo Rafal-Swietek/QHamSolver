@@ -335,21 +335,14 @@ void ui::matrix_elements()
 		arma::mat center_of_liom_fermions(this->L, size, arma::fill::zeros);
 		arma::mat spread_of_liom_fermions(this->L, size, arma::fill::zeros);
 
-		arma::vec IPR_obdm(size, arma::fill::zeros);
-		arma::vec IPR_obdm_fermions(size, arma::fill::zeros);
+		arma::mat IPR_obdm(this->L, size, arma::fill::zeros);
+		arma::mat IPR_obdm_fermions(this->L, size, arma::fill::zeros);
+		arma::mat IPR_obdm_site(this->L, size, arma::fill::zeros);
+		arma::mat IPR_obdm_fermions_site(this->L, size, arma::fill::zeros);
 
-		arma::Mat<int> fock_states(this->L, size, arma::fill::zeros);
 		for(int n = 0; n < size; n++)
 		{
 			auto state = this->ptr_to_model->get_eigenState(idx_min + n);
-			u64 index_max = arma::abs(state).index_max();
-			arma::Col<int> fock_state(this->L);
-			for(int i = 0; i < this->L; i++)
-			{
-				auto [_spin, _] = operators::sigma_z<double>(_hilbert_space(index_max), this->L, i);
-				fock_state(i) = int(_spin + 0.5);
-			}
-			fock_states.col(n) = fock_state;
 
 			arma::mat rho(this->L, this->L, arma::fill::zeros);
 			arma::mat rho_fermions(this->L, this->L, arma::fill::zeros);
@@ -367,7 +360,7 @@ void ui::matrix_elements()
 					{
 						auto [_spin2, _] = operators::sigma_z<double>(base_state, this->L, j);
 						// printSeparated(std::cout, "\t", 16, true, n, k_idx, i, j, _spin * _spin2, boost::dynamic_bitset<>(this->L, base_state));
-						if(_spin * _spin2 < 0){
+						if(_spin < 0 && _spin2 > 0){
 							{
 								auto [val1, cm] = operators::sigma_minus<double>(base_state, this->L, j);
 								auto [val2, cpcm] = operators::sigma_plus<double>(cm, this->L, i);
@@ -400,12 +393,15 @@ void ui::matrix_elements()
 			occupations.col(n) = occ;
 			for(int alfa = 0; alfa < occ.size(); alfa++){
 				auto orbital = arma::square(LIOMS.col(alfa));
-				IPR_obdm(n) += occ(alfa) * arma::dot(orbital, orbital);
+				IPR_obdm(alfa, n) = arma::dot(orbital, orbital);
 				arma::vec ell = arma::regspace<arma::vec>(1, L);
 				center_of_liom(alfa, n) = arma::dot(ell, orbital);
 				spread_of_liom(alfa, n) = arma::dot(arma::square(ell), orbital) - center_of_liom(alfa, n) * center_of_liom(alfa, n);
 			}
-			IPR_obdm(n) = IPR_obdm(n) * 2. / double(this->L);
+			for(int ell = 0; ell < occ.size(); ell++){
+				arma::vec orbital = arma::square(LIOMS.row(ell).t());
+				IPR_obdm_site(ell, n) = arma::dot(orbital, orbital);
+			}
 
 			if(realis + this->jobid < 5){
 				occ.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "STATES/n=" + std::to_string(n) + "/occ",   arma::hdf5_opts::append));
@@ -428,24 +424,27 @@ void ui::matrix_elements()
 			// printSeparated(std::cout, "\t", 20, true, n, arma::sum(occ));
 			for(int alfa = 0; alfa < occ.size(); alfa++){
 				auto orbital = arma::square(LIOMS.col(alfa));
-				IPR_obdm_fermions(n) += occ(alfa) * arma::dot(orbital, orbital);
+				IPR_obdm_fermions(alfa, n) = arma::dot(orbital, orbital);
 				arma::vec ell = arma::regspace<arma::vec>(1, L);
 				center_of_liom_fermions(alfa, n) = arma::dot(ell, orbital);
 				spread_of_liom_fermions(alfa, n) = arma::dot(arma::square(ell), orbital) - center_of_liom_fermions(alfa, n) * center_of_liom_fermions(alfa, n);
 			}
-			IPR_obdm_fermions(n) = IPR_obdm_fermions(n) * 2. / double(this->L);
+			for(int ell = 0; ell < occ.size(); ell++){
+				arma::vec orbital = arma::square(LIOMS.row(ell).t());
+				IPR_obdm_fermions_site(ell, n) = arma::dot(orbital, orbital);
+			}
 
 			if(realis + this->jobid < 5){
 				occ.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "STATES_fermionic/n=" + std::to_string(n) + "/occ",   arma::hdf5_opts::append));
 				LIOMS.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "STATES_fermionic/n=" + std::to_string(n) + "/LIOMS",   arma::hdf5_opts::append));
 				rho.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "STATES_fermionic/n=" + std::to_string(n) + "/rho",   arma::hdf5_opts::append));
 				
-				arma::mat rho2 = rho.submat(0, 0, this->grain_size-1, this->grain_size-1);
+				arma::mat rho2 = rho_fermions.submat(0, 0, this->grain_size-1, this->grain_size-1);
 				arma::eig_sym(occ, LIOMS, rho2);
 				occ.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "STATES_fermionic/n=" + std::to_string(n) + "/occ_grain",   arma::hdf5_opts::append));
 				LIOMS.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "STATES_fermionic/n=" + std::to_string(n) + "/LIOMS_grain",   arma::hdf5_opts::append));
 				
-				rho2 = rho.submat(this->grain_size, this->grain_size, this->L-1, this->L-1);
+				rho2 = rho_fermions.submat(this->grain_size, this->grain_size, this->L-1, this->L-1);
 				arma::eig_sym(occ, LIOMS, rho2);
 				occ.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "STATES_fermionic/n=" + std::to_string(n) + "/occ_spins",   arma::hdf5_opts::append));
 				LIOMS.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "STATES_fermionic/n=" + std::to_string(n) + "/LIOMS_spins",   arma::hdf5_opts::append));
@@ -454,14 +453,15 @@ void ui::matrix_elements()
 		if(realis + this->jobid < 5){
 			center_of_liom.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "center_of_liom",   arma::hdf5_opts::append));
 			spread_of_liom.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "spread_of_liom",   arma::hdf5_opts::append));
-			center_of_liom_fermions.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "center_of_liom_fermions",   arma::hdf5_opts::append));
-			spread_of_liom_fermions.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "spread_of_liom_fermions",   arma::hdf5_opts::append));
+			// center_of_liom_fermions.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "center_of_liom_fermions",   arma::hdf5_opts::append));
+			// spread_of_liom_fermions.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "spread_of_liom_fermions",   arma::hdf5_opts::append));
 		}
 		{
-			fock_states.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "fock_states",   arma::hdf5_opts::append));
 
 			IPR_obdm.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "IPR_obdm",   arma::hdf5_opts::append));
 			IPR_obdm_fermions.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "IPR_obdm_fermions",   arma::hdf5_opts::append));
+			IPR_obdm_site.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "IPR_obdm_site",   arma::hdf5_opts::append));
+			IPR_obdm_fermions_site.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "IPR_obdm_fermions_site",   arma::hdf5_opts::append));
 			occupations.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "occupations",   arma::hdf5_opts::append));
 			occupations_fermions.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "occupations_fermions",   arma::hdf5_opts::append));
 			agp_norm_Sz_r.save(	  arma::hdf5_name(dir_realis + info + ".hdf5", "susc",   arma::hdf5_opts::append));
